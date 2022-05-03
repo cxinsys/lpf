@@ -1,0 +1,19 @@
+---
+
+
+DX: 0.1
+DT: 0.01
+WIDTH: 128
+HEIGHT: 128
+THR: 0.5
+N_ITERS: 500000
+POP_SIZE: 20
+NUM_INIT_PTS: 25
+INIT_POP: "initpop_succinea.json" 
+INITIALIZER: "liaw"
+OBJECTIVES:
+  - ["MinColorProportion", 1e1, "cpu"]
+
+LADYBIRD_TYPE: "haxyridis"
+LADYBIRD_SUBTYPES: ["succinea"]
+DPATH_OUTPUT: "../output"
