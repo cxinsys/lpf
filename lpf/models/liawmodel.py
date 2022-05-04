@@ -214,7 +214,7 @@ class LiawModel(ReactionDiffusionModel):
             
             
             for i, (ir, ic) in enumerate(zip(*init_pts)):
-                n2v["init-pts-%d"%(i)] = (ir, ic)
+                n2v["init-pts-%d"%(i)] = (str(ir), str(ic))
             
             # Hyper-parameters and etc.
             n2v["width"] = self.width
