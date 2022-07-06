@@ -11,8 +11,7 @@ class ReactionDiffusionModel:
               initializer=None,
               period_output=1,
               dpath_images=None,
-              dpath_states=None,
-              early_stop=False):
+              dpath_states=None):
         
         if not n_iters:
             n_iters = self.n_iters            
@@ -44,9 +43,7 @@ class ReactionDiffusionModel:
                 if dpath_states:
                     fpath_states = pjoin(dpath_states, fstr_fname_states%(i+1))
                     self.save_states(fpath_states)
-            
-            if early_stop:
-                pass
+
                 
             
     # end of solve

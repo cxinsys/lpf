@@ -122,10 +122,11 @@ class RdPde2dSearch:
         # end of if
             
         self.model.save_model(fpath_model,
-                              fitness,
                               init_states,
                               init_pts,
-                              params)
+                              params,
+                              fitness=fitness)
+        
         self.model.save_image(fpath_image, arr_color)
             
         return True

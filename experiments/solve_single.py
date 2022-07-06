@@ -18,7 +18,7 @@ if __name__ == "__main__":
     width = 128
     height = 128
     thr = 0.5
-    n_iters = 1000000
+    n_iters = 1000
     shape = (width, height)
     
     # Define directories.    
@@ -55,7 +55,7 @@ if __name__ == "__main__":
         init_pts = {}
         for name, val in n2v.items():
             if "init-pts" in name:
-                print(name, val)
+                # print(name, val)
                 init_pts[name] = (int(val[0]), int(val[1]))
                 num_init_pts += 1
         
@@ -66,7 +66,9 @@ if __name__ == "__main__":
             ir_init[i] = val[0]
             ic_init[i] = val[1]
         
-        initializer = LiawInitializer(ir_init=ir_init, ic_init=ic_init)
+        initializer = LiawInitializer(ir_init=ir_init,
+                                      ic_init=ic_init,
+                                      dtype=np.float32)
     
     
     # Create a model.
@@ -95,8 +97,11 @@ if __name__ == "__main__":
     u0 = n2v["u0"]
     v0 = n2v["v0"]
 
-    
+    t_beg = time.time()
     model.solve([u0, v0], params=params,
                 n_iters=n_iters,
                 period_output=5000,
                 dpath_images=dpath_output)
+    t_end = time.time()
+    
+    print("Elapsed time: %f sec."%(t_end - t_beg))

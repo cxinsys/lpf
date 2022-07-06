@@ -1,28 +1,42 @@
 import json
 
 import numpy as np
+from numba import jit, njit
 import PIL
 from PIL import Image
-
+ 
 from lpf.models import ReactionDiffusionModel
 
 
+# def laplacian2d(a, dx):
+#     return (
+#         - 4 * a
+#         + np.roll(a, 1, 0) 
+#         + np.roll(a, -1, 0)
+#         + np.roll(a, +1, 1)
+#         + np.roll(a, -1, 1)
+#     ) / (dx ** 2)
+
+
+# @njit(fastmath=True, cache=True, nogil=True, parallel=True)
 def laplacian2d(a, dx):
-    return (
-        - 4 * a
-        + np.roll(a, 1, 0) 
-        + np.roll(a, -1, 0)
-        + np.roll(a, +1, 1)
-        + np.roll(a, -1, 1)
-    ) / (dx ** 2)
+    a_top = a[0:-2, 1:-1]
+    a_left = a[1:-1, 0:-2]
+    a_bottom = a[2:, 1:-1]
+    a_right = a[1:-1, 2:]
+    a_center = a[1:-1, 1:-1]
+    return (a_top + a_left + a_bottom + a_right - 4*a_center) / dx**2
 
 
-def pde_u(dt, dx, u, v, Du, ru, k, su, mu):    
+# @njit(fastmath=True, cache=True, nogil=True, parallel=True)
+def pde_u(dt, dx, u, v, u_c, v_c, Du, ru, k, su, mu):    
     return dt * (Du * laplacian2d(u, dx) \
-                 + (ru*((u**2 * v)/(1 + k*u**2)) + su - mu*u))
-def pde_v(dt, dx, u, v, Dv, rv, k, sv):
+                  + (ru*((u_c**2 * v_c)/(1 + k*u_c**2)) + su - mu*u_c))
+        
+# @njit(fastmath=True, cache=True, nogil=True, parallel=True)
+def pde_v(dt, dx, u, v, u_c, v_c, Dv, rv, k, sv):
     return dt * (Dv * laplacian2d(v, dx) \
-                 + (-rv*((u**2 * v)/(1 + k*u**2)) + sv))
+                 + (-rv*((u_c**2 * v_c)/(1 + k*u_c**2)) + sv))
    
 class LiawModel(ReactionDiffusionModel):
     def __init__(self,
@@ -49,9 +63,8 @@ class LiawModel(ReactionDiffusionModel):
         self.fpath_template = fpath_template
         self.fpath_mask = fpath_mask
         
-        self.arr_delta = np.zeros((n_iters, 2, 3), dtype=np.float64)
         
-
+    # @jit(fastmath=True)
     def update(self, i, params):        
         
         dt = self.dt
@@ -73,44 +86,30 @@ class LiawModel(ReactionDiffusionModel):
         mu = params[7]
         
         
-        delta_u = pde_u(dt, dx, u, v, Du, ru, k, su, mu)
-        delta_v = pde_v(dt, dx, u, v, Dv, rv, k, sv)
+        u_c = u[1:-1, 1:-1]
+        v_c = v[1:-1, 1:-1]
         
-        adelta_u = np.abs(delta_u)
-        adelta_v = np.abs(delta_v)
         
-        self.arr_delta[i, 0, :] \
-            = adelta_u.mean(), adelta_u.sum(), np.linalg.norm(adelta_u)
-        self.arr_delta[i, 1, :] \
-            = adelta_v.mean(), adelta_v.sum(), np.linalg.norm(adelta_v)
-            
+        delta_u = pde_u(dt, dx, u, v, u_c, v_c, Du, ru, k, su, mu)
+        delta_v = pde_v(dt, dx, u, v, u_c, v_c, Dv, rv, k, sv)
+
+        # Boundary conditions
+        # delta_u[0, :] = 0   # Top
+        # delta_u[-1, :] = 0  # Bottom
+        # delta_u[:, 0] = 0   # Left
+        # delta_u[:, -1] = 0  # Right
         
-        delta_u[0, :] = 0   # Top
-        delta_u[-1, :] = 0  # Bottom
-        delta_u[:, 0] = 0   # Left
-        delta_u[:, -1] = 0  # Right
-        
-        delta_v[0, :] = 0   # Top
-        delta_v[-1, :] = 0  # Bottom
-        delta_v[:, 0] = 0   # Left
-        delta_v[:, -1] = 0  # Right
+        # delta_v[0, :] = 0   # Top
+        # delta_v[-1, :] = 0  # Bottom
+        # delta_v[:, 0] = 0   # Left
+        # delta_v[:, -1] = 0  # Right
         
             
-        self.u += delta_u
-        self.v += delta_v        
-        
-        # Boundary conditions 
-        # self.u[0, :] = 0   # Top
-        # self.u[-1, :] = 0  # Bottom
-        # self.u[:, 0] = 0   # Left
-        # self.u[:, -1] = 0  # Right
-        
-        # self.v[0, :] = 0   # Top
-        # self.v[-1, :] = 0  # Bottom
-        # self.v[:, 0] = 0   # Left
-        # self.v[:, -1] = 0  # Right
-                
-        return (adelta_u.mean(), adelta_u.sum(), np.linalg.norm(adelta_u))
+        # self.u += delta_u
+        # self.v += delta_v          
+        u[1:-1, 1:-1] = u_c + delta_u
+        v[1:-1, 1:-1] = v_c + delta_v       
+
                     
     def colorize(self, thr=None):
         if not thr:
@@ -192,7 +191,7 @@ class LiawModel(ReactionDiffusionModel):
         raise NotImplementedError()
     
     
-    def save_model(self, fpath, fitness, init_states, init_pts, params):    
+    def save_model(self, fpath, init_states, init_pts, params, fitness=None):    
         
         with open(fpath, "wt") as fout:   
             n2v = {}
