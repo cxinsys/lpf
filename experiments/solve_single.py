@@ -18,7 +18,7 @@ if __name__ == "__main__":
     width = 128
     height = 128
     thr = 0.5
-    n_iters = 1000000
+    n_iters = 500000
     shape = (width, height)
     
     # Define directories.    
@@ -101,7 +101,6 @@ if __name__ == "__main__":
     model.solve([u0, v0], params=params,
                 n_iters=n_iters,
                 period_output=50000,
-                early_stop=False,
                 rtol_early_stop=2e-5,
                 dpath_images=dpath_output)
     t_end = time.time()
