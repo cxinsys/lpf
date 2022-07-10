@@ -18,7 +18,7 @@ if __name__ == "__main__":
     width = 128
     height = 128
     thr = 0.5
-    n_iters = 1000
+    n_iters = 1000000
     shape = (width, height)
     
     # Define directories.    
