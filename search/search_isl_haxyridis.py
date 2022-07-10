@@ -206,22 +206,21 @@ if __name__ == "__main__":
             # end of for
     
     # Create an algorithm.
+
+    n_proc = int(config["N_PROC"])
+    bfe = pg.mp_bfe()
+    bfe.init_pool(n_proc)
     
     isl = pg.island(algo=pg.sade(gen=1),
-                    pop=pop,                    
-                    udi=pg.mp_island())
-    
-    
-    # algo = pg.algorithm(pg.sade(gen=1))    
-    #algo = pg.algorithm(pg.sga(gen=1))    
-    #algo = pg.algorithm(pg.sea(gen=1))    
+                    pop=pop,                   
+                    b=bfe) #, udi=pg.mp_island())
     
     
     num_gen = config["N_GEN"]
     for i in range(num_gen):
+        print(isl)
         t_beg = time.time()
         
-        # pop = algo.evolve(pop)
         isl.evolve()
         pop = isl.get_population()
         

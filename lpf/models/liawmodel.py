@@ -120,7 +120,6 @@ class LiawModel(ReactionDiffusionModel):
         av = np.abs(self.v[1:-1, 1:-1])
         
         max_rc = max((adu/au).max(), (adv/av).max())        
-        print("Max. Relative Change: %e"%(max_rc))
         
         return (adu <= (rtol * au)).all() and (adv <= (rtol * av)).all()
 
