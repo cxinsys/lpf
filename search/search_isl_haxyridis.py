@@ -223,14 +223,15 @@ if __name__ == "__main__":
     for i in range(num_gen):
         print(isl)
         t_beg = time.time()
-        
         isl.evolve()
-        pop = isl.get_population()
-        
         t_end = time.time()        
         dur = t_end - t_beg
-        print("[Evolution #%d] Best objective: %f (%.3f sec.)"%(i + 1, pop.champion_f[0], dur))        
+
+        isl.wait_check()
+
+        print("[Evolution #%d] Best objective: %f (%.3f sec.)"%(i + 1, pop.champion_f[0], dur))       
         
+        pop = isl.get_population()
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
         fpath_model = pjoin(search.dpath_best, "model_%s.json"%(str_now))
         fpath_image = pjoin(search.dpath_best, "image_%s.png"%(str_now))        
