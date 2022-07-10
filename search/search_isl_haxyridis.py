@@ -158,7 +158,12 @@ if __name__ == "__main__":
     
     # Create an initial population.
     pop_size = int(config["POP_SIZE"])
-    pop = pg.population(prob, size=pop_size)
+
+    n_proc = int(config["N_PROC"])
+    bfe = pg.mp_bfe()  # Batch fitness evaluator
+    bfe.init_pool(n_proc)
+
+    pop = pg.population(prob, size=pop_size, b=bfe)
     
     fpath_initpop = config["INIT_POP"]
     if fpath_initpop:
@@ -208,13 +213,10 @@ if __name__ == "__main__":
     
     # Create an algorithm.
 
-    n_proc = int(config["N_PROC"])
-    bfe = pg.mp_bfe()
-    bfe.init_pool(n_proc)
     
     isl = pg.island(algo=pg.sade(gen=1),
                     pop=pop,                   
-                    b=bfe) #, udi=pg.mp_island())
+                    udi=pg.mp_island())
     
     
     num_gen = config["N_GEN"]
