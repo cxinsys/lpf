@@ -47,6 +47,7 @@ class LiawModel(ReactionDiffusionModel):
                  n_iters,
                  thr=0.5,
                  num_init_pts=25,
+                 rtol_early_stop=None,
                  initializer=None,
                  fpath_template=None,
                  fpath_mask=None):
@@ -59,6 +60,7 @@ class LiawModel(ReactionDiffusionModel):
         self.n_iters = n_iters
         self.thr = thr
         self.num_init_pts = num_init_pts
+        self.rtol_early_stop = rtol_early_stop
         self.initializer = initializer
         self.fpath_template = fpath_template
         self.fpath_mask = fpath_mask

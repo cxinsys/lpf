@@ -134,6 +134,7 @@ if __name__ == "__main__":
         dt=dt,
         n_iters=n_iters,
         num_init_pts=num_init_pts,
+        rtol_early_stop=2e-5,
         fpath_template=fpath_template,
         fpath_mask=fpath_mask
     )
