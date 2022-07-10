@@ -46,7 +46,6 @@ class ReactionDiffusionModel:
                     fpath_states = pjoin(dpath_states, fstr_fname_states%(i+1))
                     self.save_states(fpath_states)
 
-            print("[Iter #%d]"%(i+1))            
             if rtol_early_stop and self.is_early_stopping(rtol_early_stop):
                 break
             
