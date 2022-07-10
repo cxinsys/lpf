@@ -35,13 +35,13 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     fpath_config = osp.abspath(args.config)        
-        
+            
     with open(fpath_config, "rt") as fin:
         config = yaml.safe_load(fin)
 
+    # Create a search object.
     num_init_pts = config["NUM_INIT_PTS"]
 
-    # Create a search object.
     class LiawModelConverter:
                                             
         def to_params(self, x, params=None):
@@ -194,7 +194,8 @@ if __name__ == "__main__":
 
                 if j == 0:  # if the number of init pts equals to 0.
                     # rc_product: Production of rows and columns
-                    rc_product = product(np.arange(40, 90, 10), np.arange(10, 110, 20))
+                    rc_product = product(np.arange(40, 90, 10),
+                                         np.arange(10, 110, 20))
 
                     for j, (ir, ic) in enumerate(rc_product):
                         x[10 + 2*j] = ir
@@ -205,15 +206,24 @@ if __name__ == "__main__":
             # end of for
     
     # Create an algorithm.
-    algo = pg.algorithm(pg.sade(gen=1))    
+    
+    isl = pg.island(algo=pg.sade(gen=1),
+                    pop=pop,                    
+                    udi=pg.mp_island())
+    
+    
+    # algo = pg.algorithm(pg.sade(gen=1))    
     #algo = pg.algorithm(pg.sga(gen=1))    
     #algo = pg.algorithm(pg.sea(gen=1))    
     
-    num_gen = 1000000
+    
+    num_gen = config["N_GEN"]
     for i in range(num_gen):
         t_beg = time.time()
         
-        pop = algo.evolve(pop)
+        # pop = algo.evolve(pop)
+        isl.evolve()
+        pop = isl.get_population()
         
         t_end = time.time()        
         dur = t_end - t_beg
@@ -223,4 +233,4 @@ if __name__ == "__main__":
         fpath_model = pjoin(search.dpath_best, "model_%s.json"%(str_now))
         fpath_image = pjoin(search.dpath_best, "image_%s.png"%(str_now))        
         search.save(fpath_model, fpath_image, pop.champion_f[0], pop.champion_x)
-
+    # end of for

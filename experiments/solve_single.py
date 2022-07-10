@@ -18,7 +18,7 @@ if __name__ == "__main__":
     width = 128
     height = 128
     thr = 0.5
-    n_iters = 1000000
+    n_iters = 500000
     shape = (width, height)
     
     # Define directories.    
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     fpath_template = pjoin(dpath_template, "ladybird.png")    
     fpath_mask = pjoin(dpath_template, "mask.png")
 
-    n2v = {"fitness": 14.488964778357358, "u0": 2.0, "v0": 1.0, "Du": 0.0004999999999999999, "Dv": 0.07500000000000001, "ru": 0.17999999999999997, "rv": 0.08099695756142364, "k": 0.20000000000000004, "su": 0.001, "sv": 0.025000000000000005, "mu": 0.07999999999999999, "init-pts-0": ["40", "10"], "init-pts-1": ["40", "30"], "init-pts-2": ["40", "50"], "init-pts-3": ["40", "70"], "init-pts-4": ["40", "90"], "init-pts-5": ["50", "10"], "init-pts-6": ["50", "115"], "init-pts-7": ["62", "50"], "init-pts-8": ["50", "70"], "init-pts-9": ["50", "90"], "init-pts-10": ["12", "10"], "init-pts-11": ["60", "30"], "init-pts-12": ["60", "50"], "init-pts-13": ["60", "50"], "init-pts-14": ["50", "85"], "init-pts-15": ["99", "10"], "init-pts-16": ["70", "111"], "init-pts-17": ["70", "50"], "init-pts-18": ["70", "70"], "init-pts-19": ["70", "90"], "init-pts-20": ["0", "0"], "init-pts-21": ["0", "0"], "init-pts-22": ["0", "0"], "init-pts-23": ["0", "0"], "init-pts-24": ["0", "0"], "width": 128, "height": 128, "dt": 0.01, "dx": 0.1, "n_iters": 500000, "thr": 0.5, "initializer": "NoneType"}
+    n2v = {"fitness": 12.36867523754235, "u0": 1.1309170035240579, "v0": 2.506183016259239, "Du": 0.0004999999999999999, "Dv": 0.07500000000000001, "ru": 0.1736527042346181, "rv": 0.08028530394751626, "k": 0.14881975947367232, "su": 0.001, "sv": 0.025000000000000005, "mu": 0.07999999999999999, "init-pts-0": ["46", "0"], "init-pts-1": ["82", "13"], "init-pts-2": ["103", "57"], "init-pts-3": ["36", "59"], "init-pts-4": ["29", "93"], "init-pts-5": ["88", "5"], "init-pts-6": ["50", "115"], "init-pts-7": ["62", "50"], "init-pts-8": ["50", "69"], "init-pts-9": ["50", "76"], "init-pts-10": ["34", "32"], "init-pts-11": ["52", "20"], "init-pts-12": ["32", "109"], "init-pts-13": ["79", "40"], "init-pts-14": ["61", "61"], "init-pts-15": ["70", "52"], "init-pts-16": ["70", "42"], "init-pts-17": ["71", "51"], "init-pts-18": ["110", "29"], "init-pts-19": ["70", "90"], "init-pts-20": ["0", "0"], "init-pts-21": ["0", "0"], "init-pts-22": ["0", "0"], "init-pts-23": ["0", "0"], "init-pts-24": ["0", "0"], "width": 128, "height": 128, "dt": 0.01, "dx": 0.1, "n_iters": 500000, "thr": 0.5, "initializer": "NoneType"}
     
     # Create initializer
     initializer = None
@@ -100,7 +100,8 @@ if __name__ == "__main__":
     t_beg = time.time()
     model.solve([u0, v0], params=params,
                 n_iters=n_iters,
-                period_output=5000,
+                period_output=50000,
+                rtol_early_stop=2e-5,
                 dpath_images=dpath_output)
     t_end = time.time()
     

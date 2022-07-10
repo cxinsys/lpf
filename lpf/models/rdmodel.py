@@ -11,7 +11,8 @@ class ReactionDiffusionModel:
               initializer=None,
               period_output=1,
               dpath_images=None,
-              dpath_states=None):
+              dpath_states=None,
+              rtol_early_stop=None):
         
         if not n_iters:
             n_iters = self.n_iters            
@@ -32,6 +33,7 @@ class ReactionDiffusionModel:
         for i in range(n_iters):
             self.t += self.dt
             self.update(i, params)
+            
             if np.any(np.isnan(self.u)) or np.any(np.isnan(self.v)):
                 raise ValueError("Invalid value occurs!")
             
@@ -44,11 +46,17 @@ class ReactionDiffusionModel:
                     fpath_states = pjoin(dpath_states, fstr_fname_states%(i+1))
                     self.save_states(fpath_states)
 
-                
+            print("[Iter #%d]"%(i+1))            
+            if rtol_early_stop and self.is_early_stopping(rtol_early_stop):
+                break
+            
             
     # end of solve
         
     def update(self):
+        raise NotImplementedError()
+        
+    def is_early_stopping(self, rtol):       
         raise NotImplementedError()
         
     def save_image(self, fpath):

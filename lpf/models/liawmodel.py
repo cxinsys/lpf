@@ -1,7 +1,7 @@
 import json
 
 import numpy as np
-from numba import jit, njit
+# from numba import jit, njit
 import PIL
 from PIL import Image
  
@@ -90,8 +90,8 @@ class LiawModel(ReactionDiffusionModel):
         v_c = v[1:-1, 1:-1]
         
         
-        delta_u = pde_u(dt, dx, u, v, u_c, v_c, Du, ru, k, su, mu)
-        delta_v = pde_v(dt, dx, u, v, u_c, v_c, Dv, rv, k, sv)
+        self.delta_u = pde_u(dt, dx, u, v, u_c, v_c, Du, ru, k, su, mu)
+        self.delta_v = pde_v(dt, dx, u, v, u_c, v_c, Dv, rv, k, sv)
 
         # Boundary conditions
         # delta_u[0, :] = 0   # Top
@@ -107,8 +107,22 @@ class LiawModel(ReactionDiffusionModel):
             
         # self.u += delta_u
         # self.v += delta_v          
-        u[1:-1, 1:-1] = u_c + delta_u
-        v[1:-1, 1:-1] = v_c + delta_v       
+        u[1:-1, 1:-1] = u_c + self.delta_u
+        v[1:-1, 1:-1] = v_c + self.delta_v       
+
+
+    def is_early_stopping(self, rtol):       
+                
+        adu = np.abs(self.delta_u)
+        adv = np.abs(self.delta_v)
+        
+        au = np.abs(self.u[1:-1, 1:-1])
+        av = np.abs(self.v[1:-1, 1:-1])
+        
+        max_rc = max((adu/au).max(), (adv/av).max())        
+        print("Max. Relative Change: %e"%(max_rc))
+        
+        return (adu <= (rtol * au)).all() and (adv <= (rtol * av)).all()
 
                     
     def colorize(self, thr=None):
