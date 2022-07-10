@@ -8,14 +8,18 @@ class ReactionDiffusionModel:
               init_states,
               params,
               n_iters=None,
+              rtol_early_stop=None,
               initializer=None,
               period_output=1,
               dpath_images=None,
-              dpath_states=None,
-              rtol_early_stop=None):
+              dpath_states=None):
         
         if not n_iters:
-            n_iters = self.n_iters            
+            n_iters = self.n_iters 
+
+        if not rtol_early_stop:
+            rtol_early_stop = self.rtol_early_stop
+
         
         if initializer:
             initializer.initialize(self, init_states, params)
