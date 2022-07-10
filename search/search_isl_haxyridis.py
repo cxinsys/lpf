@@ -134,6 +134,7 @@ if __name__ == "__main__":
         dt=dt,
         n_iters=n_iters,
         num_init_pts=num_init_pts,
+        rtol_early_stop=2e-5,
         fpath_template=fpath_template,
         fpath_mask=fpath_mask
     )
@@ -157,8 +158,8 @@ if __name__ == "__main__":
     
     # Create an initial population.
     pop_size = int(config["POP_SIZE"])
+    n_proc = int(config["N_PROC"])
 
-    #n_proc = int(config["N_PROC"])
     #bfe = pg.mp_bfe()  # Batch fitness evaluator
     #bfe.init_pool(n_proc)
 

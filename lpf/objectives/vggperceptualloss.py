@@ -82,6 +82,9 @@ class EachVgg16PerceptualLoss(Objective):
         for i, target in enumerate(targets):
             target = self.to_tensor(target).to(self.device)       
             arr_loss[i] = self.model(x[None, ...], target[None, ...]).item()
+
+
+        torch.cuda.empty_cache()
     
         return coeff * arr_loss
     
