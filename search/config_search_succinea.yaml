@@ -14,11 +14,11 @@ N_ITERS: 500000
 RTOL_EARLY_STOP: 1e-5
 
 POP_SIZE: 16
-INIT_POP: "initpop_succinea.json" 
+INIT_POP: "init_pop_succinea.json" 
 INITIALIZER: "liaw"
 OBJECTIVES:
   - ["MinMeanSquareError", 1e-1, "cpu"]
-  - ["MinVgg16PerceptualLoss", 1e0, "cuda:0"]
+  - ["MinVgg16PerceptualLoss", 1e0, "cuda"]
   - ["MinColorProportion", 1e1, "cpu"]
 
 LADYBIRD_TYPE: "haxyridis"

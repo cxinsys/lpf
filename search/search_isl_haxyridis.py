@@ -33,6 +33,13 @@ if __name__ == "__main__":
                         type=str,
                         help='Designate the file path of configuration file in YAML')
 
+    parser.add_argument('--gpu',
+                        dest='gpu',
+                        action='store',
+                        type=int,
+                        help='Designate the gpu device id')
+
+
     args = parser.parse_args()
     fpath_config = osp.abspath(args.config)        
             
@@ -115,7 +122,10 @@ if __name__ == "__main__":
     for cfg in config["OBJECTIVES"]:
         obj = cfg[0]
         coeff = float(cfg[1])
-        device = cfg[2]        
+
+        device = "cpu"
+        if "cuda" in cfg[2]:
+            device = "cuda:%d"%(args.gpu)
         
         objectives.append(ObjFac.create(obj, coeff=coeff, device=device))
     # end of for
