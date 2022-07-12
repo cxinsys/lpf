@@ -249,12 +249,14 @@ if __name__ == "__main__":
 
         print("[Evolution #%d] Best objective: %f (%.3f sec.)"%(i + 1, pop.champion_f[0], dur))       
         
-        pop = isl.get_population()        
+        # Save the best.
+        pop = isl.get_population()      
         search.save("best",
                     pop.champion_x,
                     generation=i+1,
                     fitness=pop.champion_f[0])
-        
+       
+        # Save the population.
         arr_x = pop.get_x()
         arr_f = pop.get_f()
         for i in range(arr_x.shape[0]):
