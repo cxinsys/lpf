@@ -126,6 +126,8 @@ if __name__ == "__main__":
         device = "cpu"
         if "cuda" in cfg[2]:
             device = "cuda:%d"%(args.gpu)
+
+        print("[Objective Device] %s: %s"%(obj, device))
         
         objectives.append(ObjFac.create(obj, coeff=coeff, device=device))
     # end of for
