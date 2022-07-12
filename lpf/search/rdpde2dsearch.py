@@ -140,10 +140,9 @@ class RdPde2dSearch:
                     return False
                 
                 arr_color = self.model.colorize() 
-            # end of if
-            
-            # Fetch the stored array from the cache.
-            arr_color = self.cache[digest]
+            else: 
+                # Fetch the stored array from the cache.
+                arr_color = self.cache[digest]
         # end of if
             
         self.model.save_model(fpath_model,
