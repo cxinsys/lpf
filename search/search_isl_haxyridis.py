@@ -223,7 +223,7 @@ if __name__ == "__main__":
                 
                 if "fitness" in n2v:
                     fitness = float(n2v["fitness"])
-                    pop.set_xf(i, x, fitness)
+                    pop.set_xf(i, x, [fitness])
                 else:
                     pop.set_x(i, x)
             # end of for
