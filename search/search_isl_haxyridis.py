@@ -263,8 +263,8 @@ if __name__ == "__main__":
             x = arr_x[i]
             fitness = arr_f[i]
             search.save("pop",
-                        pop.champion_x,
+                        x,
                         generation=i+1,
-                        fitness=pop.champion_f[0])
+                        fitness=fitness)
         
     # end of for
