@@ -8,7 +8,6 @@ import shutil
 from datetime import datetime
 import argparse
 
-import xxhash
 import yaml
 import numpy as np
 import pygmo as pg
@@ -16,6 +15,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 from lpf.utils import get_module_dpath
+from lpf.utils import get_hash_digest
 
 
 class RdPde2dSearch:
@@ -35,8 +35,7 @@ class RdPde2dSearch:
         self.objectives = objectives 
         self.bounds_min, self.bounds_max = self.model.get_param_bounds()
         
-        # Set cache.
-        self.hasher = xxhash.xxh64()
+        # Create a cache using dict.
         self.cache = {}
 
 
@@ -83,7 +82,7 @@ class RdPde2dSearch:
         arr_color = self.model.colorize()    
                 
         # Store the colored object in the cache.
-        digest = self.get_hash_digest(x)
+        digest = get_hash_digest(x)
         self.cache[digest] = arr_color         
                
         # Evaluate objectives.
@@ -95,12 +94,7 @@ class RdPde2dSearch:
 
 
         return [sum_obj]
-    
-    def get_hash_digest(self, x):
-        self.hasher.reset()                
-        self.hasher.update(x)
-        return self.hasher.intdigest()
-    
+
     def get_bounds(self):        
         return (self.bounds_min, self.bounds_max)
 
