@@ -128,7 +128,7 @@ class RdPde2dSearch:
         
         
         if arr_color is None:            
-            digest = self.get_hash_digest(x)            
+            digest = get_hash_digest(x)            
             if digest not in self.cache:                
                 try:
                     initializer = self.converter.to_initializer(x)
