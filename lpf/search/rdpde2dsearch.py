@@ -8,6 +8,7 @@ import shutil
 from datetime import datetime
 import argparse
 
+import xxhash
 import yaml
 import numpy as np
 import pygmo as pg
@@ -33,6 +34,10 @@ class RdPde2dSearch:
         self.targets = targets
         self.objectives = objectives 
         self.bounds_min, self.bounds_max = self.model.get_param_bounds()
+        
+        # Set cache.
+        self.hasher = xxhash.xxh64()
+        self.cache = {}
 
 
         # Create output directories.
@@ -45,6 +50,7 @@ class RdPde2dSearch:
         os.makedirs(self.dpath_population, exist_ok=True)
         os.makedirs(self.dpath_best, exist_ok=True)        
         
+        # Write the config file.
         fpath_config = pjoin(self.dpath_output, "config.yaml")
         with open(fpath_config, 'wt') as fout:
             yaml.dump(config, fout)
@@ -73,24 +79,27 @@ class RdPde2dSearch:
         elif np.allclose(self.model.u[idx], self.model.u[idx].mean()):
             return [np.inf]
 
-        
-        arr_color = self.model.colorize()        
-        ladybird = self.model.create_image(arr_color)
-        
+        # Colorize the ladybird model.
+        arr_color = self.model.colorize()    
+                
+        # Store the colored object in the cache.
+        digest = self.get_hash_digest(x)
+        self.cache[digest] = arr_color         
+               
+        # Evaluate objectives.
+        ladybird = self.model.create_image(arr_color)        
         sum_obj = 0
         for obj in self.objectives:
             val = obj.compute(ladybird.convert("RGB"), self.targets)
             sum_obj += val
 
-                           
-        # Save the params and image
-        str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
-        fpath_model = pjoin(self.dpath_population, "model_%s.json"%(str_now))
-        fpath_image = pjoin(self.dpath_population, "image_%s.png"%(str_now))        
-        self.save(fpath_model, fpath_image, x, fitness=sum_obj, arr_color=arr_color)
 
         return [sum_obj]
     
+    def get_hash_digest(self, x):
+        self.hasher.reset()                
+        self.hasher.update(x)
+        return self.hasher.intdigest()
     
     def get_bounds(self):        
         return (self.bounds_min, self.bounds_max)
@@ -101,13 +110,11 @@ class RdPde2dSearch:
              x,             
              generation=None,
              fitness=None,
-             arr_color=None):
-                
+             arr_color=None):                
 
         params = self.converter.to_params(x)
         init_states = self.converter.to_init_states(x)
-        init_pts = self.converter.to_init_pts(x)
-        
+        init_pts = self.converter.to_init_pts(x)        
         
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
         if mode == "pop":
@@ -127,16 +134,22 @@ class RdPde2dSearch:
         
         
         if arr_color is None:            
-            try:
-                initializer = self.converter.to_initializer(x)
-                self.model.solve(init_states=init_states,
-                                 params=params,
-                                 initializer=initializer)
+            digest = self.get_hash_digest(x)            
+            if digest not in self.cache:                
+                try:
+                    initializer = self.converter.to_initializer(x)
+                    self.model.solve(init_states=init_states,
+                                     params=params,
+                                     initializer=initializer)
+                    
+                except (ValueError, FloatingPointError):
+                    return False
                 
-            except (ValueError, FloatingPointError):
-                return False
+                arr_color = self.model.colorize() 
+            # end of if
             
-            arr_color = self.model.colorize() 
+            # Fetch the stored array from the cache.
+            arr_color = self.cache[digest]
         # end of if
             
         self.model.save_model(fpath_model,

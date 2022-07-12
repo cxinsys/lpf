@@ -136,9 +136,9 @@ class LiawModel(ReactionDiffusionModel):
         c[:, :, 2] = 3
         
         idx = self.u > thr
-        c[idx, 0] = self.u[idx]
-        c[idx, 1] = self.u[idx]
-        c[idx, 2] = self.u[idx]
+        c[idx, 0] = 5 # self.u[idx]
+        c[idx, 1] = 5 # self.u[idx]
+        c[idx, 2] = 5 # self.u[idx]
         
         return c    
     
