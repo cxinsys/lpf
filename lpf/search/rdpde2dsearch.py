@@ -83,11 +83,11 @@ class RdPde2dSearch:
             sum_obj += val
 
                            
-        # Save the output data
+        # Save the params and image
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
         fpath_model = pjoin(self.dpath_population, "model_%s.json"%(str_now))
         fpath_image = pjoin(self.dpath_population, "image_%s.png"%(str_now))        
-        self.save(fpath_model, fpath_image, sum_obj, x, arr_color)
+        self.save(fpath_model, fpath_image, x, fitness=sum_obj, arr_color=arr_color)
 
         return [sum_obj]
     
@@ -99,9 +99,9 @@ class RdPde2dSearch:
     def save(self, 
              fpath_model,
              fpath_image,
-             generation,
-             fitness,
              x,
+             generation=None,
+             fitness=None,
              arr_color=None):
                 
 

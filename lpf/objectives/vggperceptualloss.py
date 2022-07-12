@@ -83,7 +83,7 @@ class EachVgg16PerceptualLoss(Objective):
             target = self.to_tensor(target).to(self.device)       
             arr_loss[i] = self.model(x[None, ...], target[None, ...]).item()
 
-        if self.device.type == "cuda":
+        if "cuda" in self.device:  # [!] self.device is not torch.device
             torch.cuda.empty_cache()
     
         return coeff * arr_loss
