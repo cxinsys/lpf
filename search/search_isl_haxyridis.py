@@ -200,8 +200,7 @@ if __name__ == "__main__":
                 x[6] = np.log10(n2v["sv"])
                 x[7] = np.log10(n2v["mu"])
                 x[8] = np.log10(n2v["u0"])
-                x[9] = np.log10(n2v["v0"])
-               
+                x[9] = np.log10(n2v["v0"])               
                
                 j = 0
                 for name, val in n2v.items():
@@ -220,9 +219,13 @@ if __name__ == "__main__":
                     for j, (ir, ic) in enumerate(rc_product):
                         x[10 + 2*j] = ir
                         x[11 + 2*j] = ic
-                    # end of for
+                    # end of for                    
                 
-                pop.set_x(i, x)
+                if "fitness" in n2v:
+                    fitness = float(n2v["fitness"])
+                    pop.set_xf(i, x, fitness)
+                else:
+                    pop.set_x(i, x)
             # end of for
    
 
@@ -246,13 +249,20 @@ if __name__ == "__main__":
 
         print("[Evolution #%d] Best objective: %f (%.3f sec.)"%(i + 1, pop.champion_f[0], dur))       
         
-        pop = isl.get_population()
-        str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
-        fpath_model = pjoin(search.dpath_best, "model_%s.json"%(str_now))
-        fpath_image = pjoin(search.dpath_best, "image_%s.png"%(str_now))        
-        search.save(fpath_model,
-                    fpath_image,                    
+        pop = isl.get_population()        
+        search.save("best",
                     pop.champion_x,
                     generation=i+1,
                     fitness=pop.champion_f[0])
+        
+        arr_x = pop.get_x()
+        arr_f = pop.get_f()
+        for i in range(arr_x.shape[0]):
+            x = arr_x[i]
+            fitness = arr_f[i]
+            search.save("pop",
+                        pop.champion_x,
+                        generation=i+1,
+                        fitness=pop.champion_f[0])
+        
     # end of for

@@ -97,9 +97,8 @@ class RdPde2dSearch:
 
         
     def save(self, 
-             fpath_model,
-             fpath_image,
-             x,
+             mode,
+             x,             
              generation=None,
              fitness=None,
              arr_color=None):
@@ -108,6 +107,24 @@ class RdPde2dSearch:
         params = self.converter.to_params(x)
         init_states = self.converter.to_init_states(x)
         init_pts = self.converter.to_init_pts(x)
+        
+        
+        str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
+        if mode == "pop":
+            fpath_model = pjoin(self.dpath_population,
+                                "model_%s.json"%(str_now))            
+            fpath_image = pjoin(self.dpath_population,
+                                "image_%s.png"%(str_now))        
+            
+        elif mode == "best":            
+            fpath_model = pjoin(self.dpath_best,
+                                "model_%s.json"%(str_now))            
+            fpath_image = pjoin(self.dpath_best,
+                                "image_%s.png"%(str_now))        
+        else:
+            raise ValueError("mode should be 'pop' or 'best'")
+            
+        
         
         if arr_color is None:            
             try:
