@@ -206,11 +206,18 @@ class LiawModel(ReactionDiffusionModel):
         raise NotImplementedError()
     
     
-    def save_model(self, fpath, init_states, init_pts, params, fitness=None):    
+    def save_model(self,
+                   fpath,
+                   init_states,
+                   init_pts,
+                   params,
+                   generation=None,
+                   fitness=None):    
         
         with open(fpath, "wt") as fout:   
             n2v = {}
            
+            n2v["generation"] = generation
             n2v["fitness"] = fitness
 
             # Model parameters
@@ -228,7 +235,7 @@ class LiawModel(ReactionDiffusionModel):
             
             
             for i, (ir, ic) in enumerate(zip(*init_pts)):
-                n2v["init-pts-%d"%(i)] = (str(ir), str(ic))
+                n2v["init_pts_%d"%(i)] = (str(ir), str(ic))
             
             # Hyper-parameters and etc.
             n2v["width"] = self.width

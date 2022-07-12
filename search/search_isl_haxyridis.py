@@ -177,13 +177,13 @@ if __name__ == "__main__":
 
     pop = pg.population(prob, size=pop_size) #, b=bfe)
     
-    fpath_initpop = config["INIT_POP"]
-    if fpath_initpop:
-        fpath_initpop = osp.abspath(fpath_initpop)
+    fpath_init_pop = config["INIT_POP"]
+    if fpath_init_pop:
+        fpath_init_pop = osp.abspath(fpath_init_pop)
         
-        if osp.isfile(fpath_initpop):
-            with open(fpath_initpop, "rt") as fin:
-                print("[INITIAL POPULATION]", fpath_initpop)
+        if osp.isfile(fpath_init_pop):
+            with open(fpath_init_pop, "rt") as fin:
+                print("[INITIAL POPULATION]", fpath_init_pop)
                 
                 list_n2v = json.load(fin)
                 
@@ -203,11 +203,11 @@ if __name__ == "__main__":
                
                 j = 0
                 for name, val in n2v.items():
-                    if "init-pts" in name:
+                    if "init_pts" in name:
                         x[10 + 2*j] = int(val[0])
                         x[11 + 2*j] = int(val[1])
                         j += 1
-                        print(name, (10 + 2*j, 11 + 2*j), val)
+                        # print(name, (10 + 2*j, 11 + 2*j), val)
                 # end of for
 
                 if j == 0:  # if the number of init pts equals to 0.
@@ -248,5 +248,9 @@ if __name__ == "__main__":
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
         fpath_model = pjoin(search.dpath_best, "model_%s.json"%(str_now))
         fpath_image = pjoin(search.dpath_best, "image_%s.png"%(str_now))        
-        search.save(fpath_model, fpath_image, pop.champion_f[0], pop.champion_x)
+        search.save(fpath_model,
+                    fpath_image,                    
+                    pop.champion_x,
+                    generation=i+1,
+                    fitness=pop.champion_f[0])
     # end of for

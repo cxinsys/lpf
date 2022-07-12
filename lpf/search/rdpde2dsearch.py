@@ -99,6 +99,7 @@ class RdPde2dSearch:
     def save(self, 
              fpath_model,
              fpath_image,
+             generation,
              fitness,
              x,
              arr_color=None):
@@ -125,6 +126,7 @@ class RdPde2dSearch:
                               init_states,
                               init_pts,
                               params,
+                              generation=generation,
                               fitness=fitness)
         
         self.model.save_image(fpath_image, arr_color)
