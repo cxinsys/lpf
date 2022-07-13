@@ -56,34 +56,40 @@ class RdPde2dSearch:
             
         
     def fitness(self, x):
-        params = self.converter.to_params(x)
-        init_states = self.converter.to_init_states(x)        
-        initializer = self.converter.to_initializer(x)
-        
-        self.initializer = initializer
-        
-        try:
-            self.model.solve(init_states,
-                             params=params,
-                             initializer=initializer)
-        except (ValueError, FloatingPointError) as err:
-            return [np.inf]
-                        
-        idx = self.model.u > self.model.thr
 
-        if not idx.any():
-            return [np.inf]        
-        elif self.model.u.size == idx.sum():
-            return [np.inf]
-        elif np.allclose(self.model.u[idx], self.model.u[idx].mean()):
-            return [np.inf]
-
-        # Colorize the ladybird model.
-        arr_color = self.model.colorize()    
-                
-        # Store the colored object in the cache.
+        
         digest = get_hash_digest(x)
-        self.cache[digest] = arr_color         
+
+        if digest in self.cache:
+            arr_color = self.cache[digest]
+        else:
+            params = self.converter.to_params(x)
+            init_states = self.converter.to_init_states(x)        
+            initializer = self.converter.to_initializer(x)
+            
+            self.initializer = initializer
+            
+            try:
+                self.model.solve(init_states,
+                                 params=params,
+                                 initializer=initializer)
+            except (ValueError, FloatingPointError) as err:
+                return [np.inf]
+                            
+            idx = self.model.u > self.model.thr
+
+            if not idx.any():
+                return [np.inf]        
+            elif self.model.u.size == idx.sum():
+                return [np.inf]
+            elif np.allclose(self.model.u[idx], self.model.u[idx].mean()):
+                return [np.inf]
+
+            # Colorize the ladybird model.
+            arr_color = self.model.colorize()    
+                    
+            # Store the colored object in the cache.
+            self.cache[digest] = arr_color         
                
         # Evaluate objectives.
         ladybird = self.model.create_image(arr_color)        
