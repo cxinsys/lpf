@@ -261,7 +261,7 @@ if __name__ == "__main__":
         arr_f = pop.get_f()
         for i in range(arr_x.shape[0]):
             x = arr_x[i]
-            fitness = arr_f[i]
+            fitness = arr_f[i, 0]
             search.save("pop",
                         x,
                         generation=i+1,
