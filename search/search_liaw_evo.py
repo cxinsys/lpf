@@ -230,7 +230,7 @@ if __name__ == "__main__":
         # end of for
     # end of if
     t_end = time.time()
-    print("[DURATION OF INITIALIZING POPULATION] %.3f sec."%(t_beg - t_end))
+    print("[DURATION OF INITIALIZING POPULATION] %.3f sec."%(t_end - t_beg))
     print(pop)
 
     # Create an evolutionary algorithm.
@@ -246,11 +246,9 @@ if __name__ == "__main__":
         t_beg = time.time()
         isl.evolve()
         t_end = time.time()        
-        dur = t_end - t_beg
-
         isl.wait_check()
 
-        print("[Evolution #%d] Best objective: %f (%.3f sec.)"%(i + 1, pop.champion_f[0], dur))       
+        print("[Evolution #%d] Best objective: %f (%.3f sec.)"%(i + 1, pop.champion_f[0], t_end - t_beg))       
         
         # Save the best.
         pop = isl.get_population()      
