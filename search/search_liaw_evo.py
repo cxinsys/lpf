@@ -260,9 +260,9 @@ if __name__ == "__main__":
         # Save the population.
         arr_x = pop.get_x()
         arr_f = pop.get_f()
-        for i in range(arr_x.shape[0]):
-            x = arr_x[i]
-            fitness = arr_f[i, 0]
+        for j in range(arr_x.shape[0]):
+            x = arr_x[j]
+            fitness = arr_f[j, 0]
             search.save("pop",
                         x,
                         generation=i+1,
