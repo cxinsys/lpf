@@ -1,3 +1,6 @@
+# Log files
+log_search*
+
 # PyCharm
 .idea/
 
