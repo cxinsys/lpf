@@ -1,5 +1,6 @@
 import time
 import json
+import os
 import os.path as osp
 from os.path import join as pjoin
 from os.path import abspath as apath
@@ -101,8 +102,7 @@ if __name__ == "__main__":
             ir_init, ic_init = self.to_init_pts(x)            
             init = LiawInitializer(ir_init=ir_init, ic_init=ic_init)
             return init
-                   
-            
+                               
         
     converter = LiawModelConverter()
         
@@ -174,54 +174,67 @@ if __name__ == "__main__":
     pop_size = int(config["POP_SIZE"])
     pop = pg.population(prob, size=pop_size)
     
-    dname_init_pop = os.path.abspath(config["INIT_POP"])
-    if fpath_init_pop:
-        fpath_init_pop = osp.abspath(fpath_init_pop)
+    dpath_init_pop = osp.abspath(config["INIT_POP"])
+    if dpath_init_pop:
+        #fpath_init_pop = osp.abspath(fpath_init_pop)
         
-        if osp.isfile(fpath_init_pop):
-            with open(fpath_init_pop, "rt") as fin:
-                print("[INITIAL POPULATION]", fpath_init_pop)
+        # if osp.isfile(fpath_init_pop):
+        #     with open(fpath_init_pop, "rt") as fin:
+        #         print("[INITIAL POPULATION]", fpath_init_pop)
                 
-                list_n2v = json.load(fin)
-                
-            x = np.zeros((10 + 2*num_init_pts,), dtype=np.float64)
-            for i, n2v in enumerate(list_n2v):
-                x[0] = np.log10(n2v["Du"])
-                x[1] = np.log10(n2v["Dv"])
-                x[2] = np.log10(n2v["ru"])
-                x[3] = np.log10(n2v["rv"])
-                x[4] = np.log10(n2v["k"])
-                x[5] = np.log10(n2v["su"])
-                x[6] = np.log10(n2v["sv"])
-                x[7] = np.log10(n2v["mu"])
-                x[8] = np.log10(n2v["u0"])
-                x[9] = np.log10(n2v["v0"])               
-               
-                j = 0
-                for name, val in n2v.items():
-                    if "init_pts" in name:
-                        x[10 + 2*j] = int(val[0])
-                        x[11 + 2*j] = int(val[1])
-                        j += 1
-                        # print(name, (10 + 2*j, 11 + 2*j), val)
-                # end of for
+        #         list_n2v = json.load(fin)
+        x = np.zeros((10 + 2*num_init_pts,), dtype=np.float64)
 
-                if j == 0:  # if the number of init pts equals to 0.
-                    # rc_product: Production of rows and columns
-                    rc_product = product(np.arange(40, 90, 10),
-                                         np.arange(10, 110, 20))
-
-                    for j, (ir, ic) in enumerate(rc_product):
-                        x[10 + 2*j] = ir
-                        x[11 + 2*j] = ic
-                    # end of for                    
+        for i, fname in enumerate(os.listdir(dpath_init_pop)):
+            if i == pop_size:
+                break
                 
-                if "fitness" in n2v:
-                    fitness = float(n2v["fitness"])
-                    pop.set_xf(i, x, [fitness])
-                else:
-                    pop.set_x(i, x)
+            if not fname.endswith("json"):
+                continue
+            
+            fpath_model = pjoin(dpath_init_pop, fname)            
+            
+            # Load the params.
+            with open(fpath_model, "rt") as fin:
+                n2v = json.load(fin)            
+                
+            x[0] = np.log10(n2v["Du"])
+            x[1] = np.log10(n2v["Dv"])
+            x[2] = np.log10(n2v["ru"])
+            x[3] = np.log10(n2v["rv"])
+            x[4] = np.log10(n2v["k"])
+            x[5] = np.log10(n2v["su"])
+            x[6] = np.log10(n2v["sv"])
+            x[7] = np.log10(n2v["mu"])
+            x[8] = np.log10(n2v["u0"])
+            x[9] = np.log10(n2v["v0"])               
+           
+            j = 0
+            for name, val in n2v.items():
+                if "init_pts" in name:
+                    x[10 + 2*j] = int(val[0])
+                    x[11 + 2*j] = int(val[1])
+                    j += 1
             # end of for
+            
+            if j == 0: # if there is no initial point.
+                # rc_product: Production of rows and columns
+                rc_product = product(np.arange(40, 90, 10),
+                                     np.arange(10, 110, 20))
+
+                for j, (ir, ic) in enumerate(rc_product):
+                    x[10 + 2*j] = ir
+                    x[11 + 2*j] = ic
+                # end of for
+            # end of if
+            
+            if "fitness" in n2v:
+                fitness = float(n2v["fitness"])
+                pop.set_xf(i, x, [fitness])
+            else:
+                pop.set_x(i, x)
+        # end of for
+    # end of if        
    
 
     # Create an evolutionary algorithm.

@@ -56,8 +56,6 @@ class RdPde2dSearch:
             
         
     def fitness(self, x):
-
-        
         digest = get_hash_digest(x)
 
         if digest in self.cache:
@@ -65,8 +63,7 @@ class RdPde2dSearch:
         else:
             params = self.converter.to_params(x)
             init_states = self.converter.to_init_states(x)        
-            initializer = self.converter.to_initializer(x)
-            
+            initializer = self.converter.to_initializer(x)            
             self.initializer = initializer
             
             try:
@@ -116,6 +113,9 @@ class RdPde2dSearch:
         init_states = self.converter.to_init_states(x)
         init_pts = self.converter.to_init_pts(x)        
         
+        initializer = self.converter.to_initializer(x)            
+        self.model.initializer = initializer
+        
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
         if mode == "pop":
             fpath_model = pjoin(self.dpath_population,
@@ -132,12 +132,10 @@ class RdPde2dSearch:
             raise ValueError("mode should be 'pop' or 'best'")
             
         
-        
         if arr_color is None:            
             digest = get_hash_digest(x)            
             if digest not in self.cache:                
                 try:
-                    initializer = self.converter.to_initializer(x)
                     self.model.solve(init_states=init_states,
                                      params=params,
                                      initializer=initializer)
@@ -150,7 +148,7 @@ class RdPde2dSearch:
                 # Fetch the stored array from the cache.
                 arr_color = self.cache[digest]
         # end of if
-            
+        
         self.model.save_model(fpath_model,
                               init_states,
                               init_pts,

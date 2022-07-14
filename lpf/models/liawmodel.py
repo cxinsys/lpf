@@ -246,7 +246,6 @@ class LiawModel(ReactionDiffusionModel):
             n2v["thr"] = self.thr
             n2v["initializer"] = self.initializer.__class__.__name__
             
-            
             json.dump(n2v, fout)
     
         return n2v
