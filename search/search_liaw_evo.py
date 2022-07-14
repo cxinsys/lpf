@@ -171,18 +171,12 @@ if __name__ == "__main__":
    
     
     # Create the initial population.
+    t_beg = time.time()
     pop_size = int(config["POP_SIZE"])
     pop = pg.population(prob, size=pop_size)
     
     dpath_init_pop = osp.abspath(config["INIT_POP"])
     if dpath_init_pop:
-        #fpath_init_pop = osp.abspath(fpath_init_pop)
-        
-        # if osp.isfile(fpath_init_pop):
-        #     with open(fpath_init_pop, "rt") as fin:
-        #         print("[INITIAL POPULATION]", fpath_init_pop)
-                
-        #         list_n2v = json.load(fin)
         x = np.zeros((10 + 2*num_init_pts,), dtype=np.float64)
 
         for i, fname in enumerate(os.listdir(dpath_init_pop)):
@@ -234,8 +228,10 @@ if __name__ == "__main__":
             else:
                 pop.set_x(i, x)
         # end of for
-    # end of if        
-   
+    # end of if
+    t_end = time.time()
+    print("[DURATION OF INITIALIZING POPULATION] %.3f sec."%(t_beg - t_end))
+    print(pop)
 
     # Create an evolutionary algorithm.
     n_proc = int(config["N_PROC"])
