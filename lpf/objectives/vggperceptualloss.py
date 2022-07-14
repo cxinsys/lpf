@@ -4,6 +4,7 @@ References
 - https://gist.github.com/brucemuller/37906a86526f53ec7f50af4e77d025c9
 """
 
+import gc
 import numpy as np
 
 try:
@@ -79,13 +80,17 @@ class EachVgg16PerceptualLoss(Objective):
         x = self.to_tensor(x).to(self.device)
 
         arr_loss = np.zeros((len(targets),), dtype=np.float64)
-        for i, target in enumerate(targets):
-            target = self.to_tensor(target).to(self.device)       
-            arr_loss[i] = self.model(x[None, ...], target[None, ...]).item()
+        with torch.no_grad():
+            for i, target in enumerate(targets):
+                target = self.to_tensor(target).to(self.device)       
+                arr_loss[i] = self.model(x[None, ...], target[None, ...]).item()
 
         if "cuda" in self.device:  # [!] self.device is not torch.device
             torch.cuda.empty_cache()
-    
+   
+        del target
+        del x
+        gc.collect()
         return coeff * arr_loss
     
     
