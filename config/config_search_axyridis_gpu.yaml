@@ -18,7 +18,7 @@ INIT_POP: "../population/init_pop_01"
 INITIALIZER: "liaw"
 OBJECTIVES:
   - ["MinMeanSquareError", 1e-1, "cpu"]
-  - ["MinVgg16PerceptualLoss", 1e0, "cuda"]
+  - ["MinVgg16PerceptualLoss", 1e-3, "cuda"]
   - ["MinColorProportion", 1e1, "cpu"]
 
 LADYBIRD_TYPE: "haxyridis"
