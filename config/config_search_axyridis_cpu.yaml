@@ -1,0 +1,26 @@
+---
+
+N_PROCS: 8
+N_GEN: 1000000
+
+DX: 0.1
+DT: 0.01
+WIDTH: 128
+HEIGHT: 128
+THR: 0.5
+NUM_INIT_PTS: 25
+N_ITERS: 500000
+RTOL_EARLY_STOP: 1e-5
+
+POP_SIZE: 16
+EVAL_INIT_FITNESS: True
+INIT_POP: "../population/init_pop_01" 
+INITIALIZER: "liaw"
+OBJECTIVES:
+  - ["MinMeanSquareError", 1e-1, "cpu"]
+  - ["MinVgg16PerceptualLoss", 1e0, "cpu"]
+  - ["MinColorProportion", 1e1, "cpu"]
+
+LADYBIRD_TYPE: "haxyridis"
+LADYBIRD_SUBTYPES: ["axyridis"]
+DPATH_OUTPUT: "../output"

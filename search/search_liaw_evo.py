@@ -177,6 +177,7 @@ if __name__ == "__main__":
     
     dpath_init_pop = osp.abspath(config["INIT_POP"])
     if dpath_init_pop:
+        eval_init_fitness = int(config["EVAL_INIT_FITNESS"])
         x = np.zeros((10 + 2*num_init_pts,), dtype=np.float64)
 
         for i, fname in enumerate(os.listdir(dpath_init_pop)):
@@ -222,11 +223,14 @@ if __name__ == "__main__":
                 # end of for
             # end of if
             
-            if "fitness" in n2v:
+            if eval_init_fitness:
+                pop.set_x(i, x)
+            elif "fitness" in n2v:
                 fitness = float(n2v["fitness"])
                 pop.set_xf(i, x, [fitness])
             else:
-                pop.set_x(i, x)
+                raise ValueError("'fitness' should be defined in the JSON file if EVAL_INIT_FITNESS is False.")
+
         # end of for
     # end of if
     t_end = time.time()

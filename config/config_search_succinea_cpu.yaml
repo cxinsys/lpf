@@ -2,7 +2,6 @@
 
 N_PROCS: 8
 N_GEN: 1000000
-N_ISL: 2
 
 DX: 0.1
 DT: 0.01
@@ -14,6 +13,7 @@ N_ITERS: 500000
 RTOL_EARLY_STOP: 1e-5
 
 POP_SIZE: 16
+EVAL_INIT_FITNESS: True
 INIT_POP: "../population/init_pop_01" 
 INITIALIZER: "liaw"
 OBJECTIVES:
@@ -22,5 +22,5 @@ OBJECTIVES:
   - ["MinColorProportion", 1e1, "cpu"]
 
 LADYBIRD_TYPE: "haxyridis"
-LADYBIRD_SUBTYPES: ["axyridis"]
+LADYBIRD_SUBTYPES: ["succinea"]
 DPATH_OUTPUT: "../output"
