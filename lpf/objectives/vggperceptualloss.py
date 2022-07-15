@@ -11,6 +11,7 @@ try:
     import torch
     import torchvision
     import torchvision.transforms as transforms
+    from torchvision.models import VGG16_Weights
 except (ImportError, ModuleNotFoundError):
     err_msg = "Cannot use Vgg16PerceptualLoss objectives, " \
               "since it fails to import torch or tortchvision."
@@ -61,10 +62,10 @@ class Vgg16PerceptualLoss(torch.nn.Module):
     def __init__(self, resize=True):
         super(Vgg16PerceptualLoss, self).__init__()
         blocks = []
-        blocks.append(torchvision.models.vgg16(pretrained=True).features[:4].eval())
-        blocks.append(torchvision.models.vgg16(pretrained=True).features[4:9].eval())
-        blocks.append(torchvision.models.vgg16(pretrained=True).features[9:16].eval())
-        blocks.append(torchvision.models.vgg16(pretrained=True).features[16:23].eval())
+        blocks.append(torchvision.models.vgg16(weights=VGG16_Weights.IMAGENET1K_V1).features[:4].eval())
+        blocks.append(torchvision.models.vgg16(weights=VGG16_Weights.IMAGENET1K_V1).features[4:9].eval())
+        blocks.append(torchvision.models.vgg16(weights=VGG16_Weights.IMAGENET1K_V1).features[9:16].eval())
+        blocks.append(torchvision.models.vgg16(weights=VGG16_Weights.IMAGENET1K_V1).features[16:23].eval())
         for bl in blocks:
             for p in bl.parameters():
                 p.requires_grad = False

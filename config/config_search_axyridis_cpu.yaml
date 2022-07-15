@@ -1,6 +1,6 @@
 ---
 
-N_PROCS: 8
+N_PROCS: 4
 N_GEN: 1000000
 
 DX: 0.1
