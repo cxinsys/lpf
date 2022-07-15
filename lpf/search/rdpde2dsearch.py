@@ -53,7 +53,6 @@ class RdPde2dSearch:
         fpath_config = pjoin(self.dpath_output, "config.yaml")
         with open(fpath_config, 'wt') as fout:
             yaml.dump(config, fout)
-            
         
     def fitness(self, x):
         digest = get_hash_digest(x)

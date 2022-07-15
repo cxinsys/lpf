@@ -139,7 +139,7 @@ class EachVgg16PerceptualLoss(Objective):
         gc.collect()
         return coeff * arr_loss
 
-        
+
 class SumVgg16PerceptualLoss(EachVgg16PerceptualLoss):
         
     def compute(self, x, targets):

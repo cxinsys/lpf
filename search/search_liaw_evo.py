@@ -234,38 +234,38 @@ if __name__ == "__main__":
     print(pop)
 
     # Create an evolutionary algorithm.
-    n_proc = int(config["N_PROC"])
+    n_procs = int(config["N_PROCS"])
     n_gen = int(config["N_GEN"])
 
     udi = pg.mp_island()
-    udi.resize_pool(n_proc)
+    udi.resize_pool(n_procs)
     isl = pg.island(algo=pg.sade(gen=1), pop=pop, udi=udi)
-    
-    for i in range(n_gen):
-        print(isl)
-        t_beg = time.time()
-        isl.evolve()
-        t_end = time.time()        
-        isl.wait_check()
 
-        print("[Evolution #%d] Best objective: %f (%.3f sec.)"%(i + 1, pop.champion_f[0], t_end - t_beg))       
-        
-        # Save the best.
-        pop = isl.get_population()      
-        search.save("best",
-                    pop.champion_x,
-                    generation=i+1,
-                    fitness=pop.champion_f[0])
-       
-        # Save the population.
-        arr_x = pop.get_x()
-        arr_f = pop.get_f()
-        for j in range(arr_x.shape[0]):
-            x = arr_x[j]
-            fitness = arr_f[j, 0]
-            search.save("pop",
-                        x,
-                        generation=i+1,
-                        fitness=fitness)
-        
-    # end of for
+    try:
+        for i in range(n_gen):
+            print(isl)
+            t_beg = time.time()
+            isl.evolve()
+            t_end = time.time()
+            isl.wait_check()
+
+            print("[EVOLUTION #%d] Best objective: %f (%.3f sec.)"%(i + 1, pop.champion_f[0], t_end - t_beg))
+
+            # Save the best.
+            pop = isl.get_population()
+            search.save("best", pop.champion_x, generation=i+1, fitness=pop.champion_f[0])
+
+            # Save the population.
+            arr_x = pop.get_x()
+            arr_f = pop.get_f()
+            for j in range(arr_x.shape[0]):
+                x = arr_x[j]
+                fitness = arr_f[j, 0]
+                search.save("pop", x, generation=i+1, fitness=fitness)
+        # end of for
+    except Exception as err:
+        print(err)
+        isl.shutdown_pool()
+
+    print("[EVOLUTIONARY SEARH COMPLETED]")
+    isl.shutdown_pool()

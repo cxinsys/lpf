@@ -1,6 +1,6 @@
 ---
 
-N_PROC: 8
+N_PROCS: 8
 N_GEN: 1000000
 N_ISL: 2
 
