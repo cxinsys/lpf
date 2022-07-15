@@ -88,6 +88,9 @@ class Vgg16PerceptualLoss(torch.nn.Module):
         if not feature_layers:
             feature_layers = [0, 1, 2, 3]
 
+        if not style_layers:
+            style_layers = [0, 1, 2, 3]
+
         loss = 0.0
         x = input
         y = target
