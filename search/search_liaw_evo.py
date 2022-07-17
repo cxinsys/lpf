@@ -250,9 +250,9 @@ if __name__ == "__main__":
             print(isl)
             t_beg = time.time()
             isl.evolve()
-            t_end = time.time()
             isl.wait_check()
-
+            t_end = time.time()
+            
             print("[EVOLUTION #%d] Best objective: %f (%.3f sec.)"%(i + 1, pop.champion_f[0], t_end - t_beg))
 
             # Save the best.
