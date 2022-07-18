@@ -87,7 +87,8 @@ class Vgg16PerceptualLoss(torch.nn.Module):
             target = self.transform(target, mode='bilinear', size=(224, 224), align_corners=False)
 
         if not feature_layers:
-            feature_layers = [0, 1, 2, 3]
+            #feature_layers = [0, 1, 2, 3]
+            feature_layers = [2]
 
         if not style_layers:
             style_layers = [0, 1, 2, 3]
