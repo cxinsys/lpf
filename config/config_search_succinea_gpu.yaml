@@ -17,9 +17,9 @@ EVAL_INIT_FITNESS: True
 INIT_POP: "../population/init_pop_01"
 INITIALIZER: "liaw"
 OBJECTIVES:
-  - ["MinMeanSquareError", 1e-1, "cpu"]
-  - ["MinVgg16PerceptualLoss", 1e-3, "cuda"]
-  - ["MinColorProportion", 1e1, "cpu"]
+  - ["MeanMeanSquareError", 2e-1, "cpu"]
+  - ["MeanVgg16PerceptualLoss", 0.5e-3, "cuda"]
+  - ["MeanColorProportion", 2e1, "cpu"]
 
 LADYBIRD_TYPE: "haxyridis"
 LADYBIRD_SUBTYPES: ["succinea"]

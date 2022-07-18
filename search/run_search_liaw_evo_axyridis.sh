@@ -4,8 +4,8 @@ sleep 1s
 nohup python search_liaw_evo.py --config ../config/config_search_axyridis_gpu.yaml --gpu 1 > log_search_evo_gpu1.out 2>&1 &
 sleep 1s
 
-nohup python search_liaw_evo.py --config ../config/config_search_axyridis_cpu.yaml > log_search_evo_cpu1.out 2>&1 &
-sleep 1s
+#nohup python search_liaw_evo.py --config ../config/config_search_axyridis_cpu.yaml > log_search_evo_cpu1.out 2>&1 &
+#sleep 1s
 
-nohup python search_liaw_evo.py --config ../config/config_search_axyridis_cpu.yaml > log_search_evo_cpu2.out 2>&1 &
-sleep 1s
+#nohup python search_liaw_evo.py --config ../config/config_search_axyridis_cpu.yaml > log_search_evo_cpu2.out 2>&1 &
+#sleep 1s
