@@ -12,9 +12,11 @@ try:
     import torchvision
     import torchvision.transforms as transforms
     from torchvision.models import VGG16_Weights
-except (ImportError, ModuleNotFoundError):
+except (ImportError, ModuleNotFoundError) as err:
+
     err_msg = "Cannot use Vgg16PerceptualLoss objectives, " \
-              "since it fails to import torch or tortchvision."
+              "since it fails to import torch or torchvision."
+    print(err)
     print(err_msg)
 
 from lpf.objectives import Objective
