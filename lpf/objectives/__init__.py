@@ -20,6 +20,11 @@ from lpf.objectives.vggperceptualloss import MeanVgg16PerceptualLoss
 from lpf.objectives.vggperceptualloss import MinVgg16PerceptualLoss
 from lpf.objectives.vggperceptualloss import MaxVgg16PerceptualLoss
 
+from lpf.objectives.ssim import SumStructuralSimilarityIndexMeasure
+from lpf.objectives.ssim import MeanStructuralSimilarityIndexMeasure
+from lpf.objectives.ssim import MinStructuralSimilarityIndexMeasure
+from lpf.objectives.ssim import MaxStructuralSimilarityIndexMeasure
+
 from lpf.objectives.objectivefactory import ObjectiveFactory
 
 
@@ -44,5 +49,11 @@ __all__ = [
     "MeanVgg16PerceptualLoss",
     "MinVgg16PerceptualLoss",
     "MaxVgg16PerceptualLoss",
+
+    "SumStructuralSimilarityIndexMeasure",
+    "MeanStructuralSimilarityIndexMeasure",
+    "MinStructuralSimilarityIndexMeasure",
+    "MaxStructuralSimilarityIndexMeasure",
+
     "ObjectiveFactory"
 ]
