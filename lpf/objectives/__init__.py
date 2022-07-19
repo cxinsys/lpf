@@ -25,6 +25,11 @@ from lpf.objectives.ssim import MeanStructuralSimilarityIndexMeasure
 from lpf.objectives.ssim import MinStructuralSimilarityIndexMeasure
 from lpf.objectives.ssim import MaxStructuralSimilarityIndexMeasure
 
+from lpf.objectives.lpips import SumLearnedPerceptualImagePatchSimilarity
+from lpf.objectives.lpips import MeanLearnedPerceptualImagePatchSimilarity
+from lpf.objectives.lpips import MinLearnedPerceptualImagePatchSimilarity
+from lpf.objectives.lpips import MaxLearnedPerceptualImagePatchSimilarity
+
 from lpf.objectives.objectivefactory import ObjectiveFactory
 
 
@@ -54,6 +59,11 @@ __all__ = [
     "MeanStructuralSimilarityIndexMeasure",
     "MinStructuralSimilarityIndexMeasure",
     "MaxStructuralSimilarityIndexMeasure",
+
+    "SumLearnedPerceptualImagePatchSimilarity",
+    "MeanLearnedPerceptualImagePatchSimilarity",
+    "MinLearnedPerceptualImagePatchSimilarity",
+    "MaxLearnedPerceptualImagePatchSimilarity",
 
     "ObjectiveFactory"
 ]

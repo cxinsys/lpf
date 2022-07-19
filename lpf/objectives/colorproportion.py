@@ -6,7 +6,6 @@ import cv2
 from lpf.objectives import Objective
 
 
-
 class EachColorProportion(Objective):
         
     def __init__(self, targets=None, coeff=None):        

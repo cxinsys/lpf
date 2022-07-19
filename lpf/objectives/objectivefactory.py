@@ -23,6 +23,11 @@ from lpf.objectives.ssim import MeanStructuralSimilarityIndexMeasure
 from lpf.objectives.ssim import MinStructuralSimilarityIndexMeasure
 from lpf.objectives.ssim import MaxStructuralSimilarityIndexMeasure
 
+from lpf.objectives.lpips import SumLearnedPerceptualImagePatchSimilarity
+from lpf.objectives.lpips import MeanLearnedPerceptualImagePatchSimilarity
+from lpf.objectives.lpips import MinLearnedPerceptualImagePatchSimilarity
+from lpf.objectives.lpips import MaxLearnedPerceptualImagePatchSimilarity
+
 class ObjectiveFactory:
     
     @staticmethod
@@ -73,5 +78,19 @@ class ObjectiveFactory:
             return MinStructuralSimilarityIndexMeasure(coeff=coeff, device=device)
         elif _name  == "maxstructuralsimilarityindexmeasure":
             return MaxStructuralSimilarityIndexMeasure(coeff=coeff, device=device)
-        
+
+        elif "sumlearnedperceptualimagepatchsimilarity" in _name:
+            _, net_type = _name.split(":")
+            return SumLearnedPerceptualImagePatchSimilarity(net_type=net_type, coeff=coeff, device=device)
+        elif "meanlearnedperceptualimagepatchsimilarity" in _name:
+            _, net_type = _name.split(":")
+            return MeanLearnedPerceptualImagePatchSimilarity(net_type=net_type, coeff=coeff, device=device)
+        elif "minlearnedperceptualimagepatchsimilarity" in _name:
+            _, net_type = _name.split(":")
+            return MinLearnedPerceptualImagePatchSimilarity(net_type=net_type, coeff=coeff, device=device)
+        elif "maxlearnedperceptualimagepatchsimilarity" in _name:
+            _, net_type = _name.split(":")
+            return MaxLearnedPerceptualImagePatchSimilarity(net_type=net_type, coeff=coeff, device=device)
+
+
         raise ValueError("%s is not a supported objective."%(name))
