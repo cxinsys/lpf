@@ -17,7 +17,7 @@ from lpf.objectives import Objective
 
 class EachLearnedPerceptualImagePatchSimilarity(Objective):
 
-    def __init__(self, coeff=None, net_type=None, device=None):
+    def __init__(self, net_type=None, coeff=None, device=None):
 
         if not coeff:
             coeff = 1.0
