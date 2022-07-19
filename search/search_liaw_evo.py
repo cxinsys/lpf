@@ -269,7 +269,7 @@ if __name__ == "__main__":
         # end of for
     except Exception as err:
         print(err)
-        isl.shutdown_pool()
+        udi.shutdown_pool()
 
     print("[EVOLUTIONARY SEARH COMPLETED]")
-    isl.shutdown_pool()
+    udi.shutdown_pool()
