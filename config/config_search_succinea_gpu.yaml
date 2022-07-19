@@ -14,7 +14,7 @@ RTOL_EARLY_STOP: 1e-5
 
 POP_SIZE: 16
 EVAL_INIT_FITNESS: True
-INIT_POP: "../population/init_pop_01"
+INIT_POP: "../population/init_pop_succinea"
 INITIALIZER: "liaw"
 OBJECTIVES:
   - ["MeanMeanSquareError", 2e-1, "cpu"]
