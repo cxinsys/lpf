@@ -64,6 +64,14 @@ class ObjectiveFactory:
             return MinVgg16PerceptualLoss(coeff=coeff, device=device)
         elif _name  == "maxvgg16perceptualloss":
             return MaxVgg16PerceptualLoss(coeff=coeff, device=device)
-        
+
+        elif _name == "sumstructuralsimilarityindexmeasure":
+            return SumStructuralSimilarityIndexMeasure(coeff=coeff, device=device)
+        elif _name == "meanstructuralsimilarityindexmeasure":
+            return MeanStructuralSimilarityIndexMeasure(coeff=coeff, device=device)
+        elif _name == "minstructuralsimilarityindexmeasure":
+            return MinStructuralSimilarityIndexMeasure(coeff=coeff, device=device)
+        elif _name  == "maxstructuralsimilarityindexmeasure":
+            return MaxStructuralSimilarityIndexMeasure(coeff=coeff, device=device)
         
         raise ValueError("%s is not a supported objective."%(name))
