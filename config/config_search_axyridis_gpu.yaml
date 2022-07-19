@@ -18,8 +18,9 @@ INIT_POP: "../population/init_pop_axyridis"
 INITIALIZER: "liaw"
 OBJECTIVES:
   - ["MeanMeanSquareError", 2e-1, "cpu"]
-  - ["MeanVgg16PerceptualLoss", 0.5e-3, "cuda"]
   - ["MeanColorProportion", 2e1, "cpu"]
+  - ["MeanVgg16PerceptualLoss", 0.5e-3, "cuda"]
+  - ["MeanLearnedPerceptualImagePatchSimilarity:vgg", 4e1, "cuda"]
 
 LADYBIRD_TYPE: "haxyridis"
 LADYBIRD_SUBTYPES: ["axyridis"]

@@ -14,12 +14,13 @@ RTOL_EARLY_STOP: 1e-5
 
 POP_SIZE: 16
 EVAL_INIT_FITNESS: True
-INIT_POP: "../population/init_pop_succinea.json" 
+INIT_POP: "../population/init_pop_succinea" 
 INITIALIZER: "liaw"
 OBJECTIVES:
   - ["MeanMeanSquareError", 2e-1, "cpu"]
-  - ["MeanVgg16PerceptualLoss", 0.5e-3, "cpu"]
   - ["MeanColorProportion", 2e1, "cpu"]
+  - ["MeanVgg16PerceptualLoss", 0.5e-3, "cpu"]
+  - ["MeanLearnedPerceptualImagePatchSimilarity:vgg", 4e1, "cpu"]
 
 LADYBIRD_TYPE: "haxyridis"
 LADYBIRD_SUBTYPES: ["succinea"]
