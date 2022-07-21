@@ -4,24 +4,20 @@ import os
 import os.path as osp
 from os.path import join as pjoin
 from os.path import abspath as apath
-from datetime import datetime
 import argparse
 from itertools import product
 
 import yaml
 import numpy as np
 import pygmo as pg
-import matplotlib.pyplot as plt
 
 from lpf.models import LiawModel
 from lpf.initializers import LiawInitializer
-from lpf.initializers import InitializerFactory as InitFac
 from lpf.objectives import ObjectiveFactory as ObjFac
 from lpf.search import EvoSearch
 from lpf.utils import get_module_dpath
 from lpf.data import load_targets
 
-plt.ioff()
 np.seterr(all='raise')
 
 

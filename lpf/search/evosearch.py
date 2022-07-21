@@ -12,7 +12,6 @@ import yaml
 import numpy as np
 import pygmo as pg
 from PIL import Image
-import matplotlib.pyplot as plt
 
 from lpf.utils import get_module_dpath
 from lpf.utils import get_hash_digest
