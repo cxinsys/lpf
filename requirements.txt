@@ -6,3 +6,4 @@ pillow
 tqdm
 pyyaml
 xxhash
+torchmetrics[image]
