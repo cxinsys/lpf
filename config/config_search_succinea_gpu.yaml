@@ -17,11 +17,11 @@ EVAL_INIT_FITNESS: True
 INIT_POP: "../population/init_pop_succinea"
 INITIALIZER: "liaw"
 OBJECTIVES:
-  - ["MeanMeanSquareError", 2e-1, "cpu"]
-  - ["MeanColorProportion", 2e1, "cpu"]
-  - ["MeanVgg16PerceptualLoss", 0.5e-3, "cuda"]
-  - ["MeanLearnedPerceptualImagePatchSimilarity:vgg", 4e1, "cuda"]
-
+  - ["MeanMeanSquareError", 1e-1, "cpu"]
+  - ["MeanColorProportion", 1e0, "cpu"]
+  - ["MeanVgg16PerceptualLoss", 1e-4, "cuda"]
+  - ["MeanLearnedPerceptualImagePatchSimilarity:vgg", 1.5e1, "cuda"]
+  - ["MeanLearnedPerceptualImagePatchSimilarity:alex", 4e0, "cuda"]
 LADYBIRD_TYPE: "haxyridis"
 LADYBIRD_SUBTYPES: ["succinea"]
 DPATH_OUTPUT: "../output"
