@@ -17,7 +17,7 @@ from lpf.models import LiawModel
 from lpf.initializers import LiawInitializer
 from lpf.initializers import InitializerFactory as InitFac
 from lpf.objectives import ObjectiveFactory as ObjFac
-from lpf.search import RdPde2dSearch
+from lpf.search import EvoSearch
 from lpf.utils import get_module_dpath
 from lpf.data import load_targets
 
@@ -160,12 +160,12 @@ if __name__ == "__main__":
                            ladybird_subtypes)
 
     droot_output = apath(config["DPATH_OUTPUT"])
-    search = RdPde2dSearch(config,
-                           model,
-                           converter,
-                           targets,
-                           objectives,
-                           droot_output)
+    search = EvoSearch(config,
+                       model,
+                       converter,
+                       targets,
+                       objectives,
+                       droot_output)
     prob = pg.problem(search)
     print(prob) 
    
