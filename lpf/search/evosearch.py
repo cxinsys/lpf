@@ -18,7 +18,7 @@ from lpf.utils import get_module_dpath
 from lpf.utils import get_hash_digest
 
 
-class RdPde2dSearch:
+class EvoSearch:
     def __init__(self,
                  config,
                  model,

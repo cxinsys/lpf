@@ -1,7 +1,7 @@
-from lpf.search.rdpde2dsearch import RdPde2dSearch
+from lpf.search.evosearch import EvoSearch
 
 
 
 __all__ = [
-    "RdPde2dSearch",
+    "EvoSearch",
 ]
