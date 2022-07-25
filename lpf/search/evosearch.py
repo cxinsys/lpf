@@ -70,15 +70,19 @@ class EvoSearch:
                                  initializer=initializer)
             except (ValueError, FloatingPointError) as err:
                 return [np.inf]
-                            
-            idx = self.model.u > self.model.thr
 
-            if not idx.any():
-                return [np.inf]        
-            elif self.model.u.size == idx.sum():
-                return [np.inf]
-            elif np.allclose(self.model.u[idx], self.model.u[idx].mean()):
-                return [np.inf]
+
+            # [TODO] have to remove the exposed u and v variables
+            # idx = self.model.u > self.model.thr
+            #
+            # if not idx.any():
+            #     return [np.inf]
+            # elif self.model.u.size == idx.sum():
+            #     return [np.inf]
+            # elif np.allclose(self.model.u[idx], self.model.u[idx].mean()):
+            #     return [np.inf]
+            #
+            # #################################################################
 
             # Colorize the ladybird model.
             arr_color = self.model.colorize()    
