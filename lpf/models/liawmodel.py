@@ -8,17 +8,6 @@ from PIL import Image
 from lpf.models import ReactionDiffusionModel
 
 
-# def laplacian2d(a, dx):
-#     return (
-#         - 4 * a
-#         + np.roll(a, 1, 0) 
-#         + np.roll(a, -1, 0)
-#         + np.roll(a, +1, 1)
-#         + np.roll(a, -1, 1)
-#     ) / (dx ** 2)
-
-
-# @njit(fastmath=True, cache=True, nogil=True, parallel=True)
 def laplacian2d(a, dx):
     a_top = a[:, 0:-2, 1:-1]
     a_left = a[:, 1:-1, 0:-2]
@@ -27,12 +16,12 @@ def laplacian2d(a, dx):
     a_center = a[:, 1:-1, 1:-1]
     return (a_top + a_left + a_bottom + a_right - 4*a_center) / dx**2
 
-# @njit(fastmath=True, cache=True, nogil=True, parallel=True)
-def pde_u(dt, dx, u, v, u_c, v_c, Du, ru, k, su, mu):    
+
+def pde_u(dt, dx, u, v, u_c, v_c, Du, ru, k, su, mu):
     return dt * (Du * laplacian2d(u, dx) \
                   + (ru*((u_c**2 * v_c)/(1 + k*u_c**2)) + su - mu*u_c))
-        
-# @njit(fastmath=True, cache=True, nogil=True, parallel=True)
+
+
 def pde_v(dt, dx, u, v, u_c, v_c, Dv, rv, k, sv):
     return dt * (Dv * laplacian2d(v, dx) \
                  + (-rv*((u_c**2 * v_c)/(1 + k*u_c**2)) + sv))
@@ -50,7 +39,8 @@ class LiawModel(ReactionDiffusionModel):
                  rtol_early_stop=None,
                  initializer=None,
                  fpath_template=None,
-                 fpath_mask=None):
+                 fpath_mask=None,
+                 device=None):
     
         self.width = width
         self.height = height
@@ -64,15 +54,16 @@ class LiawModel(ReactionDiffusionModel):
         self.initializer = initializer
         self.fpath_template = fpath_template
         self.fpath_mask = fpath_mask
+
+        super().__init__(device)
+
         
-        
-    # @jit(fastmath=True)
     def update(self, i, param_batch):
         
         batch_size = param_batch.shape[0]
         
-        dt = self.dt #.reshape(batch_size, 1, 1)
-        dx = self.dx #.reshase(batch_size, 1, 1)
+        dt = self.dt
+        dx = self.dx
         
         u = self.u
         v = self.v
@@ -109,13 +100,17 @@ class LiawModel(ReactionDiffusionModel):
         u[:, 1:-1, 1:-1] = u_c + self.delta_u
         v[:, 1:-1, 1:-1] = v_c + self.delta_v
 
-    def is_early_stopping(self, rtol):       
+    def check_invalid_values(self):
+        if self.am.any(self.am.isnan(self.u)) or self.am.any(self.am.isnan(self.v)):
+            raise ValueError("Invalid value occurs!")
+
+    def is_early_stopping(self, rtol):
                 
-        adu = np.abs(self.delta_u)
-        adv = np.abs(self.delta_v)
+        adu = self.am.abs(self.delta_u)
+        adv = self.am.abs(self.delta_v)
         
-        au = np.abs(self.u[:, 1:-1, 1:-1])
-        av = np.abs(self.v[:, 1:-1, 1:-1])
+        au = self.am.abs(self.u[:, 1:-1, 1:-1])
+        av = self.am.abs(self.v[:, 1:-1, 1:-1])
         
         # max_rc = max((adu/au).max(), (adv/av).max())
         
@@ -128,14 +123,15 @@ class LiawModel(ReactionDiffusionModel):
         batch_size = self.u.shape[0]
         color = np.zeros((batch_size, self.height, self.width, 3),
                          dtype=np.uint8)
+
         color[:, :, :, 0] = 231
         color[:, :, :, 1] = 79
         color[:, :, :, 2] = 3
         
-        idx = self.u > thr
-        color[idx, 0] = 5 # self.u[idx]
-        color[idx, 1] = 5 # self.u[idx]
-        color[idx, 2] = 5 # self.u[idx]
+        idx = self.am.get(self.u) > thr  # self.u.get() > thr
+        color[idx, 0] = 5  # self.u[idx]
+        color[idx, 1] = 5  # self.u[idx]
+        color[idx, 2] = 5  # self.u[idx]
         
         return color
     
@@ -156,11 +152,9 @@ class LiawModel(ReactionDiffusionModel):
 
         # Load template images.
         template = Image.open(fpath_template)
-        #template = template.resize(shape)
-        
+
         mask = Image.open(fpath_mask).convert('L')
-        #mask = mask.resize(shape).convert('L')
-        
+
         wings = Image.fromarray(arr_color[i, :, :])
         wings = wings.resize((128, 128))
         wings_crop = wings.crop((36, 12, 36 + 54, 12 + 104))
@@ -175,7 +169,6 @@ class LiawModel(ReactionDiffusionModel):
   
         arr_left = np.array(img_left)
         arr_right = np.array(img_right)
-
 
         arr_left = arr_left[:, :-4, :]
         arr_right = arr_right[:, 4:, :]
@@ -257,12 +250,12 @@ class LiawModel(ReactionDiffusionModel):
     def get_param_bounds(self):
         
         if not hasattr(self, "bounds_min"):
-            self.bounds_min = np.zeros((10 + 2*self.num_init_pts),
-                                       dtype=np.float64)
+            self.bounds_min = self.am.zeros((10 + 2*self.num_init_pts),
+                                            dtype=np.float64)
             
         if not hasattr(self, "bounds_max"):
-            self.bounds_max = np.zeros((10 + 2*self.num_init_pts),
-                                       dtype=np.float64)
+            self.bounds_max = self.am.zeros((10 + 2*self.num_init_pts),
+                                            dtype=np.float64)
 
         
         # Du

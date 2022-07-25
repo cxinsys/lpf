@@ -1,14 +1,15 @@
 import numpy as np
 from PIL import Image
 
+from lpf.array import get_array_module
+
 
 class Initializer:
-    
     def __init__(self,
                  name=None,
-                 fpath_init=None,
                  ind_init=None,
-                 dtype=None):  
+                 dtype=None,
+                 device=None):
         
         self._name = name
         
@@ -16,12 +17,9 @@ class Initializer:
             dtype = np.float32
         
         self._dtype = dtype
-        
-        if fpath_init:
-            img_init = Image.open(fpath_init)
-            arr_init = np.array(img_init, dtype=self.dtype)
-            self._ir_init, self._ic_init = arr_init[:, :, -1].nonzero()
-            
+
+        self._am = get_array_module(device)
+
         if ind_init is not None:
             self._ind_init = ind_init
 
@@ -35,3 +33,7 @@ class Initializer:
     @property
     def dtype(self):
         return self._dtype
+
+    @property
+    def am(self):
+        return self._am

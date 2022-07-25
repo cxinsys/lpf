@@ -1,10 +1,21 @@
 import os
 from os.path import join as pjoin
+import time
+
 import numpy as np
 
+from lpf.array import get_array_module
 
-class ReactionDiffusionModel:
-    
+
+class ReactionDiffusionModel(object):
+
+    def __init__(self, device=None):
+        self._am = get_array_module(device)
+
+    @property
+    def am(self):  # ArrayModule object
+        return self._am
+
     def solve(self,
               init_states,
               param_batch,
@@ -13,20 +24,21 @@ class ReactionDiffusionModel:
               initializer=None,
               period_output=1,
               dpath_images=None,
-              dpath_states=None):
-        
+              dpath_states=None,
+              verbose=0):
+
+        t_total_beg = time.time()
+
         if not n_iters:
             n_iters = self.n_iters 
 
         if not rtol_early_stop:
             rtol_early_stop = self.rtol_early_stop
-            
-            
+
         if init_states.shape[0] != param_batch.shape[0]:
             raise ValueError("The batch size of init_states and " \
                              "the batch size of params should be equal.")
 
-        
         if initializer:
             initializer.initialize(self, init_states, param_batch)
         else:
@@ -50,15 +62,15 @@ class ReactionDiffusionModel:
 
             fstr_fname_states \
                 = "states_%0{}d.png".format(int(np.floor(np.log10(n_iters))))
-        
+
+        t_beg = time.time()
         for i in range(n_iters):
             self.t += self.dt
             self.update(i, param_batch)
-            
-            if np.any(np.isnan(self.u)) or np.any(np.isnan(self.v)):
-                raise ValueError("Invalid value occurs!")
-            
+            self.check_invalid_values()
+
             if i % period_output == 0:
+
                 if dpath_images:
                     for j in range(batch_size):
                         fpath_image = pjoin(dpath_images, dname_individual%(j+1), fstr_fname_image%(i+1))
@@ -69,8 +81,16 @@ class ReactionDiffusionModel:
                         fpath_states = pjoin(dpath_states, dname_individual%(j+1), fstr_fname_states%(i+1))
                         self.save_states(fpath_states)
 
+                if verbose >= 1:
+                    print("[Iteration #%d] elapsed time: %.5e sec."%(i+1, time.time() - t_beg))
+                    t_beg = time.time()
+
             if rtol_early_stop and self.is_early_stopping(rtol_early_stop):
                 break
+        # end of for
+
+        if verbose >= 1:
+            print("[Total] elapsed time: %.5e sec." % (time.time() - t_total_beg))
 
     # end of solve
 
@@ -92,4 +112,6 @@ class ReactionDiffusionModel:
         
     def get_param_bounds(self):
         raise NotImplementedError()
- 
+
+    def check_invalid_values(self):
+        raise NotImplementedError()

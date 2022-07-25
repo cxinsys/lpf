@@ -10,8 +10,8 @@ from lpf.utils import get_module_dpath
 
 class LiawInitializer(Initializer):
     
-    def __init__(self, ind_init=None, dtype=None):
-        super().__init__(name="liaw", ind_init=ind_init, dtype=dtype)
+    def __init__(self, ind_init=None, dtype=None, device=None):
+        super().__init__(name="liaw", ind_init=ind_init, dtype=dtype, device=device)
 
     def initialize(self, model, init_states, param_dicts, ind_init=None):
 
@@ -32,18 +32,16 @@ class LiawInitializer(Initializer):
         batch_size = init_states.shape[0]
         shape = (batch_size, model.height, model.width)
         if not hasattr(model, "u"):
-            model.u = np.zeros(shape, dtype=self.dtype)
+            model.u = self.am.zeros(shape, dtype=self.dtype)
         else:
             model.u[:, 0] = 0.0  # model.u.fill(0.0)
-            
             
         for ix_batch in ind_init[:, 0]:
             model.u[ix_batch, ind_init[:, 1], ind_init[:, 2]] = u0[ix_batch]
         
         if not hasattr(model, "v"):
-            # model.v = np.full(shape, v0, dtype=self.dtype)
             tmp_v0 = v0.reshape(batch_size, 1, 1)
-            model.v = tmp_v0 * np.ones(shape, dtype=self.dtype)
+            model.v = tmp_v0 * self.am.ones(shape, dtype=self.dtype)
         else:
             model.v[:, 1] = v0  # model.v.fill(v0)
 
@@ -64,4 +62,4 @@ class LiawInitializer(Initializer):
                 ind_init.append((i, val[0], val[1]))
         # end of for
 
-        self._ind_init = np.array(ind_init, dtype=np.uint32)
+        self._ind_init = self.am.array(ind_init, dtype=np.uint32)
