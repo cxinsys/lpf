@@ -7,8 +7,7 @@ class Initializer:
     def __init__(self,
                  name=None,
                  fpath_init=None,
-                 ir_init=None,
-                 ic_init=None,
+                 ind_init=None,
                  dtype=None):  
         
         self._name = name
@@ -23,14 +22,11 @@ class Initializer:
             arr_init = np.array(img_init, dtype=self.dtype)
             self._ir_init, self._ic_init = arr_init[:, :, -1].nonzero()
             
-        if ir_init is not None and ic_init is not None:
-            self._ir_init = ir_init
-            self._ic_init = ic_init
-        
-        
-    def initialize(self, model, init_state, params):
-        raise NotImplementedError()
+        if ind_init is not None:
+            self._ind_init = ind_init
 
+    def initialize(self, model, init_states, params):
+        raise NotImplementedError()
 
     @property
     def name(self):

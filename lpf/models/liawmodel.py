@@ -20,13 +20,12 @@ from lpf.models import ReactionDiffusionModel
 
 # @njit(fastmath=True, cache=True, nogil=True, parallel=True)
 def laplacian2d(a, dx):
-    a_top = a[0:-2, 1:-1]
-    a_left = a[1:-1, 0:-2]
-    a_bottom = a[2:, 1:-1]
-    a_right = a[1:-1, 2:]
-    a_center = a[1:-1, 1:-1]
+    a_top = a[:, 0:-2, 1:-1]
+    a_left = a[:, 1:-1, 0:-2]
+    a_bottom = a[:, 2:, 1:-1]
+    a_right = a[:, 1:-1, 2:]
+    a_center = a[:, 1:-1, 1:-1]
     return (a_top + a_left + a_bottom + a_right - 4*a_center) / dx**2
-
 
 # @njit(fastmath=True, cache=True, nogil=True, parallel=True)
 def pde_u(dt, dx, u, v, u_c, v_c, Du, ru, k, su, mu):    
@@ -37,11 +36,12 @@ def pde_u(dt, dx, u, v, u_c, v_c, Du, ru, k, su, mu):
 def pde_v(dt, dx, u, v, u_c, v_c, Dv, rv, k, sv):
     return dt * (Dv * laplacian2d(v, dx) \
                  + (-rv*((u_c**2 * v_c)/(1 + k*u_c**2)) + sv))
-   
+
+
 class LiawModel(ReactionDiffusionModel):
     def __init__(self,
                  width,
-                 height,                 
+                 height,
                  dx,
                  dt,
                  n_iters,
@@ -67,31 +67,31 @@ class LiawModel(ReactionDiffusionModel):
         
         
     # @jit(fastmath=True)
-    def update(self, i, params):        
+    def update(self, i, param_batch):
         
-        dt = self.dt
-        dx = self.dx
+        batch_size = param_batch.shape[0]
+        
+        dt = self.dt #.reshape(batch_size, 1, 1)
+        dx = self.dx #.reshase(batch_size, 1, 1)
         
         u = self.u
         v = self.v
         
-        Du = params[0]
-        Dv = params[1]
+        Du = param_batch[:, 0].reshape(batch_size, 1, 1)
+        Dv = param_batch[:, 1].reshape(batch_size, 1, 1)
 
-        ru = params[2]
-        rv = params[3]
+        ru = param_batch[:, 2].reshape(batch_size, 1, 1)
+        rv = param_batch[:, 3].reshape(batch_size, 1, 1)
 
-        k = params[4]
+        k = param_batch[:, 4].reshape(batch_size, 1, 1)
 
-        su = params[5]
-        sv = params[6]
-        mu = params[7]
-        
-        
-        u_c = u[1:-1, 1:-1]
-        v_c = v[1:-1, 1:-1]
-        
-        
+        su = param_batch[:, 5].reshape(batch_size, 1, 1)
+        sv = param_batch[:, 6].reshape(batch_size, 1, 1)
+        mu = param_batch[:, 7].reshape(batch_size, 1, 1)
+
+        u_c = u[:, 1:-1, 1:-1]
+        v_c = v[:, 1:-1, 1:-1]
+
         self.delta_u = pde_u(dt, dx, u, v, u_c, v_c, Du, ru, k, su, mu)
         self.delta_v = pde_v(dt, dx, u, v, u_c, v_c, Dv, rv, k, sv)
 
@@ -105,44 +105,42 @@ class LiawModel(ReactionDiffusionModel):
         # delta_v[-1, :] = 0  # Bottom
         # delta_v[:, 0] = 0   # Left
         # delta_v[:, -1] = 0  # Right
-        
-            
-        # self.u += delta_u
-        # self.v += delta_v          
-        u[1:-1, 1:-1] = u_c + self.delta_u
-        v[1:-1, 1:-1] = v_c + self.delta_v       
 
+        u[:, 1:-1, 1:-1] = u_c + self.delta_u
+        v[:, 1:-1, 1:-1] = v_c + self.delta_v
 
     def is_early_stopping(self, rtol):       
                 
         adu = np.abs(self.delta_u)
         adv = np.abs(self.delta_v)
         
-        au = np.abs(self.u[1:-1, 1:-1])
-        av = np.abs(self.v[1:-1, 1:-1])
+        au = np.abs(self.u[:, 1:-1, 1:-1])
+        av = np.abs(self.v[:, 1:-1, 1:-1])
         
-        max_rc = max((adu/au).max(), (adv/av).max())        
+        # max_rc = max((adu/au).max(), (adv/av).max())
         
         return (adu <= (rtol * au)).all() and (adv <= (rtol * av)).all()
 
-                    
     def colorize(self, thr=None):
         if not thr:
             thr = self.thr
             
-        c = np.zeros((self.height, self.width, 3), dtype=np.uint8)
-        c[:, :, 0] = 231
-        c[:, :, 1] = 79
-        c[:, :, 2] = 3
+        batch_size = self.u.shape[0]
+        color = np.zeros((batch_size, self.height, self.width, 3),
+                         dtype=np.uint8)
+        color[:, :, :, 0] = 231
+        color[:, :, :, 1] = 79
+        color[:, :, :, 2] = 3
         
         idx = self.u > thr
-        c[idx, 0] = 5 # self.u[idx]
-        c[idx, 1] = 5 # self.u[idx]
-        c[idx, 2] = 5 # self.u[idx]
+        color[idx, 0] = 5 # self.u[idx]
+        color[idx, 1] = 5 # self.u[idx]
+        color[idx, 2] = 5 # self.u[idx]
         
-        return c    
+        return color
     
     def create_image(self, 
+                     i=0,
                      arr_color=None,
                      fpath_template=None,
                      fpath_mask=None):        
@@ -156,7 +154,6 @@ class LiawModel(ReactionDiffusionModel):
         if not fpath_mask:
             fpath_mask = self.fpath_mask
 
-        
         # Load template images.
         template = Image.open(fpath_template)
         #template = template.resize(shape)
@@ -164,7 +161,7 @@ class LiawModel(ReactionDiffusionModel):
         mask = Image.open(fpath_mask).convert('L')
         #mask = mask.resize(shape).convert('L')
         
-        wings = Image.fromarray(arr_color)
+        wings = Image.fromarray(arr_color[i, :, :])
         wings = wings.resize((128, 128))
         wings_crop = wings.crop((36, 12, 36 + 54, 12 + 104))
         img_wings = Image.new('RGBA', (template.width, template.height))
@@ -185,21 +182,25 @@ class LiawModel(ReactionDiffusionModel):
 
         arr_merged = np.hstack([arr_left, arr_right])
         img = Image.fromarray(arr_merged)
-        
+
         return img
-    
+
     def save_image(self,
                    fpath_image,
+                   i=0,
                    arr_color=None,
                    fpath_template=None,
                    fpath_mask=None):                
 
-        img = self.create_image(arr_color,
+        img = self.create_image(i,
+                                arr_color,
                                 fpath_template,
                                 fpath_mask)
         
+
         img.save(fpath_image)
-        return img    
+            
+        return img
     
     
     def save_states(self, fpath_states):
@@ -212,8 +213,11 @@ class LiawModel(ReactionDiffusionModel):
                    init_pts,
                    params,
                    generation=None,
-                   fitness=None):    
-        
+                   fitness=None):
+
+        if params.ndim > 1:
+            params = params[0, :]
+
         with open(fpath, "wt") as fout:   
             n2v = {}
            

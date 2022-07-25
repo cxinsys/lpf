@@ -84,13 +84,13 @@ class EvoSearch:
             arr_color = self.model.colorize()    
                     
             # Store the colored object in the cache.
-            self.cache[digest] = arr_color         
+            self.cache[digest] = arr_color[0, :, :]
                
         # Evaluate objectives.
-        ladybird = self.model.create_image(arr_color)        
+        img = self.model.create_image(arr_color)
         sum_obj = 0
         for obj in self.objectives:
-            val = obj.compute(ladybird.convert("RGB"), self.targets)
+            val = obj.compute(img.convert("RGB"), self.targets)
             sum_obj += val
 
 
