@@ -15,8 +15,11 @@ from lpf.models import LiawModel
 from lpf.initializers import LiawInitializer
 from lpf.objectives import ObjectiveFactory as ObjFac
 from lpf.search import EvoSearch
+from lpf.search.converters import LiawConverter
 from lpf.utils import get_module_dpath
-from lpf.data import load_targets
+from lpf.utils import load_model_dicts
+
+
 
 np.seterr(all='raise')
 
@@ -36,7 +39,6 @@ if __name__ == "__main__":
                         type=int,
                         help='Designate the gpu device id')
 
-
     args = parser.parse_args()
     fpath_config = osp.abspath(args.config)        
             
@@ -46,61 +48,7 @@ if __name__ == "__main__":
     # Create a search object.
     num_init_pts = config["NUM_INIT_PTS"]
 
-    class LiawModelConverter:
-                                            
-        def to_params(self, x, params=None):
-            """
-            Args:
-                x: Decision vector of PyGMO
-            """
-            if params is None:
-                params = np.zeros((10,), dtype=np.float64)
-            Du = 10 ** x[0]
-            Dv = 10 ** x[1]
-            ru = 10 ** x[2]
-            rv = 10 ** x[3]
-            k  = 10 ** x[4]
-            su = 10 ** x[5]
-            sv = 10 ** x[6]
-            mu = 10 ** x[7]
-                
-            params[0] = Du
-            params[1] = Dv
-            params[2] = ru
-            params[3] = rv
-            params[4] = k
-            params[5] = su
-            params[6] = sv
-            params[7] = mu
-            
-            return params
-            
-            
-        def to_init_states(self, x, init_states=None):    
-            if init_states is None:
-                init_states = np.zeros((2,), dtype=np.float64)
-                
-            init_states[0] =  10 ** x[8]  # u0
-            init_states[1] = 10 ** x[9]  # v0
-            return init_states
-        
-        def to_init_pts(self, x):            
-            ir = np.zeros(num_init_pts, dtype=np.int32)
-            ic = np.zeros(num_init_pts, dtype=np.int32)
-            
-            for i, coord in enumerate(zip(x[10::2], x[11::2])): 
-                ir[i] = int(coord[0])
-                ic[i] = int(coord[1])
-                
-            return ir, ic
-        
-        def to_initializer(self, x):            
-            ir_init, ic_init = self.to_init_pts(x)            
-            init = LiawInitializer(ir_init=ir_init, ic_init=ic_init)
-            return init
-                               
-        
-    converter = LiawModelConverter()
+    converter = LiawConverter()
         
     # Create the model.
     dx = float(config["DX"])
@@ -129,13 +77,13 @@ if __name__ == "__main__":
     # end of for
 
     # Load ladybird type and the corresponding data.
-    ladybird_type = config["LADYBIRD_TYPE"].lower()
-    dpath_data = pjoin(get_module_dpath("data"), ladybird_type)
-    dpath_template = pjoin(dpath_data, "template")
-    dpath_target = pjoin(dpath_data, "target")
-
-    fpath_template = pjoin(dpath_template, "ladybird.png")    
-    fpath_mask = pjoin(dpath_template, "mask.png")
+    # ladybird_type = config["LADYBIRD_TYPE"].lower()
+    # dpath_data = pjoin(get_module_dpath("data"), ladybird_type)
+    # dpath_template = pjoin(dpath_data, "template")
+    # dpath_target = pjoin(dpath_data, "target")
+    #
+    # fpath_template = pjoin(dpath_template, "ladybird.png")
+    # fpath_mask = pjoin(dpath_template, "mask.png")
     
     model = LiawModel(
         width=width,
@@ -145,15 +93,14 @@ if __name__ == "__main__":
         n_iters=n_iters,
         num_init_pts=num_init_pts,
         rtol_early_stop=rtol_early_stop,
-        fpath_template=fpath_template,
-        fpath_mask=fpath_mask
+        device=device
     )
     
     # Load targets.
-    ladybird_subtypes = config["LADYBIRD_SUBTYPES"]
-    ladybird_subtypes = [elem.lower() for elem in ladybird_subtypes]
-    targets = load_targets(dpath_target,
-                           ladybird_subtypes)
+    targets = config["TARGETS"]
+    # ladybird_subtypes = [elem.lower() for elem in ladybird_subtypes]
+    # targets = load_targets(dpath_target,
+    #                        ladybird_subtypes)
 
     droot_output = apath(config["DPATH_OUTPUT"])
     search = EvoSearch(config,
@@ -162,6 +109,7 @@ if __name__ == "__main__":
                        targets,
                        objectives,
                        droot_output)
+
     prob = pg.problem(search)
     print(prob) 
    
@@ -173,52 +121,56 @@ if __name__ == "__main__":
     
     dpath_init_pop = osp.abspath(config["INIT_POP"])
     if dpath_init_pop:
+    #
+    #     x = np.zeros((10 + 2*num_init_pts,), dtype=np.float64)
+    #
+    #     for i, fname in enumerate(os.listdir(dpath_init_pop)):
+    #         if i == pop_size:
+    #             break
+    #
+    #         if not fname.endswith("json"):
+    #             continue
+    #
+    #         fpath_model = pjoin(dpath_init_pop, fname)
+    #
+    #         # Load the params.
+    #         with open(fpath_model, "rt") as fin:
+    #             n2v = json.load(fin)
+    #
+    #         x[0] = np.log10(n2v["Du"])
+    #         x[1] = np.log10(n2v["Dv"])
+    #         x[2] = np.log10(n2v["ru"])
+    #         x[3] = np.log10(n2v["rv"])
+    #         x[4] = np.log10(n2v["k"])
+    #         x[5] = np.log10(n2v["su"])
+    #         x[6] = np.log10(n2v["sv"])
+    #         x[7] = np.log10(n2v["mu"])
+    #         x[8] = np.log10(n2v["u0"])
+    #         x[9] = np.log10(n2v["v0"])
+    #
+    #         j = 0
+    #         for name, val in n2v.items():
+    #             if "init_pts" in name:
+    #                 x[10 + 2*j] = int(val[0])
+    #                 x[11 + 2*j] = int(val[1])
+    #                 j += 1
+    #         # end of for
+    #
+    #         if j == 0: # if there is no initial point.
+    #             # rc_product: Production of rows and columns
+    #             rc_product = product(np.arange(40, 90, 10),
+    #                                  np.arange(10, 110, 20))
+    #
+    #             for j, (ir, ic) in enumerate(rc_product):
+    #                 x[10 + 2*j] = ir
+    #                 x[11 + 2*j] = ic
+    #             # end of for
+    #         # end of if
+    #     # end of for
+
         eval_init_fitness = int(config["EVAL_INIT_FITNESS"])
-        x = np.zeros((10 + 2*num_init_pts,), dtype=np.float64)
-
         for i, fname in enumerate(os.listdir(dpath_init_pop)):
-            if i == pop_size:
-                break
-                
-            if not fname.endswith("json"):
-                continue
-            
-            fpath_model = pjoin(dpath_init_pop, fname)            
-            
-            # Load the params.
-            with open(fpath_model, "rt") as fin:
-                n2v = json.load(fin)            
-                
-            x[0] = np.log10(n2v["Du"])
-            x[1] = np.log10(n2v["Dv"])
-            x[2] = np.log10(n2v["ru"])
-            x[3] = np.log10(n2v["rv"])
-            x[4] = np.log10(n2v["k"])
-            x[5] = np.log10(n2v["su"])
-            x[6] = np.log10(n2v["sv"])
-            x[7] = np.log10(n2v["mu"])
-            x[8] = np.log10(n2v["u0"])
-            x[9] = np.log10(n2v["v0"])               
-           
-            j = 0
-            for name, val in n2v.items():
-                if "init_pts" in name:
-                    x[10 + 2*j] = int(val[0])
-                    x[11 + 2*j] = int(val[1])
-                    j += 1
-            # end of for
-            
-            if j == 0: # if there is no initial point.
-                # rc_product: Production of rows and columns
-                rc_product = product(np.arange(40, 90, 10),
-                                     np.arange(10, 110, 20))
 
-                for j, (ir, ic) in enumerate(rc_product):
-                    x[10 + 2*j] = ir
-                    x[11 + 2*j] = ic
-                # end of for
-            # end of if
-            
             if eval_init_fitness:
                 pop.set_x(i, x)
             elif "fitness" in n2v:

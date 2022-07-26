@@ -1,4 +1,5 @@
 import json
+import collections
 
 import numpy as np
 import PIL
@@ -177,7 +178,7 @@ class LiawModel(ReactionDiffusionModel):
         img.save(fpath)
         return img
     
-    def save_states(self, fpath_states):
+    def save_states(self, fpath_states, i=0, arr_states=None):
         raise NotImplementedError()
 
     def save_model(self,
@@ -238,6 +239,29 @@ class LiawModel(ReactionDiffusionModel):
             json.dump(n2v, fout)
     
         return n2v
+
+    def parse_model_dicts(self, model_dicts):
+        if not isinstance(model_dicts, collections.Sequence):
+            raise TypeError("model_dicts should be a sequence of model dictionary.")
+
+        batch_size = len(model_dicts)
+        init_states = np.zeros((batch_size, 2), dtype=np.float64)
+        param_batch = np.zeros((batch_size, 8), dtype=np.float64)
+
+        for i, n2v in enumerate(model_dicts):
+            init_states[i, 0] = n2v["u0"]
+            init_states[i, 1] = n2v["v0"]
+
+            param_batch[i, 0] = n2v["Du"]
+            param_batch[i, 1] = n2v["Dv"]
+            param_batch[i, 2] = n2v["ru"]
+            param_batch[i, 3] = n2v["rv"]
+            param_batch[i, 4] = n2v["k"]
+            param_batch[i, 5] = n2v["su"]
+            param_batch[i, 6] = n2v["sv"]
+            param_batch[i, 7] = n2v["mu"]
+
+        return init_states, param_batch
 
     def get_param_bounds(self):
         

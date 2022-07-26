@@ -5,21 +5,19 @@ import time
 from datetime import datetime
 import shutil
 
-import numpy as np
-
 from lpf.models import LiawModel
 from lpf.initializers import LiawInitializer
+from lpf.data import load_model_dicts
 
 if __name__ == "__main__":
 
     device = "cuda:1"
-    batch_size = 64
     dx = 0.1
     dt = 0.01
     width = 128
     height = 128
     thr = 0.5
-    n_iters = 5000
+    n_iters = 500000
     shape = (width, height)
 
     # Create the output directory.
@@ -28,13 +26,15 @@ if __name__ == "__main__":
     os.makedirs(dpath_output, exist_ok=True)
 
     # Copy this source file to the output directory for recording.
-    print(__file__)
     fpath_src = pjoin(osp.dirname(__file__), osp.basename(__file__))
     fpath_dst = pjoin(dpath_output, osp.basename(__file__))
     shutil.copyfile(fpath_src, fpath_dst)
 
     # Create initializer
     initializer = LiawInitializer()
+
+    # To test the batch processing, add a single dict repeatedly.
+    batch_size = 64
     model_dicts = []
     n2v = {
             "fitness": 12.36867523754235, "u0": 1.1309170035240579, "v0": 2.506183016259239, "Du": 0.0004999999999999999,
@@ -52,6 +52,10 @@ if __name__ == "__main__":
     for i in range(batch_size):
         model_dicts.append(n2v)
 
+    # To test the batch processing, add model JSON files.
+    model_dicts = load_model_dicts("../population/init_pop_axyridis/")
+
+    # Update the initializer.
     initializer.update(model_dicts)
 
     # Create a model.
@@ -65,24 +69,10 @@ if __name__ == "__main__":
         device=device
     )
 
-    param_batch = np.zeros((batch_size, 8), dtype=np.float64)
-    init_states = np.zeros((batch_size, 2), dtype=np.float64)
-
-    for i, n2v in enumerate(model_dicts):
-        param_batch[i, 0] = n2v["Du"]
-        param_batch[i, 1] = n2v["Dv"]
-        param_batch[i, 2] = n2v["ru"]
-        param_batch[i, 3] = n2v["rv"]
-        param_batch[i, 4] = n2v["k"]
-        param_batch[i, 5] = n2v["su"]
-        param_batch[i, 6] = n2v["sv"]
-        param_batch[i, 7] = n2v["mu"]
-        init_states[i, 0] = n2v["u0"]
-        init_states[i, 1] = n2v["v0"]
-
+    init_states, param_batch = model.parse_model_dicts(model_dicts)
     t_beg = time.time()
     model.solve(init_states,
-                param_batch=param_batch,
+                param_batch,
                 n_iters=n_iters,
                 period_output=100, #n_iters - 1,
                 dpath_images=dpath_output,

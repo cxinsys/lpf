@@ -57,7 +57,7 @@ class ReactionDiffusionModel(object):
             self._initializer.initialize(self, init_states)
 
         batch_size = init_states.shape[0]
-        dname_individual = "individual_%0{}d".format(int(np.floor(np.log10(batch_size))))
+        dname_individual = "individual_%0{}d".format(int(np.floor(np.log10(batch_size))) + 1)
 
         if dpath_images:
             for i in range(batch_size):
@@ -88,12 +88,12 @@ class ReactionDiffusionModel(object):
                 if dpath_images:
                     for j in range(batch_size):
                         fpath_image = pjoin(dpath_images, dname_individual%(j+1), fstr_fname_image%(i+1))
-                        self.save_image(fpath_image)
+                        self.save_image(fpath_image, j)
                     
                 if dpath_states:
                     for j in range(batch_size):
                         fpath_states = pjoin(dpath_states, dname_individual%(j+1), fstr_fname_states%(i+1))
-                        self.save_states(fpath_states)
+                        self.save_states(fpath_states, j)
 
                 if verbose >= 1:
                     print("[Iteration #%d] elapsed time: %.5e sec."%(i+1, time.time() - t_beg))

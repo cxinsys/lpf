@@ -24,4 +24,4 @@ OBJECTIVES:
   - ["MeanLearnedPerceptualImagePatchSimilarity:alex", 4e0, "cuda"]
 LADYBIRD_TYPE: "haxyridis"
 LADYBIRD_SUBTYPES: ["axyridis"]
-DPATH_OUTPUT: "../output"
+DPATH_OUTPUT: "./output"
