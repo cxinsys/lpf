@@ -1,11 +1,12 @@
 import json
 
 import numpy as np
-# from numba import jit, njit
 import PIL
 from PIL import Image
  
 from lpf.models import ReactionDiffusionModel
+from lpf.utils import get_template_fpath
+from lpf.utils import get_mask_fpath
 
 
 def laplacian2d(a, dx):
@@ -38,67 +39,71 @@ class LiawModel(ReactionDiffusionModel):
                  num_init_pts=25,
                  rtol_early_stop=None,
                  initializer=None,
-                 fpath_template=None,
-                 fpath_mask=None,
-                 device=None):
-    
-        self.width = width
-        self.height = height
+                 device=None,
+                 ladybird=None):
+
+        self._name = "LiawModel"
+        self._width = width
+        self._height = height
         self.shape = (width, height)
-        self.dx = dx
-        self.dt = dt
-        self.n_iters = n_iters
-        self.thr = thr
-        self.num_init_pts = num_init_pts
-        self.rtol_early_stop = rtol_early_stop
-        self.initializer = initializer
-        self.fpath_template = fpath_template
-        self.fpath_mask = fpath_mask
+        self._dx = dx
+        self._dt = dt
+        self._n_iters = n_iters
+        self._thr = thr
+        self._num_init_pts = num_init_pts
+        self._rtol_early_stop = rtol_early_stop
+        self._initializer = initializer
+
+        if ladybird is None:
+            ladybird = "haxyridis"
+
+        self._fpath_template = get_template_fpath(ladybird)
+        self._fpath_mask = get_mask_fpath(ladybird)
 
         super().__init__(device)
-
         
     def update(self, i, param_batch):
-        
-        batch_size = param_batch.shape[0]
-        
-        dt = self.dt
-        dx = self.dx
-        
-        u = self.u
-        v = self.v
-        
-        Du = param_batch[:, 0].reshape(batch_size, 1, 1)
-        Dv = param_batch[:, 1].reshape(batch_size, 1, 1)
 
-        ru = param_batch[:, 2].reshape(batch_size, 1, 1)
-        rv = param_batch[:, 3].reshape(batch_size, 1, 1)
+        with self.am:
+            batch_size = param_batch.shape[0]
 
-        k = param_batch[:, 4].reshape(batch_size, 1, 1)
+            dt = self.am.array(self._dt, dtype=np.float64)
+            dx = self.am.array(self._dx, dtype=np.float64)
 
-        su = param_batch[:, 5].reshape(batch_size, 1, 1)
-        sv = param_batch[:, 6].reshape(batch_size, 1, 1)
-        mu = param_batch[:, 7].reshape(batch_size, 1, 1)
+            u = self.u
+            v = self.v
 
-        u_c = u[:, 1:-1, 1:-1]
-        v_c = v[:, 1:-1, 1:-1]
+            Du = param_batch[:, 0].reshape(batch_size, 1, 1)
+            Dv = param_batch[:, 1].reshape(batch_size, 1, 1)
 
-        self.delta_u = pde_u(dt, dx, u, v, u_c, v_c, Du, ru, k, su, mu)
-        self.delta_v = pde_v(dt, dx, u, v, u_c, v_c, Dv, rv, k, sv)
+            ru = param_batch[:, 2].reshape(batch_size, 1, 1)
+            rv = param_batch[:, 3].reshape(batch_size, 1, 1)
 
-        # Boundary conditions
-        # delta_u[0, :] = 0   # Top
-        # delta_u[-1, :] = 0  # Bottom
-        # delta_u[:, 0] = 0   # Left
-        # delta_u[:, -1] = 0  # Right
-        
-        # delta_v[0, :] = 0   # Top
-        # delta_v[-1, :] = 0  # Bottom
-        # delta_v[:, 0] = 0   # Left
-        # delta_v[:, -1] = 0  # Right
+            k = param_batch[:, 4].reshape(batch_size, 1, 1)
 
-        u[:, 1:-1, 1:-1] = u_c + self.delta_u
-        v[:, 1:-1, 1:-1] = v_c + self.delta_v
+            su = param_batch[:, 5].reshape(batch_size, 1, 1)
+            sv = param_batch[:, 6].reshape(batch_size, 1, 1)
+            mu = param_batch[:, 7].reshape(batch_size, 1, 1)
+
+            u_c = u[:, 1:-1, 1:-1]
+            v_c = v[:, 1:-1, 1:-1]
+
+            self._delta_u = pde_u(dt, dx, u, v, u_c, v_c, Du, ru, k, su, mu)
+            self._delta_v = pde_v(dt, dx, u, v, u_c, v_c, Dv, rv, k, sv)
+
+            # Boundary conditions
+            # delta_u[0, :] = 0   # Top
+            # delta_u[-1, :] = 0  # Bottom
+            # delta_u[:, 0] = 0   # Left
+            # delta_u[:, -1] = 0  # Right
+
+            # delta_v[0, :] = 0   # Top
+            # delta_v[-1, :] = 0  # Bottom
+            # delta_v[:, 0] = 0   # Left
+            # delta_v[:, -1] = 0  # Right
+
+            u[:, 1:-1, 1:-1] = u_c + self._delta_u
+            v[:, 1:-1, 1:-1] = v_c + self._delta_v
 
     def check_invalid_values(self):
         if self.am.any(self.am.isnan(self.u)) or self.am.any(self.am.isnan(self.v)):
@@ -106,8 +111,8 @@ class LiawModel(ReactionDiffusionModel):
 
     def is_early_stopping(self, rtol):
                 
-        adu = self.am.abs(self.delta_u)
-        adv = self.am.abs(self.delta_v)
+        adu = self.am.abs(self._delta_u)
+        adv = self.am.abs(self._delta_v)
         
         au = self.am.abs(self.u[:, 1:-1, 1:-1])
         av = self.am.abs(self.v[:, 1:-1, 1:-1])
@@ -118,10 +123,10 @@ class LiawModel(ReactionDiffusionModel):
 
     def colorize(self, thr=None):
         if not thr:
-            thr = self.thr
+            thr = self._thr
             
         batch_size = self.u.shape[0]
-        color = np.zeros((batch_size, self.height, self.width, 3),
+        color = np.zeros((batch_size, self._height, self._width, 3),
                          dtype=np.uint8)
 
         color[:, :, :, 0] = 231
@@ -135,25 +140,14 @@ class LiawModel(ReactionDiffusionModel):
         
         return color
     
-    def create_image(self, 
-                     i=0,
-                     arr_color=None,
-                     fpath_template=None,
-                     fpath_mask=None):        
+    def create_image(self, i=0, arr_color=None):
         
         if arr_color is None:
             arr_color = self.colorize()
-            
-        if not fpath_template:
-            fpath_template = self.fpath_template
-            
-        if not fpath_mask:
-            fpath_mask = self.fpath_mask
 
         # Load template images.
-        template = Image.open(fpath_template)
-
-        mask = Image.open(fpath_mask).convert('L')
+        template = Image.open(self._fpath_template)
+        mask = Image.open(self._fpath_mask).convert('L')
 
         wings = Image.fromarray(arr_color[i, :, :])
         wings = wings.resize((128, 128))
@@ -178,38 +172,35 @@ class LiawModel(ReactionDiffusionModel):
 
         return img
 
-    def save_image(self,
-                   fpath_image,
-                   i=0,
-                   arr_color=None,
-                   fpath_template=None,
-                   fpath_mask=None):                
-
-        img = self.create_image(i,
-                                arr_color,
-                                fpath_template,
-                                fpath_mask)
-        
-
-        img.save(fpath_image)
-            
+    def save_image(self, fpath, i=0, arr_color=None):
+        img = self.create_image(i, arr_color)
+        img.save(fpath)
         return img
-    
     
     def save_states(self, fpath_states):
         raise NotImplementedError()
-    
-    
+
     def save_model(self,
                    fpath,
-                   init_states,
-                   init_pts,
-                   params,
+                   i=None,
+                   init_states=None,
+                   init_pts=None,
+                   params=None,
                    generation=None,
                    fitness=None):
 
-        if params.ndim > 1:
-            params = params[0, :]
+        if i is None:
+            i = 0
+        else:
+            batch_size = params.shape[0]
+            if i < 0 or i >= batch_size:
+                raise ValueError("i should be non-negative and less than the batch size.")
+
+        if init_states is None:
+            raise ValueError("init_states should be given.")
+
+        if params is None:
+            raise ValueError("params should be given.")
 
         with open(fpath, "wt") as fout:   
             n2v = {}
@@ -218,30 +209,31 @@ class LiawModel(ReactionDiffusionModel):
             n2v["fitness"] = fitness
 
             # Model parameters
-            n2v["u0"] = init_states[0]
-            n2v["v0"] = init_states[1]
+            n2v["u0"] = init_states[i, 0]
+            n2v["v0"] = init_states[i, 1]
             
-            n2v["Du"] = params[0]
-            n2v["Dv"] = params[1]
-            n2v["ru"] = params[2]
-            n2v["rv"] = params[3]
-            n2v["k"]  = params[4]
-            n2v["su"] = params[5]
-            n2v["sv"] = params[6]
-            n2v["mu"] = params[7]           
-            
+            n2v["Du"] = params[i, 0]
+            n2v["Dv"] = params[i, 1]
+            n2v["ru"] = params[i, 2]
+            n2v["rv"] = params[i, 3]
+            n2v["k"]  = params[i, 4]
+            n2v["su"] = params[i, 5]
+            n2v["sv"] = params[i, 6]
+            n2v["mu"] = params[i, 7]
             
             for i, (ir, ic) in enumerate(zip(*init_pts)):
+                # Convert int to str due to JSON format.
                 n2v["init_pts_%d"%(i)] = (str(ir), str(ic))
+            # end of for
             
             # Hyper-parameters and etc.
-            n2v["width"] = self.width
-            n2v["height"] =self.height
-            n2v["dt"] = self.dt
-            n2v["dx"] = self.dx  
-            n2v["n_iters"] = self.n_iters
-            n2v["thr"] = self.thr
-            n2v["initializer"] = self.initializer.__class__.__name__
+            n2v["width"] = self._width
+            n2v["height"] =self._height
+            n2v["dt"] = self._dt
+            n2v["dx"] = self._dx
+            n2v["n_iters"] = self._n_iters
+            n2v["thr"] = self._thr
+            n2v["initializer"] = self._initializer.name
             
             json.dump(n2v, fout)
     
@@ -250,13 +242,12 @@ class LiawModel(ReactionDiffusionModel):
     def get_param_bounds(self):
         
         if not hasattr(self, "bounds_min"):
-            self.bounds_min = self.am.zeros((10 + 2*self.num_init_pts),
+            self.bounds_min = self.am.zeros((10 + 2 * self._num_init_pts),
                                             dtype=np.float64)
             
         if not hasattr(self, "bounds_max"):
-            self.bounds_max = self.am.zeros((10 + 2*self.num_init_pts),
+            self.bounds_max = self.am.zeros((10 + 2 * self._num_init_pts),
                                             dtype=np.float64)
-
         
         # Du
         self.bounds_min[0] = -4
@@ -299,14 +290,15 @@ class LiawModel(ReactionDiffusionModel):
         self.bounds_max[9] = 1.5
         
         # init coords (25 points).     
-        for i in range(10, 2*self.num_init_pts, 2):
+        for i in range(10, 2*self._num_init_pts, 2):
             self.bounds_min[i] = 0
-            self.bounds_max[i] = self.height - 1
-            
-        for i in range(11, 2*self.num_init_pts, 2):
+            self.bounds_max[i] = self._height - 1
+        # end of for
+
+        for i in range(11, 2*self._num_init_pts, 2):
             self.bounds_min[i] = 0
-            self.bounds_max[i] = self.width - 1
-        
+            self.bounds_max[i] = self._width - 1
+        # end of for
         
         return self.bounds_min, self.bounds_max
 

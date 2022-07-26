@@ -16,6 +16,18 @@ class ReactionDiffusionModel(object):
     def am(self):  # ArrayModule object
         return self._am
 
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def width(self):
+        return self._width
+
+    @property
+    def height(self):
+        return self._height
+
     def solve(self,
               init_states,
               param_batch,
@@ -30,19 +42,19 @@ class ReactionDiffusionModel(object):
         t_total_beg = time.time()
 
         if not n_iters:
-            n_iters = self.n_iters 
+            n_iters = self._n_iters
 
         if not rtol_early_stop:
-            rtol_early_stop = self.rtol_early_stop
+            rtol_early_stop = self._rtol_early_stop
 
         if init_states.shape[0] != param_batch.shape[0]:
             raise ValueError("The batch size of init_states and " \
                              "the batch size of params should be equal.")
 
         if initializer:
-            initializer.initialize(self, init_states, param_batch)
+            initializer.initialize(self, init_states)
         else:
-            self.initializer.initialize(self, init_states, param_batch)
+            self._initializer.initialize(self, init_states)
 
         batch_size = init_states.shape[0]
         dname_individual = "individual_%0{}d".format(int(np.floor(np.log10(batch_size))))
@@ -63,9 +75,11 @@ class ReactionDiffusionModel(object):
             fstr_fname_states \
                 = "states_%0{}d.png".format(int(np.floor(np.log10(n_iters))))
 
+        param_batch = self.am.array(param_batch, dtype=param_batch.dtype)
+
         t_beg = time.time()
         for i in range(n_iters):
-            self.t += self.dt
+            self.t += self._dt
             self.update(i, param_batch)
             self.check_invalid_values()
 
@@ -93,7 +107,6 @@ class ReactionDiffusionModel(object):
             print("[Total] elapsed time: %.5e sec." % (time.time() - t_total_beg))
 
     # end of solve
-
         
     def update(self):
         raise NotImplementedError()

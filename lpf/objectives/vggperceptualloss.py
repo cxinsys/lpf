@@ -22,44 +22,6 @@ except (ImportError, ModuleNotFoundError) as err:
 from lpf.objectives import Objective
 
 
-# class Vgg16PerceptualLoss(torch.nn.Module):
-#     def __init__(self, resize=True):
-#         super(Vgg16PerceptualLoss, self).__init__()
-#         blocks = []
-#         blocks.append(torchvision.models.vgg16(pretrained=True).features[:4].eval())
-#         blocks.append(torchvision.models.vgg16(pretrained=True).features[4:9].eval())
-#         blocks.append(torchvision.models.vgg16(pretrained=True).features[9:16].eval())
-#         blocks.append(torchvision.models.vgg16(pretrained=True).features[16:23].eval())
-#         for bl in blocks:
-#             for p in bl.parameters():
-#                 p.requires_grad = False
-#
-#         self.blocks = torch.nn.ModuleList(blocks)
-#         self.transform = torch.nn.functional.interpolate
-#
-#         self.mean = torch.nn.Parameter(torch.tensor([0.485, 0.456, 0.406]).view(1,3,1,1))
-#         self.std = torch.nn.Parameter(torch.tensor([0.229, 0.224, 0.225]).view(1,3,1,1))
-#
-#         self.resize = resize
-#
-#     def forward(self, input, target):
-#         if input.shape[1] != 3:
-#             input = input.repeat(1, 3, 1, 1)
-#             target = target.repeat(1, 3, 1, 1)
-#         input = (input-self.mean) / self.std
-#         target = (target-self.mean) / self.std
-#         if self.resize:
-#             input = self.transform(input, mode='bilinear', size=(224, 224), align_corners=False)
-#             target = self.transform(target, mode='bilinear', size=(224, 224), align_corners=False)
-#         loss = 0.0
-#         x = input
-#         y = target
-#         for block in self.blocks:
-#             x = block(x)
-#             y = block(y)
-#             loss += torch.nn.functional.l1_loss(x, y)
-#         return loss
-
 class Vgg16PerceptualLoss(torch.nn.Module):
     def __init__(self, resize=True):
         super(Vgg16PerceptualLoss, self).__init__()
@@ -82,14 +44,14 @@ class Vgg16PerceptualLoss(torch.nn.Module):
         if input.shape[1] != 3:
             input = input.repeat(1, 3, 1, 1)
             target = target.repeat(1, 3, 1, 1)
-        input = (input-self.mean) / self.std
-        target = (target-self.mean) / self.std
+        input = (input - self.mean) / self.std
+        target = (target - self.mean) / self.std
         if self.resize:
             input = self.transform(input, mode='bilinear', size=(224, 224), align_corners=False)
             target = self.transform(target, mode='bilinear', size=(224, 224), align_corners=False)
 
         if not feature_layers:
-            #feature_layers = [0, 1, 2, 3]
+            # feature_layers = [0, 1, 2, 3]
             feature_layers = [2]
 
         if not style_layers:
@@ -113,34 +75,34 @@ class Vgg16PerceptualLoss(torch.nn.Module):
 
 
 class EachVgg16PerceptualLoss(Objective):
-    
+
     def __init__(self, coeff=None, device=None):
-        
+
         if not coeff:
             coeff = 1.0
-        
+
         self._coeff = coeff
-        
+
         super().__init__(device=device)
         self.model = Vgg16PerceptualLoss(resize=False).to(self.device)
         self.to_tensor = transforms.ToTensor()
 
     def compute(self, x, targets, coeff=None):
-        
+
         if not coeff:
             coeff = self._coeff
-        
+
         x = self.to_tensor(x).to(self.device)
 
         arr_loss = np.zeros((len(targets),), dtype=np.float64)
         with torch.no_grad():
             for i, target in enumerate(targets):
-                target = self.to_tensor(target).to(self.device)       
+                target = self.to_tensor(target).to(self.device)
                 arr_loss[i] = self.model(x[None, ...], target[None, ...]).item()
 
         if "cuda" in self.device:  # [!] self.device is not torch.device
             torch.cuda.empty_cache()
-   
+
         del target
         del x
         gc.collect()
@@ -148,29 +110,28 @@ class EachVgg16PerceptualLoss(Objective):
 
 
 class SumVgg16PerceptualLoss(EachVgg16PerceptualLoss):
-        
+
     def compute(self, x, targets):
-        each_loss = super().compute(x, targets)    
+        each_loss = super().compute(x, targets)
         return each_loss.sum()
-    
-    
+
+
 class MeanVgg16PerceptualLoss(EachVgg16PerceptualLoss):
-        
+
     def compute(self, x, targets):
-        arr_loss = super().compute(x, targets)    
+        arr_loss = super().compute(x, targets)
         return np.mean(arr_loss)
-    
-    
+
+
 class MinVgg16PerceptualLoss(EachVgg16PerceptualLoss):
-        
+
     def compute(self, x, targets):
-        arr_loss = super().compute(x, targets)    
+        arr_loss = super().compute(x, targets)
         return np.min(arr_loss)
-    
-    
+
+
 class MaxVgg16PerceptualLoss(EachVgg16PerceptualLoss):
-        
+
     def compute(self, x, targets):
-        arr_loss = super().compute(x, targets)    
+        arr_loss = super().compute(x, targets)
         return np.max(arr_loss)
-    

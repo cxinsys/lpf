@@ -31,6 +31,12 @@ class ArrayModule:
         self._device = device
         self._device_id = device_id
 
+    def __enter__(self):
+        return
+
+    def __exit__(self, *args, **kwargs):
+        return
+
     @property
     def device(self):
         return self._device
@@ -83,6 +89,16 @@ class CupyModule(NumpyModule):
             raise err
 
         self._xp = cp
+
+        self._device = self._xp.cuda.Device()
+        self._device.id = self._device_id
+        self._device.use()
+
+    def __enter__(self):
+        return self._device.__enter__()
+
+    def __exit__(self, *args, **kwargs):
+        return self._device.__exit__(*args, **kwargs)
 
     def any(self, *args, **kwargs):
         with self.xp.cuda.Device(self.device_id):

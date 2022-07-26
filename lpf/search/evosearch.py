@@ -116,7 +116,7 @@ class EvoSearch:
         init_pts = self.converter.to_init_pts(x)        
         
         initializer = self.converter.to_initializer(x)            
-        self.model.initializer = initializer
+        self.model._initializer = initializer
         
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
         if mode == "pop":
