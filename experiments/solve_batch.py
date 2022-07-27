@@ -69,10 +69,10 @@ if __name__ == "__main__":
         device=device
     )
 
-    init_states, param_batch = model.parse_model_dicts(model_dicts)
+    init_states, params = model.parse_model_dicts(model_dicts)
     t_beg = time.time()
     model.solve(init_states,
-                param_batch,
+                params,
                 n_iters=n_iters,
                 period_output=100, #n_iters - 1,
                 dpath_images=dpath_output,

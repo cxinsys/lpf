@@ -14,9 +14,7 @@ class Initializer:
             dtype = np.float32
         
         self._dtype = dtype
-
-        if ind_init is not None:
-            self._ind_init = ind_init
+        self._ind_init = ind_init
 
     def initialize(self, model, init_states, params):
         raise NotImplementedError()

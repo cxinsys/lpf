@@ -30,7 +30,7 @@ class ReactionDiffusionModel(object):
 
     def solve(self,
               init_states,
-              param_batch,
+              params,
               n_iters=None,
               rtol_early_stop=None,
               initializer=None,
@@ -47,7 +47,7 @@ class ReactionDiffusionModel(object):
         if not rtol_early_stop:
             rtol_early_stop = self._rtol_early_stop
 
-        if init_states.shape[0] != param_batch.shape[0]:
+        if init_states.shape[0] != params.shape[0]:
             raise ValueError("The batch size of init_states and " \
                              "the batch size of params should be equal.")
 
@@ -75,12 +75,12 @@ class ReactionDiffusionModel(object):
             fstr_fname_states \
                 = "states_%0{}d.png".format(int(np.floor(np.log10(n_iters))))
 
-        param_batch = self.am.array(param_batch, dtype=param_batch.dtype)
+        params = self.am.array(params, dtype=params.dtype)
 
         t_beg = time.time()
         for i in range(n_iters):
             self.t += self._dt
-            self.update(i, param_batch)
+            self.update(i, params)
             self.check_invalid_values()
 
             if i % period_output == 0:

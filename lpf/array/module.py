@@ -1,8 +1,17 @@
+import numpy as np
+
+
+try:
+    import cupy as cp
+except (ModuleNotFoundError, ImportError) as err:
+    print("Cannot use GPU computing based on CuPy.")
+
 
 def parse_device(device):
     if device is None:
         return "cpu", None
 
+    device = device.lower()
     _device = device
     _device_id = 0
 
@@ -49,31 +58,24 @@ class ArrayModule:
 class NumpyModule(ArrayModule):
     def __init__(self, device=None, device_id=None):
         super().__init__(device, device_id)
-        try:
-            import numpy as np
-        except (ModuleNotFoundError, ImportError) as err:
-            raise err
-
-        self._xp = np
-
-    @property
-    def xp(self):
-        return self._xp
 
     def any(self, *args, **kwargs):
-        return self.xp.any(*args, **kwargs)
+        return np.any(*args, **kwargs)
 
     def isnan(self, *args, **kwargs):
-        return self.xp.isnan(*args, **kwargs)
+        return np.isnan(*args, **kwargs)
 
     def zeros(self, *args, **kwargs):
-        return self.xp.zeros(*args, **kwargs)
+        return np.zeros(*args, **kwargs)
 
     def ones(self, *args, **kwargs):
-        return self.xp.ones(*args, **kwargs)
+        return np.ones(*args, **kwargs)
 
     def array(self, *args, **kwargs):
-        return self.xp.array(*args, **kwargs)
+        return np.array(*args, **kwargs)
+
+    def abs(self, *args, **kwargs):
+        return np.abs(*args, **kwargs)
 
     def get(self, arr):
         return arr
@@ -83,14 +85,8 @@ class CupyModule(NumpyModule):
 
     def __init__(self, device=None, device_id=None):
         super().__init__(device, device_id)
-        try:
-            import cupy as cp
-        except (ModuleNotFoundError, ImportError) as err:
-            raise err
 
-        self._xp = cp
-
-        self._device = self._xp.cuda.Device()
+        self._device = cp.cuda.Device()
         self._device.id = self._device_id
         self._device.use()
 
@@ -101,24 +97,28 @@ class CupyModule(NumpyModule):
         return self._device.__exit__(*args, **kwargs)
 
     def any(self, *args, **kwargs):
-        with self.xp.cuda.Device(self.device_id):
-            return self.xp.any(*args, **kwargs)
+        with cp.cuda.Device(self.device_id):
+            return cp.any(*args, **kwargs)
 
     def isnan(self, *args, **kwargs):
-        with self.xp.cuda.Device(self.device_id):
-            return self.xp.isnan(*args, **kwargs)
+        with cp.cuda.Device(self.device_id):
+            return cp.isnan(*args, **kwargs)
 
     def zeros(self, *args, **kwargs):
-        with self.xp.cuda.Device(self.device_id):
-            return self.xp.zeros(*args, **kwargs)
+        with cp.cuda.Device(self.device_id):
+            return cp.zeros(*args, **kwargs)
 
     def ones(self, *args, **kwargs):
-        with self.xp.cuda.Device(self.device_id):
-            return self.xp.ones(*args, **kwargs)
+        with cp.cuda.Device(self.device_id):
+            return cp.ones(*args, **kwargs)
 
     def array(self, *args, **kwargs):
-        with self.xp.cuda.Device(self.device_id):
-            return self.xp.array(*args, **kwargs)
+        with cp.cuda.Device(self.device_id):
+            return cp.array(*args, **kwargs)
+
+    def abs(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.abs(*args, **kwargs)
 
     def get(self, arr):
         return arr.get()

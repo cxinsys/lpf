@@ -8,15 +8,15 @@ def get_module_dpath(dname):
     return dpath
 
 
-def get_template_fpath(ladybird):
-    dpath_data = osp.join(get_module_dpath("data"), ladybird)
+def get_template_fpath(ladybird_type):
+    dpath_data = osp.join(get_module_dpath("data"), ladybird_type)
     dpath_template = osp.join(dpath_data, "template")
-    fpath_template = osp.join(dpath_template, "ladybird.png")
+    fpath_template = osp.join(dpath_template, "ladybird_type.png")
     return fpath_template
 
 
-def get_mask_fpath(ladybird):
-    dpath_data = osp.join(get_module_dpath("data"), ladybird)
+def get_mask_fpath(ladybird_type):
+    dpath_data = osp.join(get_module_dpath("data"), ladybird_type)
     dpath_template = osp.join(dpath_data, "template")
     fpath_mask = osp.join(dpath_template, "mask.png")
     return fpath_mask

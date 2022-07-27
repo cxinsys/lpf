@@ -10,22 +10,21 @@ class LiawInitializer(Initializer):
         super().__init__(name="LiawInitializer", 
                          ind_init=ind_init,
                          dtype=dtype)
-        self._ind_init = None
 
     def update(self, model_dicts):
         ind_init = []
 
         for i, n2v in enumerate(model_dicts):
             num_init_pts = 0
-            init_pts = {}
+            dict_init_pts = {}
             for name, val in n2v.items():
                 if "init_pts" in name:
                     # print(name, val)
-                    init_pts[name] = (int(val[0]), int(val[1]))
+                    dict_init_pts[name] = (int(val[0]), int(val[1]))
                     num_init_pts += 1
             # end of for
 
-            for j, (name, val) in enumerate(init_pts.items()):
+            for j, (name, val) in enumerate(dict_init_pts.items()):
                 ind_init.append((i, val[0], val[1]))
             # end of for
         # end of for

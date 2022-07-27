@@ -31,8 +31,10 @@ class EvoSearch:
         self.model = model
         self.converter = converter
         self.targets = targets
-        self.objectives = objectives 
+        self.objectives = objectives
+
         self.bounds_min, self.bounds_max = self.model.get_param_bounds()
+        self.len_dv = self.model.get_len_dv()
         
         # Create a cache using dict.
         self.cache = {}
@@ -52,24 +54,37 @@ class EvoSearch:
         fpath_config = pjoin(self.dpath_output, "config.yaml")
         with open(fpath_config, 'wt') as fout:
             yaml.dump(config, fout)
-        
-    def fitness(self, x):
-        digest = get_hash_digest(x)
 
-        if digest in self.cache:
+    def fitness(self, dv):
+        return [100000.0]
+
+    def has_batch_fitness(self):
+        return True
+
+    def batch_fitness(self, dvs):
+        # digest = get_hash_digest(dvs)
+        dvs = dvs.reshape(-1, self.len_dv)
+        batch_size = dvs.shape[0]
+
+        if False: #digest in self.cache:
             arr_color = self.cache[digest]
         else:
-            params = self.converter.to_params(x)
-            init_states = self.converter.to_init_states(x)        
-            initializer = self.converter.to_initializer(x)            
+            params = self.converter.to_params(dvs)
+            init_states = self.converter.to_init_states(dvs)        
+            initializer = self.converter.to_initializer(dvs)            
             self.initializer = initializer
+
+            print("type(params):", type(params))
+            print("type(init_states):", type(init_states))
             
             try:
                 self.model.solve(init_states,
-                                 params=params,
+                                 params,
                                  initializer=initializer)
             except (ValueError, FloatingPointError) as err:
-                return [np.inf]
+                print("[ERROR]", err)
+                #raise err
+                return np.full(batch_size, np.inf)
 
 
             # [TODO] have to remove the exposed u and v variables
@@ -88,17 +103,21 @@ class EvoSearch:
             arr_color = self.model.colorize()    
                     
             # Store the colored object in the cache.
-            self.cache[digest] = arr_color[0, :, :]
+            # self.cache[digest] = arr_color[0, :, :]
                
         # Evaluate objectives.
-        img = self.model.create_image(arr_color)
-        sum_obj = 0
-        for obj in self.objectives:
-            val = obj.compute(img.convert("RGB"), self.targets)
-            sum_obj += val
+        fvs = np.zeros((batch_size,), dtype=np.float64)
+        for i,  in enumerate(arr_color):
+            img = self.model.create_image(i, arr_color)
+            sum_obj = 0
+            for obj in self.objectives:
+                val = obj.compute(img.convert("RGB"), self.targets)
+                sum_obj += val
 
+            fvs[i] = sum_obj
 
-        return [sum_obj]
+        print("fvs.shape:", fvs.shape)
+        return fvs
 
     def get_bounds(self):        
         return (self.bounds_min, self.bounds_max)
@@ -106,17 +125,17 @@ class EvoSearch:
         
     def save(self, 
              mode,
-             x,             
+             dvs,             
              generation=None,
              fitness=None,
              arr_color=None):                
 
-        params = self.converter.to_params(x)
-        init_states = self.converter.to_init_states(x)
-        init_pts = self.converter.to_init_pts(x)        
+        params = self.converter.to_params(dvs)
+        init_states = self.converter.to_init_states(dvs)
+        init_pts = self.converter.to_init_pts(dvs)        
         
-        initializer = self.converter.to_initializer(x)            
-        self.model._initializer = initializer
+        initializer = self.converter.to_initializer(dvs)            
+        # self.model._initializer = initializer
         
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
         if mode == "pop":
@@ -135,7 +154,7 @@ class EvoSearch:
             
         
         if arr_color is None:            
-            digest = get_hash_digest(x)            
+            digest = get_hash_digest(dvs)            
             if digest not in self.cache:                
                 try:
                     self.model.solve(init_states=init_states,
@@ -150,13 +169,14 @@ class EvoSearch:
                 # Fetch the stored array from the cache.
                 arr_color = self.cache[digest]
         # end of if
-        
-        self.model.save_model(fpath_model,
-                              init_states,
-                              init_pts,
-                              params,
-                              generation=generation,
-                              fitness=fitness)
+
+        # [TODO]
+        # self.model.save_model(fpath_model,
+        #                       init_states,
+        #                       init_pts,
+        #                       params,
+        #                       generation=generation,
+        #                       fitness=fitness)
         
         self.model.save_image(fpath_image, arr_color)
             

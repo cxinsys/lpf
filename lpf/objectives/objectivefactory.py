@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 from lpf.objectives.mse import SumMeanSquareError
 from lpf.objectives.mse import MeanMeanSquareError
 from lpf.objectives.mse import MinMeanSquareError
@@ -29,29 +31,29 @@ from lpf.objectives.lpips import MinLearnedPerceptualImagePatchSimilarity
 from lpf.objectives.lpips import MaxLearnedPerceptualImagePatchSimilarity
 
 class ObjectiveFactory:
-    
+
     @staticmethod
-    def create(name, coeff=None, device=None):
+    def create_single(name, coeff=None, device=None):
         _name = name.lower()
-        
+
         if _name == "summeansquareerror":
-            return SumMeanSquareError(coeff=coeff) 
+            return SumMeanSquareError(coeff=coeff)
         elif _name == "meanmeansquareerror":
-            return MeanMeanSquareError(coeff=coeff) 
+            return MeanMeanSquareError(coeff=coeff)
         elif _name == "minmeansquareerror":
             return MinMeanSquareError(coeff=coeff)
-        elif _name  == "maxmeansquareerror":
-            return MaxMeanSquareError(coeff=coeff)        
-        
+        elif _name == "maxmeansquareerror":
+            return MaxMeanSquareError(coeff=coeff)
+
         elif _name == "sumcolorproportion":
-        	return SumColorProportion(coeff=coeff) 
+            return SumColorProportion(coeff=coeff)
         elif _name == "meancolorproportion":
-        	return MeanColorProportion(coeff=coeff) 
+            return MeanColorProportion(coeff=coeff)
         elif _name == "mincolorproportion":
-        	return MinColorProportion(coeff=coeff)
-        elif _name  == "maxcolorproportion":
-        	return MaxColorProportion(coeff=coeff)              
-        
+            return MinColorProportion(coeff=coeff)
+        elif _name == "maxcolorproportion":
+            return MaxColorProportion(coeff=coeff)
+
         elif _name == "sumhistogramrootmeansquareerror":
             return SumHistogramRootMeanSquareError(coeff=coeff)
         elif _name == "meanhistogramrootmeansquareerror":
@@ -59,15 +61,15 @@ class ObjectiveFactory:
         elif _name == "minhistogramrootmeansquareerror":
             return MinHistogramRootMeanSquareError(coeff=coeff)
         elif _name == "maxhistogramrootmeansquareerror":
-            return MaxHistogramRootMeanSquareError(coeff=coeff)        
-        
+            return MaxHistogramRootMeanSquareError(coeff=coeff)
+
         elif _name == "sumvgg16perceptualloss":
-            return SumVgg16PerceptualLoss(coeff=coeff, device=device) 
+            return SumVgg16PerceptualLoss(coeff=coeff, device=device)
         elif _name == "meanvgg16perceptualloss":
-            return MeanVgg16PerceptualLoss(coeff=coeff, device=device) 
+            return MeanVgg16PerceptualLoss(coeff=coeff, device=device)
         elif _name == "minvgg16perceptualloss":
             return MinVgg16PerceptualLoss(coeff=coeff, device=device)
-        elif _name  == "maxvgg16perceptualloss":
+        elif _name == "maxvgg16perceptualloss":
             return MaxVgg16PerceptualLoss(coeff=coeff, device=device)
 
         elif _name == "sumstructuralsimilarityindexmeasure":
@@ -76,7 +78,7 @@ class ObjectiveFactory:
             return MeanStructuralSimilarityIndexMeasure(coeff=coeff, device=device)
         elif _name == "minstructuralsimilarityindexmeasure":
             return MinStructuralSimilarityIndexMeasure(coeff=coeff, device=device)
-        elif _name  == "maxstructuralsimilarityindexmeasure":
+        elif _name == "maxstructuralsimilarityindexmeasure":
             return MaxStructuralSimilarityIndexMeasure(coeff=coeff, device=device)
 
         elif "sumlearnedperceptualimagepatchsimilarity" in _name:
@@ -92,5 +94,24 @@ class ObjectiveFactory:
             _, net_type = _name.split(":")
             return MaxLearnedPerceptualImagePatchSimilarity(net_type=net_type, coeff=coeff, device=device)
 
-
         raise ValueError("%s is not a supported objective."%(name))
+
+
+    @staticmethod
+    def create(obj, coeff=None, device=None):
+
+        if isinstance(obj, Sequence):
+            objectives = []
+            for cfg in obj:
+                name = cfg[0]
+                coeff = float(cfg[1])
+                device = cfg[2]
+
+                print("[OBJECTIVE DEVICE] %s: %s" % (name, device))
+                objectives.append(ObjectiveFactory.create_single(name, coeff, device))
+            # end of for
+
+            return objectives
+        # end of if
+        else:
+            return ObjectiveFactory.create_single(obj, coeff, device)

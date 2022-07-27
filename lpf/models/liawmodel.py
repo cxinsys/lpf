@@ -1,5 +1,5 @@
 import json
-import collections
+from collections.abc import Sequence
 
 import numpy as np
 import PIL
@@ -63,10 +63,10 @@ class LiawModel(ReactionDiffusionModel):
 
         super().__init__(device)
         
-    def update(self, i, param_batch):
+    def update(self, i, params):
 
         with self.am:
-            batch_size = param_batch.shape[0]
+            batch_size = params.shape[0]
 
             dt = self.am.array(self._dt, dtype=np.float64)
             dx = self.am.array(self._dx, dtype=np.float64)
@@ -74,17 +74,17 @@ class LiawModel(ReactionDiffusionModel):
             u = self.u
             v = self.v
 
-            Du = param_batch[:, 0].reshape(batch_size, 1, 1)
-            Dv = param_batch[:, 1].reshape(batch_size, 1, 1)
+            Du = params[:, 0].reshape(batch_size, 1, 1)
+            Dv = params[:, 1].reshape(batch_size, 1, 1)
 
-            ru = param_batch[:, 2].reshape(batch_size, 1, 1)
-            rv = param_batch[:, 3].reshape(batch_size, 1, 1)
+            ru = params[:, 2].reshape(batch_size, 1, 1)
+            rv = params[:, 3].reshape(batch_size, 1, 1)
 
-            k = param_batch[:, 4].reshape(batch_size, 1, 1)
+            k = params[:, 4].reshape(batch_size, 1, 1)
 
-            su = param_batch[:, 5].reshape(batch_size, 1, 1)
-            sv = param_batch[:, 6].reshape(batch_size, 1, 1)
-            mu = param_batch[:, 7].reshape(batch_size, 1, 1)
+            su = params[:, 5].reshape(batch_size, 1, 1)
+            sv = params[:, 6].reshape(batch_size, 1, 1)
+            mu = params[:, 7].reshape(batch_size, 1, 1)
 
             u_c = u[:, 1:-1, 1:-1]
             v_c = v[:, 1:-1, 1:-1]
@@ -241,27 +241,27 @@ class LiawModel(ReactionDiffusionModel):
         return n2v
 
     def parse_model_dicts(self, model_dicts):
-        if not isinstance(model_dicts, collections.Sequence):
+        if not isinstance(model_dicts, Sequence):
             raise TypeError("model_dicts should be a sequence of model dictionary.")
 
         batch_size = len(model_dicts)
         init_states = np.zeros((batch_size, 2), dtype=np.float64)
-        param_batch = np.zeros((batch_size, 8), dtype=np.float64)
+        params = np.zeros((batch_size, 8), dtype=np.float64)
 
         for i, n2v in enumerate(model_dicts):
             init_states[i, 0] = n2v["u0"]
             init_states[i, 1] = n2v["v0"]
 
-            param_batch[i, 0] = n2v["Du"]
-            param_batch[i, 1] = n2v["Dv"]
-            param_batch[i, 2] = n2v["ru"]
-            param_batch[i, 3] = n2v["rv"]
-            param_batch[i, 4] = n2v["k"]
-            param_batch[i, 5] = n2v["su"]
-            param_batch[i, 6] = n2v["sv"]
-            param_batch[i, 7] = n2v["mu"]
+            params[i, 0] = n2v["Du"]
+            params[i, 1] = n2v["Dv"]
+            params[i, 2] = n2v["ru"]
+            params[i, 3] = n2v["rv"]
+            params[i, 4] = n2v["k"]
+            params[i, 5] = n2v["su"]
+            params[i, 6] = n2v["sv"]
+            params[i, 7] = n2v["mu"]
 
-        return init_states, param_batch
+        return init_states, params
 
     def get_param_bounds(self):
         
@@ -325,5 +325,11 @@ class LiawModel(ReactionDiffusionModel):
         # end of for
         
         return self.bounds_min, self.bounds_max
+
+    def get_len_dv(self):  # length of the decision vector in PyGMO
+        return 10 + 2*self._num_init_pts
+
+
+
 
 # end of class
