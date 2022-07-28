@@ -99,7 +99,7 @@ if __name__ == "__main__":
     # targets = load_targets(dpath_target,
     #                        ladybird_subtypes)
 
-    dpath_output = apath(config["DPATH_OUTPUT"])
+    droot_output = apath(config["DPATH_OUTPUT"])
 
     converter = LiawConverter()
 
@@ -108,7 +108,7 @@ if __name__ == "__main__":
                        converter,
                        targets,
                        objectives,
-                       dpath_output)
+                       droot_output)
 
     prob = pg.problem(search)
     print(prob) 
@@ -118,13 +118,16 @@ if __name__ == "__main__":
     t_beg = time.time()
     pop_size = int(config["POP_SIZE"])
     pop = pg.population(prob, size=pop_size)
-    
+
+    print("[POPULATION INITIALIZATION COMPLETED]")
+
     dpath_init_pop = osp.abspath(config["INIT_POP"])
     #dpath_init_pop = None  # FOR DEBUGGING
     if dpath_init_pop:
 
         # To test the batch processing, add model JSON files.
         model_dicts = load_model_dicts("../population/init_pop_axyridis/")
+        print("model_dicts:", model_dicts)
         # dvs = converter.to_dvs(model_dicts)
 
         eval_init_fitness = int(config["EVAL_INIT_FITNESS"])
@@ -134,6 +137,7 @@ if __name__ == "__main__":
 
             dv = converter.to_dv(model_dict)
             if eval_init_fitness:
+                print("Executing pop.set_x(i, dv)...")
                 pop.set_x(i, dv)
             elif "fitness" in model_dict:
                 fitness = float(model_dict["fitness"])
@@ -167,17 +171,17 @@ if __name__ == "__main__":
             
             print("[EVOLUTION #%d] Best objective: %f (%.3f sec.)"%(i + 1, pop.champion_f[0], t_end - t_beg))
 
-            # # Save the best.
-            # pop = isl.get_population()
-            # search.save("best", pop.champion_x, generation=i+1, fitness=pop.champion_f[0])
-            #
-            # # Save the population.
-            # arr_x = pop.get_x()
-            # arr_f = pop.get_f()
-            # for j in range(arr_x.shape[0]):
-            #     x = arr_x[j]
-            #     fitness = arr_f[j, 0]
-            #     search.save("pop", x, generation=i+1, fitness=fitness)
+            # Save the best.
+            pop = isl.get_population()
+            search.save("best", pop.champion_x, generation=i+1, fitness=pop.champion_f[0])
+
+            # Save the population.
+            arr_x = pop.get_x()
+            arr_f = pop.get_f()
+            for j in range(arr_x.shape[0]):
+                x = arr_x[j]
+                fitness = arr_f[j, 0]
+                search.save("pop", x, generation=i+1, fitness=fitness)
         # end of for
     except Exception as err:
         #print(err)

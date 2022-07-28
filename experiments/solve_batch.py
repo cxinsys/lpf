@@ -5,9 +5,13 @@ import time
 from datetime import datetime
 import shutil
 
+import numpy as np
+np.seterr(all='raise')
+
 from lpf.models import LiawModel
 from lpf.initializers import LiawInitializer
 from lpf.data import load_model_dicts
+
 
 if __name__ == "__main__":
 

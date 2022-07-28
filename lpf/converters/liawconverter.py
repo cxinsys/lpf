@@ -32,14 +32,14 @@ class LiawConverter:
         if params is None:
             params = np.zeros((1, 10), dtype=np.float64)
 
-        params[0, 0] = 10 ** dv[0, 0] # Du
-        params[0, 1] = 10 ** dv[0, 1] # Dv
-        params[0, 2] = 10 ** dv[0, 2] # ru
-        params[0, 3] = 10 ** dv[0, 3] # rv
-        params[0, 4] = 10 ** dv[0, 4] # k
-        params[0, 5] = 10 ** dv[0, 5] # su
-        params[0, 6] = 10 ** dv[0, 6] # sv
-        params[0, 7] = 10 ** dv[0, 7] # mu
+        params[0, 0] = 10 ** dv[0, 0]  # Du
+        params[0, 1] = 10 ** dv[0, 1]  # Dv
+        params[0, 2] = 10 ** dv[0, 2]  # ru
+        params[0, 3] = 10 ** dv[0, 3]  # rv
+        params[0, 4] = 10 ** dv[0, 4]  # k
+        params[0, 5] = 10 ** dv[0, 5]  # su
+        params[0, 6] = 10 ** dv[0, 6]  # sv
+        params[0, 7] = 10 ** dv[0, 7]  # mu
 
         return params
 

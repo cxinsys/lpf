@@ -56,6 +56,7 @@ class ReactionDiffusionModel(object):
         else:
             self._initializer.initialize(self, init_states)
 
+        print("init_states:", init_states)
         batch_size = init_states.shape[0]
         dname_individual = "individual_%0{}d".format(int(np.floor(np.log10(batch_size))) + 1)
 

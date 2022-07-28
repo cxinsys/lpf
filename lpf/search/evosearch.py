@@ -64,8 +64,6 @@ class EvoSearch:
         else:
 
             x = x[None, :]
-            # print(x)
-
             params = self.converter.to_params(x)
             init_states = self.converter.to_init_states(x)
             initializer = self.converter.to_initializer(x)
@@ -77,6 +75,7 @@ class EvoSearch:
                                  initializer=initializer)
             except (ValueError, FloatingPointError) as err:
                 print("[FITNESS]", err)
+                #raise err
                 return [np.inf]
 
             # idx = self.model.u > self.model.thr
@@ -113,14 +112,15 @@ class EvoSearch:
              dv,             
              generation=None,
              fitness=None,
-             arr_color=None):                
+             arr_color=None):
 
+        dv = dv[None, :]
         params = self.converter.to_params(dv)
         init_states = self.converter.to_init_states(dv)
         init_pts = self.converter.to_init_pts(dv)        
         
         initializer = self.converter.to_initializer(dv)            
-        # self.model._initializer = initializer
+        self.model._initializer = initializer
         
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
         if mode == "pop":
@@ -145,7 +145,7 @@ class EvoSearch:
                                      params=params,
                                      initializer=initializer)
                     
-                except (ValueError, FloatingPointError):
+                except (ValueError, FloatingPointError) as err:
                     return False
                 
                 arr_color = self.model.colorize() 
@@ -162,6 +162,6 @@ class EvoSearch:
                               generation=generation,
                               fitness=fitness)
         
-        self.model.save_image(fpath_image, arr_color)
+        self.model.save_image(fpath_image, i=0, arr_color=arr_color)
             
         return True

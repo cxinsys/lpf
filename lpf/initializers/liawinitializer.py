@@ -67,7 +67,7 @@ class LiawInitializer(Initializer):
                 model.u[i, ind_init[i, :, 0], ind_init[i, :, 1]] = u0[i]
 
             if not hasattr(model, "v"):
-                tmp_v0 = v0.reshape(batch_size, 1, 1)
-                model.v = tmp_v0 * model.am.ones(shape, dtype=self.dtype)
+                _v0 = v0.reshape(batch_size, 1, 1)
+                model.v = _v0 * model.am.ones(shape, dtype=self.dtype)
             else:
                 model.v[:, 1] = v0  # model.v.fill(v0)

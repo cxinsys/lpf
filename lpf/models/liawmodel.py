@@ -21,6 +21,7 @@ def laplacian2d(a, dx):
 
 def pde_u(dt, dx, u, v, u_c, v_c, Du, ru, k, su, mu):
     # return dt * (Du * laplacian2d(u, dx) + (ru*((u_c**2 * v_c)/(1 + k*u_c**2)) + su - mu*u_c))
+    #print("u_c:", u_c[0, :3, 0])
     return dt * (Du * laplacian2d(u, dx) + (ru * ((u_c*u_c * v_c) / (1 + k * u_c*u_c)) + su - mu * u_c))
 
 
@@ -65,11 +66,13 @@ class LiawModel(ReactionDiffusionModel):
         
     def update(self, i, params):
 
+        #print("params:", params)
+
         with self.am:
             batch_size = params.shape[0]
 
-            dt = self.am.array(self._dt, dtype=np.float64)
-            dx = self.am.array(self._dx, dtype=np.float64)
+            dt = self._dt  #self.am.array(self._dt, dtype=np.float64)
+            dx = self._dx  #self.am.array(self._dx, dtype=np.float64)
 
             u = self.u
             v = self.v
@@ -220,8 +223,9 @@ class LiawModel(ReactionDiffusionModel):
             n2v["su"] = params[i, 5]
             n2v["sv"] = params[i, 6]
             n2v["mu"] = params[i, 7]
-            
-            for i, (ir, ic) in enumerate(zip(*init_pts)):
+
+            print("init_pts.shape:", init_pts.shape)
+            for i, (ir, ic) in enumerate(init_pts[i, :]):
                 # Convert int to str due to JSON format.
                 n2v["init_pts_%d"%(i)] = (str(ir), str(ic))
             # end of for
@@ -233,7 +237,7 @@ class LiawModel(ReactionDiffusionModel):
             n2v["dx"] = self._dx
             n2v["n_iters"] = self._n_iters
             n2v["thr"] = self._thr
-            n2v["initializer"] = self._initializer.name
+            n2v["initializer"] = self._initializer.name if self._initializer else None
             
             json.dump(n2v, fout)
     
