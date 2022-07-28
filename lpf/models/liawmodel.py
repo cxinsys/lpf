@@ -20,13 +20,13 @@ def laplacian2d(a, dx):
 
 
 def pde_u(dt, dx, u, v, u_c, v_c, Du, ru, k, su, mu):
-    return dt * (Du * laplacian2d(u, dx) \
-                  + (ru*((u_c**2 * v_c)/(1 + k*u_c**2)) + su - mu*u_c))
+    # return dt * (Du * laplacian2d(u, dx) + (ru*((u_c**2 * v_c)/(1 + k*u_c**2)) + su - mu*u_c))
+    return dt * (Du * laplacian2d(u, dx) + (ru * ((u_c*u_c * v_c) / (1 + k * u_c*u_c)) + su - mu * u_c))
 
 
 def pde_v(dt, dx, u, v, u_c, v_c, Dv, rv, k, sv):
-    return dt * (Dv * laplacian2d(v, dx) \
-                 + (-rv*((u_c**2 * v_c)/(1 + k*u_c**2)) + sv))
+    #return dt * (Dv * laplacian2d(v, dx) + (-rv*((u_c**2 * v_c)/(1 + k*u_c**2)) + sv))
+    return dt * (Dv * laplacian2d(v, dx) + (-rv*((u_c*u_c * v_c)/(1 + k * u_c*u_c)) + sv))
 
 
 class LiawModel(ReactionDiffusionModel):
