@@ -72,12 +72,15 @@ def load_model_dicts(dpath):
 
 
 def load_targets(ladybird_type, ladybird_subtypes, resize_shape=None):
+    ladybird_type = ladybird_type.lower()
+    ladybird_subtypes = [elem.lower() for elem in ladybird_subtypes]
+
     targets = []
 
-    dpath = osp.join(get_module_dpath("data"), ladybird_type)
+    dpath = osp.join(get_module_dpath("data"), ladybird_type, "target")
 
     for fname in os.listdir(dpath):
-        if not fname.startswith("ladybird_type"):
+        if not fname.startswith("ladybird"):
             continue 
 
         items = fname.split("_")

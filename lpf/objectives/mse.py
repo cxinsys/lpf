@@ -14,7 +14,7 @@ class EachMeanSquareError(Objective):
     def compute(self, x, targets, coeff=None):        
         if not coeff:
             coeff = self._coeff
-        
+
         arr_mse = np.zeros((len(targets),), dtype=np.float64)
         for i, target in enumerate(targets):
             arr_mse[i] = np.mean((np.array(x) - np.array(target))**2)

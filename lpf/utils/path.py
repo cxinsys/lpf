@@ -11,7 +11,7 @@ def get_module_dpath(dname):
 def get_template_fpath(ladybird_type):
     dpath_data = osp.join(get_module_dpath("data"), ladybird_type)
     dpath_template = osp.join(dpath_data, "template")
-    fpath_template = osp.join(dpath_template, "ladybird_type.png")
+    fpath_template = osp.join(dpath_template, "ladybird.png")
     return fpath_template
 
 

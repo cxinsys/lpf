@@ -24,9 +24,15 @@ class LiawInitializer(Initializer):
                     num_init_pts += 1
             # end of for
 
-            for j, (name, val) in enumerate(dict_init_pts.items()):
-                ind_init.append((i, val[0], val[1]))
+            # for j, (name, val) in enumerate(dict_init_pts.items()):
+            #     ind_init.append((val[0], val[1]))
+            # # end of for
+
+            coords = []
+            for j, (name, coord) in enumerate(dict_init_pts.items()):
+                coords.append((coord[0], coord[1]))
             # end of for
+            ind_init.append(coords)
         # end of for
 
         self._ind_init = np.array(ind_init, dtype=np.uint32)
@@ -57,8 +63,8 @@ class LiawInitializer(Initializer):
             else:
                 model.u[:, 0] = 0.0  # model.u.fill(0.0)
 
-            for ix_batch in ind_init[:, 0]:
-                model.u[ix_batch, ind_init[:, 1], ind_init[:, 2]] = u0[ix_batch]
+            for i in range(batch_size): #ind_init[:, 0].unique():
+                model.u[i, ind_init[i, :, 0], ind_init[i, :, 1]] = u0[i]
 
             if not hasattr(model, "v"):
                 tmp_v0 = v0.reshape(batch_size, 1, 1)

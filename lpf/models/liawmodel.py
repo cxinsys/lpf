@@ -142,7 +142,6 @@ class LiawModel(ReactionDiffusionModel):
         return color
     
     def create_image(self, i=0, arr_color=None):
-        
         if arr_color is None:
             arr_color = self.colorize()
 

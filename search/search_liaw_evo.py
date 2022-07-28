@@ -80,7 +80,7 @@ if __name__ == "__main__":
     # fpath_template = pjoin(dpath_template, "ladybird.png")
     # fpath_mask = pjoin(dpath_template, "mask.png")
 
-    device = config["DEVICE"]
+    #device = config["DEVICE"]
 
     model = LiawModel(
         width=width,
@@ -90,7 +90,7 @@ if __name__ == "__main__":
         n_iters=n_iters,
         num_init_pts=num_init_pts,
         rtol_early_stop=rtol_early_stop,
-        device=device
+        # device=device
     )
     
     # Load targets.
@@ -117,10 +117,10 @@ if __name__ == "__main__":
     # Create the initial population.
     t_beg = time.time()
     pop_size = int(config["POP_SIZE"])
-    pop = pg.population(prob, size=pop_size) #, b=pg.bfe())
+    pop = pg.population(prob, size=pop_size)
     
     dpath_init_pop = osp.abspath(config["INIT_POP"])
-    dpath_init_pop = None  # FOR DEBUGGING
+    #dpath_init_pop = None  # FOR DEBUGGING
     if dpath_init_pop:
 
         # To test the batch processing, add model JSON files.
@@ -129,6 +129,9 @@ if __name__ == "__main__":
 
         eval_init_fitness = int(config["EVAL_INIT_FITNESS"])
         for i, model_dict in enumerate(model_dicts):
+            if i >= pop_size:
+                break
+
             dv = converter.to_dv(model_dict)
             if eval_init_fitness:
                 pop.set_x(i, dv)
@@ -148,16 +151,11 @@ if __name__ == "__main__":
     n_procs = int(config["N_PROCS"])
     n_gen = int(config["N_GEN"])
 
-    # udi = pg.mp_island()
-    # udi.resize_pool(n_procs)
-
-    # b = pg.bfe()
-    # uda = pg.sade(gen=1)
-    # uda.set_bfe(b)
-    # algo = pg.algorithm(uda)
+    udi = pg.mp_island()
+    udi.resize_pool(n_procs)
 
     algo = pg.algorithm(pg.sade(gen=1))
-    isl = pg.island(algo=algo, pop=pop)
+    isl = pg.island(algo=algo, pop=pop, udi=udi)
 
     try:
         for i in range(n_gen):

@@ -1,12 +1,7 @@
-import time
-import json
 import os
-import os.path as osp
 from os.path import join as pjoin
-from os.path import abspath as apath
-import shutil
 from datetime import datetime
-import argparse
+from collections.abc import Sequence
 
 import yaml
 import numpy as np
@@ -30,7 +25,13 @@ class EvoSearch:
         self.config = config
         self.model = model
         self.converter = converter
+
+        if isinstance(targets, Sequence) and len(targets) < 1:
+            raise ValueError("targets should be a sequence, "\
+                             "which must have at least one target.")
+
         self.targets = targets
+
         self.objectives = objectives
 
         self.bounds_min, self.bounds_max = self.model.get_param_bounds()
@@ -55,39 +56,29 @@ class EvoSearch:
         with open(fpath_config, 'wt') as fout:
             yaml.dump(config, fout)
 
-    def fitness(self, dv):
-        return [100000.0]
+    def fitness(self, x):
+        digest = get_hash_digest(x)
 
-    def has_batch_fitness(self):
-        return True
-
-    def batch_fitness(self, dvs):
-        # digest = get_hash_digest(dvs)
-        dvs = dvs.reshape(-1, self.len_dv)
-        batch_size = dvs.shape[0]
-
-        if False: #digest in self.cache:
+        if digest in self.cache:
             arr_color = self.cache[digest]
         else:
-            params = self.converter.to_params(dvs)
-            init_states = self.converter.to_init_states(dvs)        
-            initializer = self.converter.to_initializer(dvs)            
+
+            x = x[None, :]
+            # print(x)
+
+            params = self.converter.to_params(x)
+            init_states = self.converter.to_init_states(x)
+            initializer = self.converter.to_initializer(x)
             self.initializer = initializer
 
-            print("type(params):", type(params))
-            print("type(init_states):", type(init_states))
-            
             try:
                 self.model.solve(init_states,
-                                 params,
+                                 params=params,
                                  initializer=initializer)
             except (ValueError, FloatingPointError) as err:
-                print("[ERROR]", err)
-                #raise err
-                return np.full(batch_size, np.inf)
+                print("[FITNESS]", err)
+                return [np.inf]
 
-
-            # [TODO] have to remove the exposed u and v variables
             # idx = self.model.u > self.model.thr
             #
             # if not idx.any():
@@ -96,45 +87,39 @@ class EvoSearch:
             #     return [np.inf]
             # elif np.allclose(self.model.u[idx], self.model.u[idx].mean()):
             #     return [np.inf]
-            #
-            # #################################################################
 
             # Colorize the ladybird model.
-            arr_color = self.model.colorize()    
-                    
+            arr_color = self.model.colorize()
+
             # Store the colored object in the cache.
-            # self.cache[digest] = arr_color[0, :, :]
-               
+            self.cache[digest] = arr_color
+        # end of if-else
+
         # Evaluate objectives.
-        fvs = np.zeros((batch_size,), dtype=np.float64)
-        for i,  in enumerate(arr_color):
-            img = self.model.create_image(i, arr_color)
-            sum_obj = 0
-            for obj in self.objectives:
-                val = obj.compute(img.convert("RGB"), self.targets)
-                sum_obj += val
+        ladybird = self.model.create_image(0, arr_color)
+        sum_obj = 0
+        for obj in self.objectives:
+            val = obj.compute(ladybird.convert("RGB"), self.targets)
+            sum_obj += val
 
-            fvs[i] = sum_obj
+        return [sum_obj]
 
-        print("fvs.shape:", fvs.shape)
-        return fvs
-
-    def get_bounds(self):        
+    def get_bounds(self):
         return (self.bounds_min, self.bounds_max)
 
         
     def save(self, 
              mode,
-             dvs,             
+             dv,             
              generation=None,
              fitness=None,
              arr_color=None):                
 
-        params = self.converter.to_params(dvs)
-        init_states = self.converter.to_init_states(dvs)
-        init_pts = self.converter.to_init_pts(dvs)        
+        params = self.converter.to_params(dv)
+        init_states = self.converter.to_init_states(dv)
+        init_pts = self.converter.to_init_pts(dv)        
         
-        initializer = self.converter.to_initializer(dvs)            
+        initializer = self.converter.to_initializer(dv)            
         # self.model._initializer = initializer
         
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
@@ -151,10 +136,9 @@ class EvoSearch:
                                 "image_%s.png"%(str_now))        
         else:
             raise ValueError("mode should be 'pop' or 'best'")
-            
-        
+
         if arr_color is None:            
-            digest = get_hash_digest(dvs)            
+            digest = get_hash_digest(dv)            
             if digest not in self.cache:                
                 try:
                     self.model.solve(init_states=init_states,
@@ -170,13 +154,13 @@ class EvoSearch:
                 arr_color = self.cache[digest]
         # end of if
 
-        # [TODO]
-        # self.model.save_model(fpath_model,
-        #                       init_states,
-        #                       init_pts,
-        #                       params,
-        #                       generation=generation,
-        #                       fitness=fitness)
+        self.model.save_model(fpath_model,
+                              i=0,
+                              init_states=init_states,
+                              init_pts=init_pts,
+                              params=params,
+                              generation=generation,
+                              fitness=fitness)
         
         self.model.save_image(fpath_image, arr_color)
             
