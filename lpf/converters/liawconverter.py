@@ -30,7 +30,7 @@ class LiawConverter:
 
     def to_params(self, dv, params=None):
         if params is None:
-            params = np.zeros((1, 10), dtype=np.float64)
+            params = np.zeros((1, 8), dtype=np.float64)
 
         params[0, 0] = 10 ** dv[0, 0]  # Du
         params[0, 1] = 10 ** dv[0, 1]  # Dv

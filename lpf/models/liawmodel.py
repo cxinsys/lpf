@@ -224,7 +224,7 @@ class LiawModel(ReactionDiffusionModel):
             n2v["sv"] = params[i, 6]
             n2v["mu"] = params[i, 7]
 
-            print("init_pts.shape:", init_pts.shape)
+            #print("init_pts.shape:", init_pts.shape)
             for i, (ir, ic) in enumerate(init_pts[i, :]):
                 # Convert int to str due to JSON format.
                 n2v["init_pts_%d"%(i)] = (str(ir), str(ic))

@@ -15,7 +15,7 @@ from lpf.data import load_model_dicts
 
 if __name__ == "__main__":
 
-    device = "cuda:0"
+    device = "cpu" #"cuda:0"
     dx = 0.1
     dt = 0.01
     width = 128
