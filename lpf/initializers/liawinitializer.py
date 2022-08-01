@@ -62,13 +62,13 @@ class LiawInitializer(Initializer):
             v0 = v0.reshape(batch_size, 1, 1)
 
             shape = (batch_size, model.height, model.width)
-            if not hasattr(model, "u"):
-                model.u = model.am.zeros(shape, dtype=self.dtype)
+            #if not hasattr(model, "u"):
+            model.u = model.am.zeros(shape, dtype=self.dtype)
 
             for i in range(batch_size): #ind_init[:, 0].unique():
                 model.u[i, ind_init[i, :, 0], ind_init[i, :, 1]] = u0[i]
 
-            if not hasattr(model, "v"):
-                model.v = v0 * model.am.ones(shape, dtype=self.dtype)
-            else:
-                model.v[:] = v0  # model.v.fill(v0)
+            #if not hasattr(model, "v"):
+            model.v = v0 * model.am.ones(shape, dtype=self.dtype)
+            #else:
+            #model.v[:] = v0  # model.v.fill(v0)
