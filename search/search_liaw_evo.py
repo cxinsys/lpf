@@ -127,8 +127,6 @@ if __name__ == "__main__":
 
         # To test the batch processing, add model JSON files.
         model_dicts = load_model_dicts("../population/init_pop_axyridis/")
-        print("model_dicts:", model_dicts)
-        # dvs = converter.to_dvs(model_dicts)
 
         eval_init_fitness = int(config["EVAL_INIT_FITNESS"])
         for i, model_dict in enumerate(model_dicts):
@@ -137,7 +135,6 @@ if __name__ == "__main__":
 
             dv = converter.to_dv(model_dict)
             if eval_init_fitness:
-                print("Executing pop.set_x(i, dv)...")
                 pop.set_x(i, dv)
             elif "fitness" in model_dict:
                 fitness = float(model_dict["fitness"])
@@ -184,7 +181,7 @@ if __name__ == "__main__":
                 search.save("pop", x, generation=i+1, fitness=fitness)
         # end of for
     except Exception as err:
-        #print(err)
+        print(err)
         udi.shutdown_pool()
         raise err
 

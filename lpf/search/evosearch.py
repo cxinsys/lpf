@@ -74,7 +74,7 @@ class EvoSearch:
                                  params=params,
                                  initializer=initializer)
             except (ValueError, FloatingPointError) as err:
-                print("[FITNESS]", err)
+                print("[ERROR IN FITNESS EVALUATION]", err)
                 #raise err
                 return [np.inf]
 
