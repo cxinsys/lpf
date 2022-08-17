@@ -4,7 +4,7 @@ import numpy as np
 try:
     import cupy as cp
 except (ModuleNotFoundError, ImportError) as err:
-    print("Cannot use GPU computing based on CuPy.")
+    print("[WARNING] Cannot use GPU computing based on CuPy.")
 
 
 def parse_device(device):

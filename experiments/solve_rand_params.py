@@ -15,7 +15,7 @@ from lpf.initializers import LiawInitializer
 if __name__ == "__main__":
 
     n_repeats = 1000000
-    batch_size = 8
+    batch_size = 4
     
     device = "cpu"  #"cuda:0"
     dx = 0.1
