@@ -31,6 +31,7 @@ class ReactionDiffusionModel(object):
     def solve(self,
               init_states,
               params,
+              init_pts=None,
               n_iters=None,
               rtol_early_stop=None,
               initializer=None,
@@ -52,11 +53,10 @@ class ReactionDiffusionModel(object):
                              "the batch size of params should be equal.")
 
         if initializer:
-            initializer.initialize(self, init_states)
+            initializer.initialize(self, init_states, init_pts)
         else:
-            self._initializer.initialize(self, init_states)
+            self._initializer.initialize(self, init_states, init_pts)
 
-        #print("init_states:", init_states)
         batch_size = init_states.shape[0]
         dname_individual = "individual_%0{}d".format(int(np.floor(np.log10(batch_size))) + 1)
 
@@ -84,7 +84,7 @@ class ReactionDiffusionModel(object):
             self.update(i, params)
             self.check_invalid_values()
 
-            if i % period_output == 0:
+            if (i+1) % period_output == 0:
 
                 if dpath_images:
                     for j in range(batch_size):

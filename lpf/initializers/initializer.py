@@ -5,7 +5,7 @@ from PIL import Image
 class Initializer:
     def __init__(self,
                  name=None,
-                 ind_init=None,
+                 init_pts=None,
                  dtype=None):
         
         self._name = name
@@ -14,7 +14,7 @@ class Initializer:
             dtype = np.float32
         
         self._dtype = dtype
-        self._ind_init = ind_init
+        self._init_pts = init_pts
 
     def initialize(self, model, init_states, params):
         raise NotImplementedError()

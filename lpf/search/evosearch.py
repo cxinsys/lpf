@@ -106,7 +106,6 @@ class EvoSearch:
     def get_bounds(self):
         return (self.bounds_min, self.bounds_max)
 
-        
     def save(self, 
              mode,
              dv,             

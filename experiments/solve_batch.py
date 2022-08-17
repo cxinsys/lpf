@@ -26,10 +26,11 @@ if __name__ == "__main__":
 
     # Create the output directory.
     str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
-    dpath_output = pjoin(osp.abspath("./output"), "experiment_%s" % (str_now))
+    dpath_output = pjoin(osp.abspath("./output"),
+                         "experiment_batch_%s" % (str_now))
     os.makedirs(dpath_output, exist_ok=True)
 
-    # Copy this source file to the output directory for recording.
+    # Copy this source file to the output directory for recording purpose.
     fpath_src = pjoin(osp.dirname(__file__), osp.basename(__file__))
     fpath_dst = pjoin(dpath_output, osp.basename(__file__))
     shutil.copyfile(fpath_src, fpath_dst)

@@ -212,19 +212,18 @@ class LiawModel(ReactionDiffusionModel):
             n2v["fitness"] = fitness
 
             # Model parameters
-            n2v["u0"] = init_states[i, 0]
-            n2v["v0"] = init_states[i, 1]
+            n2v["u0"] = float(init_states[i, 0])
+            n2v["v0"] = float(init_states[i, 1])
             
-            n2v["Du"] = params[i, 0]
-            n2v["Dv"] = params[i, 1]
-            n2v["ru"] = params[i, 2]
-            n2v["rv"] = params[i, 3]
-            n2v["k"]  = params[i, 4]
-            n2v["su"] = params[i, 5]
-            n2v["sv"] = params[i, 6]
-            n2v["mu"] = params[i, 7]
+            n2v["Du"] = float(params[i, 0])
+            n2v["Dv"] = float(params[i, 1])
+            n2v["ru"] = float(params[i, 2])
+            n2v["rv"] = float(params[i, 3])
+            n2v["k"]  = float(params[i, 4])
+            n2v["su"] = float(params[i, 5])
+            n2v["sv"] = float(params[i, 6])
+            n2v["mu"] = float(params[i, 7])
 
-            #print("init_pts.shape:", init_pts.shape)
             for i, (ir, ic) in enumerate(init_pts[i, :]):
                 # Convert int to str due to JSON format.
                 n2v["init_pts_%d"%(i)] = (str(ir), str(ic))

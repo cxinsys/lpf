@@ -6,6 +6,8 @@ from lpf.initializers import LiawInitializer
 
 
 class LiawConverter:
+    """Helper object that supports the conversion between the decision vector of PyGMO and model parameters.
+    """
 
     def to_dv(self, model_dict):
         dv = []
@@ -59,6 +61,6 @@ class LiawConverter:
         return np.array([coords], dtype=np.uint32)
 
     def to_initializer(self, dv):
-        ind_init = self.to_init_pts(dv)
-        initializer = LiawInitializer(ind_init)
+        init_pts = self.to_init_pts(dv)
+        initializer = LiawInitializer(init_pts)
         return initializer
