@@ -1,6 +1,7 @@
-import time
+import os
 import os.path as osp
 from os.path import abspath as apath
+import time
 import argparse
 
 import yaml
@@ -31,14 +32,28 @@ if __name__ == "__main__":
                         dest='gpu',
                         action='store',
                         type=int,
-                        default=0,
+                        default=-1,
                         help='Designate the gpu device id')
 
     args = parser.parse_args()
+
     fpath_config = osp.abspath(args.config)        
             
     with open(fpath_config, "rt") as fin:
         config = yaml.safe_load(fin)
+    
+
+    if args.gpu > 0:
+        print("[CUDA DEVICE ID]", args.gpu)
+        for cfg in config["OBJECTIVES"]:
+             if "cuda" not in cfg[2]:
+                 continue
+
+             cfg[2] = "cuda:%d"%(args.gpu)
+        
+             print("[OBJECTIVE DEVICE] %s"%(cfg))
+        # end of for
+
 
     # Create a search object.
     num_init_pts = config["NUM_INIT_PTS"]
