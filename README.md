@@ -2,4 +2,4 @@
 
 
 # Introduction
-Ladybird Pattern Formation (LPF)
+- A framework for analyzing ladybird pattern formation (LPF)
