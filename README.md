@@ -66,3 +66,4 @@ Install PyGMO as follows.
 conda install pygmo -c conda-forge
 ```
 
+## Getting Started
