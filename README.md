@@ -13,7 +13,8 @@
 
 ## Installation
 
-:snake: [Anaconda](https://www.anaconda.com) is recommended to use and develop LPF.
+- :snake: [Anaconda](https://www.anaconda.com) is recommended to use and develop LPF.
+- :penguin: Linux distros are tested and recommended to use and develop LPF.
 
 ### Anaconda virtual environment
 
@@ -45,6 +46,7 @@ conda activate lpf
 ### Dependency of the evolutionary search 
 The order of installing the following packages is important to avoid version conflicts.
 
+
 #### 1. Install PyTorch
 Install PyTorch following the [official documentation](https://pytorch.org/).
 
@@ -63,3 +65,4 @@ Install PyGMO as follows.
 ```
 conda install pygmo -c conda-forge
 ```
+
