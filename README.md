@@ -9,7 +9,7 @@
 ## Features
 - Reaction-diffusion PDE models for the color pattern formation of ladybird bettles.
 - Evolutionary search based on [PyGMO](https://esa.github.io/pygmo2/) providing the concept of [island](https://esa.github.io/pygmo2/tutorials/using_island.html) and [archipelago](https://esa.github.io/pygmo2/tutorials/using_archipelago.html).
-- GPU optimization of the reaction-diffusion PDE solver for a batch of parameters based on [CuPy](https://cupy.dev/).
+- GPU optimization of the reaction-diffusion PDE solver for a batch of parameter sets based on [CuPy](https://cupy.dev/).
 
 ## Installation
 
@@ -34,7 +34,7 @@ conda activate lpf
 
 ### Dependency of the PDE solver
 
-:bulb: To optimize the solver for a batch of parameters based on GPU computing, install CuPy. However, if you want to use only the cpu, you can omit it.
+:bulb: To optimize the solver for a batch of parameter sets based on GPU computing, install CuPy. However, if you want to use only the cpu, you can omit it.
 
 - [numpy](https://numpy.org/)
 - [scipy](https://scipy.org/)
