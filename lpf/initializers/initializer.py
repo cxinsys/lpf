@@ -5,6 +5,7 @@ from PIL import Image
 class Initializer:
     def __init__(self,
                  name=None,
+                 init_states=None,
                  init_pts=None,
                  dtype=None):
         
@@ -15,8 +16,9 @@ class Initializer:
         
         self._dtype = dtype
         self._init_pts = init_pts
+        self._init_states = init_states
 
-    def initialize(self, model, init_states, params):
+    def initialize(self, model, init_states=None, init_pts=None):
         raise NotImplementedError()
 
     @property

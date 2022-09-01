@@ -6,12 +6,18 @@ from lpf.models import ReactionDiffusionModel
 
 class LiawInitializer(Initializer):
     
-    def __init__(self, init_pts=None, dtype=None,):
-        super().__init__(name="LiawInitializer", 
+    def __init__(self, init_states=None, init_pts=None, dtype=None,):
+        super().__init__(name="LiawInitializer",
+                         init_states=init_states,
                          init_pts=init_pts,
                          dtype=dtype)
 
     def update(self, model_dicts):
+        # Update init_states
+
+        self._init_states =
+
+        # Update init_pts
         init_pts = []
 
         for i, n2v in enumerate(model_dicts):
@@ -37,11 +43,17 @@ class LiawInitializer(Initializer):
 
         self._init_pts = np.array(init_pts, dtype=np.uint32)
 
-    def initialize(self, model, init_states, init_pts=None):
+    def initialize(self, model, init_states=None, init_pts=None):
 
         if not isinstance(model, ReactionDiffusionModel):
             err_msg = "model should be a subclass of ReactionDiffusionModel."
             raise TypeError(err_msg)
+
+        if init_states is None:
+            if self._init_states is not None:
+                init_states = self._init_states
+            else:  # Both init_states and self._init_states are not given
+                raise ValueError("init_states should be given!")
 
         if init_pts is None:
             if self._init_pts is not None:
