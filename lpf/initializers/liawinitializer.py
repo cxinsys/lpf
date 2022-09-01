@@ -13,14 +13,15 @@ class LiawInitializer(Initializer):
                          dtype=dtype)
 
     def update(self, model_dicts):
-        # Update init_states
 
-        self._init_states =
-
-        # Update init_pts
+        batch_size = len(model_dicts)
+        self._init_states = np.zeros((batch_size, 2), dtype=np.float64)
         init_pts = []
 
         for i, n2v in enumerate(model_dicts):
+            self._init_states[i, 0] = n2v["u0"]
+            self._init_states[i, 1] = n2v["v0"]
+
             num_init_pts = 0
             dict_init_pts = {}
             for name, val in n2v.items():
@@ -29,10 +30,6 @@ class LiawInitializer(Initializer):
                     dict_init_pts[name] = (int(val[0]), int(val[1]))
                     num_init_pts += 1
             # end of for
-
-            # for j, (name, val) in enumerate(dict_init_pts.items()):
-            #     init_pts.append((val[0], val[1]))
-            # # end of for
 
             coords = []
             for j, (name, coord) in enumerate(dict_init_pts.items()):

@@ -316,12 +316,12 @@ class LiawModel(ReactionDiffusionModel):
         self.bounds_max[9] = 1.5
         
         # init coords (25 points).     
-        for i in range(10, 2*self._num_init_pts, 2):
+        for i in range(10, 2 * self._num_init_pts, 2):
             self.bounds_min[i] = 0
             self.bounds_max[i] = self._height - 1
         # end of for
 
-        for i in range(11, 2*self._num_init_pts, 2):
+        for i in range(11, 2 * self._num_init_pts, 2):
             self.bounds_min[i] = 0
             self.bounds_max[i] = self._width - 1
         # end of for
@@ -329,7 +329,7 @@ class LiawModel(ReactionDiffusionModel):
         return self.bounds_min, self.bounds_max
 
     def get_len_dv(self):  # length of the decision vector in PyGMO
-        return 10 + 2*self._num_init_pts
+        return 10 + 2 * self._num_init_pts
 
 
 

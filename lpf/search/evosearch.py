@@ -40,7 +40,6 @@ class EvoSearch:
         # Create a cache using dict.
         self.cache = {}
 
-
         # Create output directories.
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
         self.dpath_output = pjoin(droot_output, "search_%s"%(str_now))        
@@ -62,20 +61,15 @@ class EvoSearch:
         if digest in self.cache:
             arr_color = self.cache[digest]
         else:
-
             x = x[None, :]
-            params = self.converter.to_params(x)
-            init_states = self.converter.to_init_states(x)
             initializer = self.converter.to_initializer(x)
+            params = self.converter.to_params(x)
             self.initializer = initializer
 
             try:
-                self.model.solve(init_states,
-                                 params=params,
-                                 initializer=initializer)
+                self.model.solve(initializer=initializer, params=params)
             except (ValueError, FloatingPointError) as err:
                 print("[ERROR IN FITNESS EVALUATION]", err)
-                #raise err
                 return [np.inf]
 
             # idx = self.model.u > self.model.thr

@@ -29,12 +29,10 @@ class ReactionDiffusionModel(object):
         return self._height
 
     def solve(self,
-              init_states,
               params,
-              init_pts=None,
+              initializer=None,
               n_iters=None,
               rtol_early_stop=None,
-              initializer=None,
               period_output=1,
               dpath_images=None,
               dpath_states=None,
@@ -48,16 +46,16 @@ class ReactionDiffusionModel(object):
         if not rtol_early_stop:
             rtol_early_stop = self._rtol_early_stop
 
-        if init_states.shape[0] != params.shape[0]:
-            raise ValueError("The batch size of init_states and " \
-                             "the batch size of params should be equal.")
+        # if init_states.shape[0] != params.shape[0]:
+        #     raise ValueError("The batch size of init_states and " \
+        #                      "the batch size of params should be equal.")
 
         if initializer:
-            initializer.initialize(self, init_states, init_pts)
+            initializer.initialize(self)
         else:
-            self._initializer.initialize(self, init_states, init_pts)
+            self._initializer.initialize(self)
 
-        batch_size = init_states.shape[0]
+        batch_size = params.shape[0]
         dname_individual = "individual_%0{}d".format(int(np.floor(np.log10(batch_size))) + 1)
 
         if dpath_images:

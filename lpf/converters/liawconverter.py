@@ -61,6 +61,7 @@ class LiawConverter:
         return np.array([coords], dtype=np.uint32)
 
     def to_initializer(self, dv):
+        init_states = self.to_init_states(dv)
         init_pts = self.to_init_pts(dv)
-        initializer = LiawInitializer(init_pts)
+        initializer = LiawInitializer(init_states=init_states, init_pts=init_pts)
         return initializer
