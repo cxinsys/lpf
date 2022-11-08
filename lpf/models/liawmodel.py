@@ -152,16 +152,39 @@ class LiawModel(ReactionDiffusionModel):
         template = Image.open(self._fpath_template)
         mask = Image.open(self._fpath_mask).convert('L')
 
-        wings = Image.fromarray(arr_color[i, :, :])
-        wings = wings.resize((128, 128))
-        wings_crop = wings.crop((36, 12, 36 + 54, 12 + 104))
-        img_wings = Image.new('RGBA', (template.width, template.height))
-        img_wings.paste(wings_crop, (1, 20))
+        pattern = Image.fromarray(arr_color[i, :, :])
+        pattern = pattern.resize((128, 128))
+
+        # crop(left, upper, right, lower)
+        pattern_crop = pattern.crop((36, 12, 36 + 54, 12 + 104))
+        img_wing = Image.new('RGBA', (template.width, template.height))
+        img_wing.paste(pattern_crop, (1, 20))
         
         img_canvas = Image.new('RGBA', (template.width, template.height), "WHITE")
         img_canvas.paste(template, mask=template)
         
-        img_left = Image.composite(img_canvas, img_wings, mask)
+
+        """
+        <Understanding the compoiste function>
+        
+        Image.paste(im, box=None, mask=None)
+            - Where the mask is 255, the given image is copied as is.
+            - Where the mask is 0, the current value is preserved.
+            - Intermediate values will mix the two images together,
+              including their alpha channels if they have them.
+            - [REF] https://pillow.readthedocs.io/en/stable/reference/Image.html
+
+        The following is the implementation of compoiste function.
+
+        def composite(image1, image2, mask):
+            image = image2.copy()
+            image.paste(image1, None, mask)  # without the box
+            return image
+
+
+        The following code basically pastes the img_template to the img_wing with the mask.
+        """
+        img_left = Image.composite(img_canvas, img_wing, mask)
         img_right = img_left.transpose(PIL.Image.FLIP_LEFT_RIGHT)
   
         arr_left = np.array(img_left)
@@ -171,26 +194,35 @@ class LiawModel(ReactionDiffusionModel):
         arr_right = arr_right[:, 4:, :]
 
         arr_merged = np.hstack([arr_left, arr_right])
-        img = Image.fromarray(arr_merged)
+        ladybird = Image.fromarray(arr_merged)
 
-        return img
+        return ladybird, pattern
 
-    def save_image(self, fpath, i=0, arr_color=None):
-        img = self.create_image(i, arr_color)
-        img.save(fpath)
-        return img
+    def save_image(self,
+                   i=0,
+                   fpath_ladybird=None,
+                   fpath_pattern=None,
+                   arr_color=None):
+        ladybird, pattern = self.create_image(i, arr_color)
+        ladybird.save(fpath_ladybird)
+        if fpath_pattern:
+            pattern.save(fpath_pattern)
+        
     
     def save_states(self, fpath_states, i=0, arr_states=None):
         raise NotImplementedError()
 
     def save_model(self,
-                   fpath,
                    i=None,
+                   fpath=None,
                    init_states=None,
                    init_pts=None,
                    params=None,
                    generation=None,
                    fitness=None):
+        
+        if not fpath:
+            raise FileNotFoundError("Invalid file path: %s"%(fpath))
 
         if i is None:
             i = 0

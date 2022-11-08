@@ -11,8 +11,12 @@ from lpf.utils import get_module_dpath
 def load_model_dicts(dpath):
     model_dicts = []
 
-    for fname in os.listdir(dpath):
-        fpath = osp.join(dpath, fname)
+    for entity in os.listdir(dpath):
+        fpath = osp.join(dpath, entity)
+        if not osp.isfile(fpath) or not entity.endswith("json"):
+            continue
+        
+        #fpath = osp.join(dpath, entity)
         with open(fpath, "rt") as fin:
             n2v = json.load(fin)
         model_dicts.append(n2v)

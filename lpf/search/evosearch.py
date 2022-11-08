@@ -89,7 +89,7 @@ class EvoSearch:
         # end of if-else
 
         # Evaluate objectives.
-        ladybird = self.model.create_image(0, arr_color)
+        ladybird, pattern = self.model.create_image(0, arr_color)
         sum_obj = 0
         for obj in self.objectives:
             val = obj.compute(ladybird.convert("RGB"), self.targets)
