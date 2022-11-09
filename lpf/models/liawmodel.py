@@ -233,6 +233,9 @@ class LiawModel(ReactionDiffusionModel):
 
         if init_states is None:
             raise ValueError("init_states should be given.")
+            
+        if init_pts is None:
+            raise ValueError("init_pts should be given.")
 
         if params is None:
             raise ValueError("params should be given.")
