@@ -147,7 +147,7 @@ if __name__ == "__main__":
        
         model.solve(params,
                     n_iters=n_iters,
-                    period_output=1000,
+                    period_output=n_iters-1,
                     dpath_ladybird=dpath_output,
                     dpath_pattern=dpath_output,
                     verbose=1)
@@ -175,4 +175,4 @@ if __name__ == "__main__":
         # end of for
         t_end = time.time()
     
-        print("Elapsed time: %f sec." % (t_end - t_beg))
+        print("[Batch Duration] %f sec." % (t_end - t_beg), end="\n\n")
