@@ -37,7 +37,10 @@ if __name__ == "__main__":
         config = yaml.safe_load(fin)
     
     device = str(config["DEVICE"]).lower()
-        
+      
+    verbose = int(config["VERBOSE"])
+    period_output = int(config["PERIOD_OUTPUT"])
+    
     batch_size = int(config["BATCH_SIZE"])
     dpath_dataset = config["DPATH_DATASET"]  # Input dataset
     dpath_augdataset = config["DPATH_AUGDATASET"]  # Output dataset
@@ -147,14 +150,14 @@ if __name__ == "__main__":
        
         model.solve(params,
                     n_iters=n_iters,
-                    period_output=n_iters-1,
+                    period_output=period_output,
                     dpath_ladybird=dpath_output,
                     dpath_pattern=dpath_output,
-                    verbose=1)
+                    verbose=verbose)
         
      
         
-        for j in range(batch_size):
+        for j in range(len(batch)):
             str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
             fpath_model_new = pjoin(dpath_augdataset,
                                     "model_%s_%d.json"%(str_now, j))            
