@@ -47,13 +47,6 @@ if __name__ == "__main__":
     
     os.makedirs(dpath_augdataset, exist_ok=True)
     
-    # dx = 0.1
-    # dt = 0.01
-    # width = 128
-    # height = 128
-    # thr = 0.5
-    # n_iters = 1000000
-    # shape = (width, height)
     
     # Create the model.
     dx = float(config["DX"])
@@ -80,7 +73,7 @@ if __name__ == "__main__":
         items = fname.split('_')        
         model_id = items[1]
         
-        fpath_image = osp.join(dpath_dataset, "image_%s.png"%(model_id))
+        fpath_image = osp.join(dpath_dataset, "ladybird_%s.png"%(model_id))
         
         if not osp.isfile(fpath_model):
             raise FileNotFoundError(fpath_model)
@@ -89,15 +82,10 @@ if __name__ == "__main__":
             raise FileNotFoundError(fpath_image)
         
 
-        # fpaths[model_id] = {"model": fpath_model, "image": fpath_image}
         dict_fpath[model_id] = (fpath_model, fpath_image)
         list_fpath.append(dict_fpath[model_id])
     # end of for
     
-    # for model_id, (fpath_model, fpath_image) in dict_fpath.items():
-    #     print(fpath_model)
-    #     print(fpath_image)
-    #     print()
         
     ix_batch = 1
     for i in range(0, len(list_fpath), batch_size):
@@ -116,7 +104,6 @@ if __name__ == "__main__":
                 n2v = json.load(fin)
             model_dicts.append(n2v)
         # end of for
-        #print(model_dicts)
 
         # Create the output directory.
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
