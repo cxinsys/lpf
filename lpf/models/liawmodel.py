@@ -38,7 +38,7 @@ class LiawModel(ReactionDiffusionModel):
                  dt,
                  n_iters,
                  thr=0.5,
-                 num_init_pts=25,
+                 n_init_pts=25,
                  rtol_early_stop=None,
                  initializer=None,
                  device=None,
@@ -52,7 +52,7 @@ class LiawModel(ReactionDiffusionModel):
         self._dt = dt
         self._n_iters = n_iters
         self._thr = thr
-        self._num_init_pts = num_init_pts
+        self._n_init_pts = n_init_pts
         self._rtol_early_stop = rtol_early_stop
         self._initializer = initializer
 
@@ -246,7 +246,7 @@ class LiawModel(ReactionDiffusionModel):
             n2v["generation"] = generation
             n2v["fitness"] = fitness
 
-            # Model parameters
+            # Save kinetic parameters
             n2v["u0"] = float(init_states[i, 0])
             n2v["v0"] = float(init_states[i, 1])
             
@@ -259,12 +259,15 @@ class LiawModel(ReactionDiffusionModel):
             n2v["sv"] = float(params[i, 6])
             n2v["mu"] = float(params[i, 7])
 
+            # Save init points
+            n2v["n_init_pts"] = self._n_init_pts
+
             for i, (ir, ic) in enumerate(init_pts[i, :]):
                 # Convert int to str due to JSON format.
                 n2v["init_pts_%d"%(i)] = (str(ir), str(ic))
             # end of for
             
-            # Hyper-parameters and etc.
+            # Save hyper-parameters and etc.
             n2v["width"] = self._width
             n2v["height"] =self._height
             n2v["dt"] = self._dt
@@ -303,11 +306,11 @@ class LiawModel(ReactionDiffusionModel):
     def get_param_bounds(self):
         
         if not hasattr(self, "bounds_min"):
-            self.bounds_min = self.am.zeros((10 + 2 * self._num_init_pts),
+            self.bounds_min = self.am.zeros((10 + 2 * self._n_init_pts),
                                             dtype=np.float64)
             
         if not hasattr(self, "bounds_max"):
-            self.bounds_max = self.am.zeros((10 + 2 * self._num_init_pts),
+            self.bounds_max = self.am.zeros((10 + 2 * self._n_init_pts),
                                             dtype=np.float64)
         
         # Du
@@ -351,12 +354,12 @@ class LiawModel(ReactionDiffusionModel):
         self.bounds_max[9] = 1.5
         
         # init coords (25 points).     
-        for i in range(10, 2 * self._num_init_pts, 2):
+        for i in range(10, 2 * self._n_init_pts, 2):
             self.bounds_min[i] = 0
             self.bounds_max[i] = self._height - 1
         # end of for
 
-        for i in range(11, 2 * self._num_init_pts, 2):
+        for i in range(11, 2 * self._n_init_pts, 2):
             self.bounds_min[i] = 0
             self.bounds_max[i] = self._width - 1
         # end of for
@@ -364,7 +367,7 @@ class LiawModel(ReactionDiffusionModel):
         return self.bounds_min, self.bounds_max
 
     def get_len_dv(self):  # length of the decision vector in PyGMO
-        return 10 + 2 * self._num_init_pts
+        return 10 + 2 * self._n_init_pts
 
 
 
