@@ -120,13 +120,13 @@ class EvoSearch:
             fpath_model = pjoin(self.dpath_population,
                                 "model_%s.json"%(str_now))            
             fpath_image = pjoin(self.dpath_population,
-                                "image_%s.png"%(str_now))        
+                                "ladybird_%s.png"%(str_now))
             
         elif mode == "best":            
             fpath_model = pjoin(self.dpath_best,
                                 "model_%s.json"%(str_now))            
             fpath_image = pjoin(self.dpath_best,
-                                "image_%s.png"%(str_now))        
+                                "ladybird_%s.png"%(str_now))
         else:
             raise ValueError("mode should be 'pop' or 'best'")
 

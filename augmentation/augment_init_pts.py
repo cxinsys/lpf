@@ -170,8 +170,8 @@ if __name__ == "__main__":
             str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
             fpath_model_new = pjoin(dpath_augdataset,
                                     "model_%s_%d.json"%(str_now, j))            
-            fpath_image_new = pjoin(dpath_augdataset,
-                                    "image_%s_%d.png"%(str_now, j))     
+            fpath_ladybird_new = pjoin(dpath_augdataset,
+                                       "ladybird_%s_%d.png"%(str_now, j))
             fpath_pattern_new = pjoin(dpath_augdataset,
                                       "pattern_%s_%d.png"%(str_now, j))
             
@@ -182,7 +182,7 @@ if __name__ == "__main__":
                              params=params)
             
             model.save_image(i=j,
-                             fpath_ladybird=fpath_image_new,
+                             fpath_ladybird=fpath_ladybird_new,
                              fpath_pattern=fpath_pattern_new)
         # end of for
         t_end = time.time()
