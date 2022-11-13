@@ -166,7 +166,7 @@ if __name__ == "__main__":
         
      
         
-        for j in range(len(batch)):
+        for j in range(len(batch_model_dicts)):
             str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
             fpath_model_new = pjoin(dpath_augdataset,
                                     "model_%s_%d.json"%(str_now, j))            
