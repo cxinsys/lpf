@@ -20,14 +20,13 @@ def laplacian2d(a, dx):
 
 
 def pde_u(dt, dx, u, v, u_c, v_c, Du, ru, k, su, mu):
-    # return dt * (Du * laplacian2d(u, dx) + (ru*((u_c**2 * v_c)/(1 + k*u_c**2)) + su - mu*u_c))
-    #print("u_c:", u_c[0, :3, 0])
-    return dt * (Du * laplacian2d(u, dx) + (ru * ((u_c*u_c * v_c) / (1 + k * u_c*u_c)) + su - mu * u_c))
+    return dt * (Du * laplacian2d(u, dx) + (ru*((u_c**2 * v_c)/(1 + k*u_c**2)) + su - mu*u_c))
+    # return dt * (Du * laplacian2d(u, dx) + (ru * ((u_c*u_c * v_c) / (1 + k * u_c*u_c)) + su - mu * u_c))
 
 
 def pde_v(dt, dx, u, v, u_c, v_c, Dv, rv, k, sv):
-    #return dt * (Dv * laplacian2d(v, dx) + (-rv*((u_c**2 * v_c)/(1 + k*u_c**2)) + sv))
-    return dt * (Dv * laplacian2d(v, dx) + (-rv*((u_c*u_c * v_c)/(1 + k * u_c*u_c)) + sv))
+    return dt * (Dv * laplacian2d(v, dx) + (-rv*((u_c**2 * v_c)/(1 + k*u_c**2)) + sv))
+    # return dt * (Dv * laplacian2d(v, dx) + (-rv*((u_c*u_c * v_c)/(1 + k * u_c*u_c)) + sv))
 
 
 class LiawModel(ReactionDiffusionModel):
@@ -40,9 +39,12 @@ class LiawModel(ReactionDiffusionModel):
                  thr=0.5,
                  num_init_pts=25,
                  rtol_early_stop=None,
+                 color_u=None,
+                 color_v=None,
                  initializer=None,
                  device=None,
-                 ladybird=None):
+                 ladybird=None,
+                 ):
 
         self._name = "LiawModel"
         self._width = width
@@ -55,6 +57,15 @@ class LiawModel(ReactionDiffusionModel):
         self._num_init_pts = num_init_pts
         self._rtol_early_stop = rtol_early_stop
         self._initializer = initializer
+
+        if not color_u:
+            color_u =  np.array([5, 5, 5], dtype=np.uint8)
+
+        if not color_v:
+            color_v = np.array([231, 79, 3], dtype=np.uint8)
+
+        self._color_u = color_u
+        self._color_v = color_v
 
         if ladybird is None:
             ladybird = "haxyridis"
@@ -133,14 +144,14 @@ class LiawModel(ReactionDiffusionModel):
         color = np.zeros((batch_size, self._height, self._width, 3),
                          dtype=np.uint8)
 
-        color[:, :, :, 0] = 231
-        color[:, :, :, 1] = 79
-        color[:, :, :, 2] = 3
+        color[:, :, :, 0] = self._color_v[0]
+        color[:, :, :, 1] = self._color_v[1]
+        color[:, :, :, 2] = self._color_v[2]
         
-        idx = self.am.get(self.u) > thr  # self.u.get() > thr
-        color[idx, 0] = 5  # self.u[idx]
-        color[idx, 1] = 5  # self.u[idx]
-        color[idx, 2] = 5  # self.u[idx]
+        idx = self.am.get(self.u) > thr
+        color[idx, 0] = self._color_u[0]
+        color[idx, 1] = self._color_u[1]
+        color[idx, 2] = self._color_u[2]
         
         return color
     
@@ -269,6 +280,9 @@ class LiawModel(ReactionDiffusionModel):
             n2v["n_iters"] = self._n_iters
             n2v["thr"] = self._thr
             n2v["initializer"] = self._initializer.name if self._initializer else None
+
+            n2v["color_u"] = (str(self._color_u[0]), str(self._color_u[1]), str(self._color_u[2]))
+            n2v["color_v"] = (str(self._color_v[0]), str(self._color_v[1]), str(self._color_v[2]))
             
             json.dump(n2v, fout)
     
