@@ -115,7 +115,7 @@ class ReactionDiffusionModel(object):
                         self.save_states(j, fpath_states)
 
                 if verbose >= 1:
-                    print("[Iteration #%d] elapsed time: %.5e sec."%(i+1, time.time() - t_beg))
+                    print("- [Iteration #%d] elapsed time: %.5e sec."%(i+1, time.time() - t_beg))
                     t_beg = time.time()
 
             if rtol_early_stop and self.is_early_stopping(rtol_early_stop):
@@ -123,7 +123,7 @@ class ReactionDiffusionModel(object):
         # end of for
 
         if verbose >= 1:
-            print("[Total] elapsed time: %.5e sec." % (time.time() - t_total_beg))
+            print("- [Duration] : %.5e sec." % (time.time() - t_total_beg))
 
     # end of solve
         

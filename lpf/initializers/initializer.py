@@ -28,3 +28,11 @@ class Initializer:
     @property
     def dtype(self):
         return self._dtype
+
+    @property
+    def init_pts(self):
+        return self._init_pts
+    
+    @property
+    def init_states(self):
+        return self._init_states
