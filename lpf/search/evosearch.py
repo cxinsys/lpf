@@ -148,7 +148,7 @@ class EvoSearch:
         # end of if
 
         self.model.save_model(fpath_model,
-                              i=0,
+                              index=0,
                               init_states=init_states,
                               init_pts=init_pts,
                               params=params,

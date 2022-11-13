@@ -24,13 +24,13 @@ class LiawInitializer(Initializer):
             self._init_states[i, 0] = n2v["u0"]
             self._init_states[i, 1] = n2v["v0"]
 
-            num_init_pts = 0
+            n_init_pts = 0
             dict_init_pts = {}
             for name, val in n2v.items():
                 if "init_pts" in name:
                     # print(name, val)
                     dict_init_pts[name] = (int(val[0]), int(val[1]))
-                    num_init_pts += 1
+                    n_init_pts += 1
             # end of for
 
             coords = []

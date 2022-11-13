@@ -34,6 +34,7 @@ class ReactionDiffusionModel(object):
               n_iters=None,
               rtol_early_stop=None,
               period_output=1,
+              dpath_model=None,
               dpath_ladybird=None,
               dpath_pattern=None,
               dpath_states=None,
@@ -55,24 +56,40 @@ class ReactionDiffusionModel(object):
             initializer.initialize(self)
         else:
             self._initializer.initialize(self)
+            initializer = self._initializer
 
         batch_size = params.shape[0]
         dname_individual = "individual_%0{}d".format(int(np.floor(np.log10(batch_size))) + 1)
 
+        if dpath_model:
+            fstr_fname_model \
+                = "model_%0{}d.json".format(int(np.floor(np.log10(batch_size))) + 1)
+
+            for i in range(batch_size):
+                os.makedirs(pjoin(dpath_model, dname_individual%(i+1)), exist_ok=True)
+
+                fpath_model = pjoin(dpath_model,
+                                    #dname_individual % (i + 1),
+                                    fstr_fname_model % (i + 1))
+
+                self.save_model(index=i,
+                                fpath=fpath_model,
+                                init_states=initializer.init_states,
+                                init_pts=initializer.init_pts,
+                                params=params)
+            # end of for
+
         if dpath_ladybird:
             for i in range(batch_size):
-                os.makedirs(pjoin(dpath_ladybird, dname_individual%(i+1)),
-                            exist_ok=True)
+                os.makedirs(pjoin(dpath_ladybird, dname_individual%(i+1)), exist_ok=True)
             # end of for
 
             fstr_fname_ladybird \
                 = "ladybird_%0{}d.png".format(int(np.floor(np.log10(n_iters))))
-                
-        
+
         if dpath_pattern:
             for i in range(batch_size):
-                os.makedirs(pjoin(dpath_pattern, dname_individual%(i+1)),
-                            exist_ok=True)
+                os.makedirs(pjoin(dpath_pattern, dname_individual%(i+1)), exist_ok=True)
             # end of for
 
             fstr_fname_pattern \
@@ -80,8 +97,7 @@ class ReactionDiffusionModel(object):
             
         if dpath_states:
             for i in range(batch_size):
-                os.makedirs(pjoin(dpath_states, dname_individual%(i+1)),
-                            exist_ok=True)
+                os.makedirs(pjoin(dpath_states, dname_individual%(i+1)), exist_ok=True)
             # end of for
 
             fstr_fname_states \
@@ -92,7 +108,7 @@ class ReactionDiffusionModel(object):
         t_beg = time.time()
         for i in range(n_iters):
             self.t += self._dt
-            self.update(i, params)
+            self.update(params)
             self.check_invalid_values()
 
             if (i+1) % period_output == 0:
@@ -133,13 +149,13 @@ class ReactionDiffusionModel(object):
     def is_early_stopping(self, rtol):       
         raise NotImplementedError()
         
-    def save_image(self, i, fpath):
+    def save_image(self, index, fpath):
         raise NotImplementedError()
         
-    def save_states(self, i, fpath):
+    def save_states(self, index, fpath):
         raise NotImplementedError()
         
-    def save_model(self, i, fpath):
+    def save_model(self, index, fpath):
         raise NotImplementedError()
         
     def get_param_bounds(self):

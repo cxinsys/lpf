@@ -31,9 +31,9 @@ if __name__ == "__main__":
     os.makedirs(dpath_output, exist_ok=True)
 
     # Copy this source file to the output directory for recording purpose.
-    fpath_src = pjoin(osp.dirname(__file__), osp.basename(__file__))
-    fpath_dst = pjoin(dpath_output, osp.basename(__file__))
-    shutil.copyfile(fpath_src, fpath_dst)
+    fpath_code_src = pjoin(osp.dirname(__file__), osp.basename(__file__))
+    fpath_code_dst = pjoin(dpath_output, osp.basename(__file__))
+    shutil.copyfile(fpath_code_src, fpath_code_dst)
 
     # Create initializer
     initializer = LiawInitializer()
@@ -69,13 +69,14 @@ if __name__ == "__main__":
         device=device
     )
 
-    params = model.parse_params(model_dicts)
+    params = LiawModel.parse_params(model_dicts)
 
     t_beg = time.time()
 
     model.solve(params,
                 n_iters=n_iters,
                 period_output=1000,  # n_iters - 1,
+                dpath_model=dpath_output,
                 dpath_ladybird=dpath_output,
                 dpath_pattern=dpath_output,
                 verbose=1)

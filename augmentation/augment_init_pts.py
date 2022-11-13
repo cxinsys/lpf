@@ -155,7 +155,7 @@ if __name__ == "__main__":
         )
     
         # Solve the PDE.
-        params = model.parse_params(batch_model_dicts)
+        params = LiawModel.parse_params(batch_model_dicts)
         
         model.solve(params,
                     n_iters=n_iters,
@@ -175,13 +175,13 @@ if __name__ == "__main__":
             fpath_pattern_new = pjoin(dpath_augdataset,
                                       "pattern_%s_%d.png"%(str_now, j))
             
-            model.save_model(i=j,
+            model.save_model(index=j,
                              fpath=fpath_model_new,
                              init_states=initializer.init_states,
                              init_pts=initializer.init_pts,
                              params=params)
             
-            model.save_image(i=j,
+            model.save_image(index=j,
                              fpath_ladybird=fpath_ladybird_new,
                              fpath_pattern=fpath_pattern_new)
         # end of for

@@ -54,7 +54,6 @@ if __name__ == "__main__":
              print("[OBJECTIVE DEVICE] %s"%(cfg))
         # end of for
 
-
     # Create a search object.
     num_init_pts = config["NUM_INIT_PTS"]
 
@@ -72,31 +71,6 @@ if __name__ == "__main__":
     # Create the objectives.
     objectives = ObjFac.create(config["OBJECTIVES"])
 
-    # objectives = []
-    # for cfg in config["OBJECTIVES"]:
-    #     obj = cfg[0]
-    #     coeff = float(cfg[1])
-    #
-    #     device = "cpu"
-    #     if "cuda" in cfg[2]:
-    #         device = "cuda:%d"%(args.gpu)
-    #
-    #     print("[OBJECTIVE DEVICE] %s: %s"%(obj, device))
-    #
-    #     objectives.append(ObjFac.create(obj, coeff=coeff, device=device))
-    # # end of for
-
-    # Load ladybird type and the corresponding data.
-    # ladybird_type = config["LADYBIRD_TYPE"].lower()
-    # dpath_data = pjoin(get_module_dpath("data"), ladybird_type)
-    # dpath_template = pjoin(dpath_data, "template")
-    # dpath_target = pjoin(dpath_data, "target")
-    #
-    # fpath_template = pjoin(dpath_template, "ladybird.png")
-    # fpath_mask = pjoin(dpath_template, "mask.png")
-
-    #device = config["DEVICE"]
-
     model = LiawModel(
         width=width,
         height=height,                 
@@ -110,9 +84,6 @@ if __name__ == "__main__":
     
     # Load targets.
     targets = load_targets(config["LADYBIRD_TYPE"], config["LADYBIRD_SUBTYPES"])
-    # ladybird_subtypes = [elem.lower() for elem in ladybird_subtypes]
-    # targets = load_targets(dpath_target,
-    #                        ladybird_subtypes)
 
     droot_output = apath(config["DPATH_OUTPUT"])
 
@@ -137,7 +108,6 @@ if __name__ == "__main__":
     print("[POPULATION INITIALIZATION COMPLETED]")
 
     dpath_init_pop = osp.abspath(config["INIT_POP"])
-    #dpath_init_pop = None  # FOR DEBUGGING
     if dpath_init_pop:
 
         # To test the batch processing, add model JSON files.

@@ -75,15 +75,13 @@ class LiawModel(ReactionDiffusionModel):
 
         super().__init__(device)
         
-    def update(self, i, params):
-
-        #print("params:", params)
+    def update(self, params):
 
         with self.am:
             batch_size = params.shape[0]
 
-            dt = self._dt  #self.am.array(self._dt, dtype=np.float64)
-            dx = self._dx  #self.am.array(self._dx, dtype=np.float64)
+            dt = self._dt
+            dx = self._dx
 
             u = self.u
             v = self.v
@@ -155,7 +153,7 @@ class LiawModel(ReactionDiffusionModel):
         
         return color
     
-    def create_image(self, i=0, arr_color=None):
+    def create_image(self, index=0, arr_color=None):
         if arr_color is None:
             arr_color = self.colorize()
 
@@ -163,7 +161,7 @@ class LiawModel(ReactionDiffusionModel):
         template = Image.open(self._fpath_template)
         mask = Image.open(self._fpath_mask).convert('L')
 
-        pattern = Image.fromarray(arr_color[i, :, :])
+        pattern = Image.fromarray(arr_color[index, :, :])
         pattern = pattern.resize((128, 128))
 
         # crop(left, upper, right, lower)
@@ -210,21 +208,20 @@ class LiawModel(ReactionDiffusionModel):
         return ladybird, pattern
 
     def save_image(self,
-                   i=0,
+                   index=0,
                    fpath_ladybird=None,
                    fpath_pattern=None,
                    arr_color=None):
-        ladybird, pattern = self.create_image(i, arr_color)
+        ladybird, pattern = self.create_image(index, arr_color)
         ladybird.save(fpath_ladybird)
         if fpath_pattern:
             pattern.save(fpath_pattern)
-        
     
-    def save_states(self, fpath_states, i=0, arr_states=None):
+    def save_states(self, index=0, fpath=None, states=None):
         raise NotImplementedError()
 
     def save_model(self,
-                   i=None,
+                   index=None,
                    fpath=None,
                    init_states=None,
                    init_pts=None,
@@ -235,12 +232,12 @@ class LiawModel(ReactionDiffusionModel):
         if not fpath:
             raise FileNotFoundError("Invalid file path: %s"%(fpath))
 
-        if i is None:
-            i = 0
+        if index is None:
+            index = 0
         else:
             batch_size = params.shape[0]
-            if i < 0 or i >= batch_size:
-                raise ValueError("i should be non-negative and less than the batch size.")
+            if index < 0 or index >= batch_size:
+                raise ValueError("index should be non-negative and less than the batch size.")
 
         if init_states is None:
             raise ValueError("init_states should be given.")
@@ -253,29 +250,31 @@ class LiawModel(ReactionDiffusionModel):
 
         with open(fpath, "wt") as fout:   
             n2v = {}
+
+            n2v["index"] = index
            
             n2v["generation"] = generation
             n2v["fitness"] = fitness
 
             # Save kinetic parameters
-            n2v["u0"] = float(init_states[i, 0])
-            n2v["v0"] = float(init_states[i, 1])
+            n2v["u0"] = float(init_states[index, 0])
+            n2v["v0"] = float(init_states[index, 1])
             
-            n2v["Du"] = float(params[i, 0])
-            n2v["Dv"] = float(params[i, 1])
-            n2v["ru"] = float(params[i, 2])
-            n2v["rv"] = float(params[i, 3])
-            n2v["k"]  = float(params[i, 4])
-            n2v["su"] = float(params[i, 5])
-            n2v["sv"] = float(params[i, 6])
-            n2v["mu"] = float(params[i, 7])
+            n2v["Du"] = float(params[index, 0])
+            n2v["Dv"] = float(params[index, 1])
+            n2v["ru"] = float(params[index, 2])
+            n2v["rv"] = float(params[index, 3])
+            n2v["k"]  = float(params[index, 4])
+            n2v["su"] = float(params[index, 5])
+            n2v["sv"] = float(params[index, 6])
+            n2v["mu"] = float(params[index, 7])
 
             # Save init points
             n2v["n_init_pts"] = self._n_init_pts
 
-            for i, (ir, ic) in enumerate(init_pts[i, :]):
+            for i, (ir, ic) in enumerate(init_pts[index, :]):
                 # Convert int to str due to JSON format.
-                n2v["init_pts_%d"%(i)] = (str(ir), str(ic))
+                n2v["init_pts_%d"%(i)] = [int(ir), int(ic)]
             # end of for
             
             # Save hyper-parameters and etc.
@@ -287,39 +286,18 @@ class LiawModel(ReactionDiffusionModel):
             n2v["thr"] = self._thr
             n2v["initializer"] = self._initializer.name if self._initializer else None
 
-            n2v["color_u"] = (str(self._color_u[0]), str(self._color_u[1]), str(self._color_u[2]))
-            n2v["color_v"] = (str(self._color_v[0]), str(self._color_v[1]), str(self._color_v[2]))
-            
+            n2v["color_u"] = self._color_u.tolist()
+            n2v["color_v"] = self._color_v.tolist()
+
             json.dump(n2v, fout)
     
         return n2v
 
-    # def parse_model_dicts(self, model_dicts):
-    #     if not isinstance(model_dicts, Sequence):
-    #         raise TypeError("model_dicts should be a sequence of model dictionary.")
-    #
-    #     batch_size = len(model_dicts)
-    #     init_states = np.zeros((batch_size, 2), dtype=np.float64)
-    #     params = np.zeros((batch_size, 8), dtype=np.float64)
-    #
-    #     for i, n2v in enumerate(model_dicts):
-    #         init_states[i, 0] = n2v["u0"]
-    #         init_states[i, 1] = n2v["v0"]
-    #
-    #         params[i, 0] = n2v["Du"]
-    #         params[i, 1] = n2v["Dv"]
-    #         params[i, 2] = n2v["ru"]
-    #         params[i, 3] = n2v["rv"]
-    #         params[i, 4] = n2v["k"]
-    #         params[i, 5] = n2v["su"]
-    #         params[i, 6] = n2v["sv"]
-    #         params[i, 7] = n2v["mu"]
-    #
-    #     return init_states, params
 
-    def parse_params(self, model_dicts):
+    @staticmethod
+    def parse_params(model_dicts):
         """Parse the parameters from the model dictionaries.
-           A model knows how to parse its information.
+           A model knows how to parse its parameters.
         """
         if not isinstance(model_dicts, Sequence):
             raise TypeError("model_dicts should be a sequence of model dictionary.")
@@ -327,28 +305,32 @@ class LiawModel(ReactionDiffusionModel):
         batch_size = len(model_dicts)
         params = np.zeros((batch_size, 8), dtype=np.float64)
 
-        for i, n2v in enumerate(model_dicts):
-            params[i, 0] = n2v["Du"]
-            params[i, 1] = n2v["Dv"]
-            params[i, 2] = n2v["ru"]
-            params[i, 3] = n2v["rv"]
-            params[i, 4] = n2v["k"]
-            params[i, 5] = n2v["su"]
-            params[i, 6] = n2v["sv"]
-            params[i, 7] = n2v["mu"]
+        for index, n2v in enumerate(model_dicts):
+            params[index, 0] = n2v["Du"]
+            params[index, 1] = n2v["Dv"]
+            params[index, 2] = n2v["ru"]
+            params[index, 3] = n2v["rv"]
+            params[index, 4] = n2v["k"]
+            params[index, 5] = n2v["su"]
+            params[index, 6] = n2v["sv"]
+            params[index, 7] = n2v["mu"]
 
         return params
 
+    @staticmethod
     def parse_init_states(self, model_dicts):
+        """Parse the initial states from the model dictionaries.
+           A model knows how to parse its initial states.
+        """
         if not isinstance(model_dicts, Sequence):
             raise TypeError("model_dicts should be a sequence of model dictionary.")
 
         batch_size = len(model_dicts)
         init_states = np.zeros((batch_size, 2), dtype=np.float64)
 
-        for i, n2v in enumerate(model_dicts):
-            init_states[i, 0] = n2v["u0"]
-            init_states[i, 1] = n2v["v0"]
+        for index, n2v in enumerate(model_dicts):
+            init_states[index, 0] = n2v["u0"]
+            init_states[index, 1] = n2v["v0"]
         # end of for
 
         return init_states
@@ -404,14 +386,14 @@ class LiawModel(ReactionDiffusionModel):
         self.bounds_max[9] = 1.5
         
         # init coords (25 points).     
-        for i in range(10, 2 * self._n_init_pts, 2):
-            self.bounds_min[i] = 0
-            self.bounds_max[i] = self._height - 1
+        for index in range(10, 2 * self._n_init_pts, 2):
+            self.bounds_min[index] = 0
+            self.bounds_max[index] = self._height - 1
         # end of for
 
-        for i in range(11, 2 * self._n_init_pts, 2):
-            self.bounds_min[i] = 0
-            self.bounds_max[i] = self._width - 1
+        for index in range(11, 2 * self._n_init_pts, 2):
+            self.bounds_min[index] = 0
+            self.bounds_max[index] = self._width - 1
         # end of for
         
         return self.bounds_min, self.bounds_max
