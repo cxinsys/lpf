@@ -73,16 +73,16 @@ if __name__ == "__main__":
         items = fname.split('_')        
         model_id = items[1]
         
-        fpath_image = osp.join(dpath_dataset, "ladybird_%s.png"%(model_id))
+        fpath_ladybird = osp.join(dpath_dataset, "ladybird_%s.png"%(model_id))
         
         if not osp.isfile(fpath_model):
             raise FileNotFoundError(fpath_model)
         
-        if not osp.isfile(fpath_image):
-            raise FileNotFoundError(fpath_image)
+        if not osp.isfile(fpath_ladybird):
+            raise FileNotFoundError(fpath_ladybird)
         
 
-        dict_fpath[model_id] = (fpath_model, fpath_image)
+        dict_fpath[model_id] = (fpath_model, fpath_ladybird)
         list_fpath.append(dict_fpath[model_id])
     # end of for
     
@@ -99,7 +99,7 @@ if __name__ == "__main__":
         
         model_dicts = []
 
-        for (fpath_model, fpath_image) in batch:
+        for (fpath_model, fpath_ladybird) in batch:
             with open(fpath_model, "rt") as fin:
                 n2v = json.load(fin)
             model_dicts.append(n2v)

@@ -119,13 +119,13 @@ class EvoSearch:
         if mode == "pop":
             fpath_model = pjoin(self.dpath_population,
                                 "model_%s.json"%(str_now))            
-            fpath_image = pjoin(self.dpath_population,
+            fpath_ladybird = pjoin(self.dpath_population,
                                 "ladybird_%s.png"%(str_now))
             
         elif mode == "best":            
             fpath_model = pjoin(self.dpath_best,
                                 "model_%s.json"%(str_now))            
-            fpath_image = pjoin(self.dpath_best,
+            fpath_ladybird = pjoin(self.dpath_best,
                                 "ladybird_%s.png"%(str_now))
         else:
             raise ValueError("mode should be 'pop' or 'best'")
@@ -155,6 +155,6 @@ class EvoSearch:
                               generation=generation,
                               fitness=fitness)
         
-        self.model.save_image(fpath_image, i=0, arr_color=arr_color)
+        self.model.save_image(fpath_ladybird, i=0, arr_color=arr_color)
             
         return True
