@@ -133,7 +133,7 @@ if __name__ == "__main__":
             device=device
         )
     
-        init_states, params = model.parse_model_dicts(model_dicts)
+        params = model.parse_params(model_dicts)
        
         model.solve(params,
                     n_iters=n_iters,

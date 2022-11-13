@@ -155,7 +155,7 @@ if __name__ == "__main__":
         )
     
         # Solve the PDE.
-        init_states, params = model.parse_model_dicts(batch_model_dicts)       
+        params = model.parse_params(batch_model_dicts)
         
         model.solve(params,
                     n_iters=n_iters,

@@ -13,6 +13,8 @@ class LiawInitializer(Initializer):
                          dtype=dtype)
 
     def update(self, model_dicts):
+        """Parse the initial states and points from the model dictionaries.
+        """
 
         batch_size = len(model_dicts)
         self._init_states = np.zeros((batch_size, 2), dtype=np.float64)
