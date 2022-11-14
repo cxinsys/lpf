@@ -59,18 +59,16 @@ class ReactionDiffusionModel(object):
             initializer = self._initializer
 
         batch_size = params.shape[0]
-        dname_individual = "individual_%0{}d".format(int(np.floor(np.log10(batch_size))) + 1)
+        dname_individual = "model_%0{}d".format(int(np.floor(np.log10(batch_size))) + 1)
 
         if dpath_model:
             fstr_fname_model \
                 = "model_%0{}d.json".format(int(np.floor(np.log10(batch_size))) + 1)
 
             for i in range(batch_size):
-                os.makedirs(pjoin(dpath_model, dname_individual%(i+1)), exist_ok=True)
-
-                fpath_model = pjoin(dpath_model,
-                                    #dname_individual % (i + 1),
-                                    fstr_fname_model % (i + 1))
+                dpath_models = pjoin(dpath_model, "models")
+                os.makedirs(dpath_models, exist_ok=True)
+                fpath_model = pjoin(dpath_models, fstr_fname_model % (i + 1))
 
                 self.save_model(index=i,
                                 fpath=fpath_model,
