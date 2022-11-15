@@ -7,12 +7,12 @@
 - LPF can be utilized as an educational framework for understanding biological dynamics, pattern formation, and complexity.
 
 
-<p style="text-align:center;">
+<p align="center">
+  <img src="assets/ladybird.gif" alt="Drawing" width="500px"/>
+</p>
 
-<img src="assets/ladybird.gif" alt="Drawing" height="200px"/>
-
-<img src="assets/pattern.gif" alt="Drawing" height="200px"/>
-
+<p align="center">
+  <img src="assets/pattern.gif" alt="Drawing" width="500px"/>
 </p>
 
 ## Features
