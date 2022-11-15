@@ -8,8 +8,11 @@
 
 
 <p style="text-align:center;">
+
 <img src="assets/ladybird.gif" alt="Drawing" height="200px"/>
+
 <img src="assets/pattern.gif" alt="Drawing" height="200px"/>
+
 </p>
 
 ## Features
