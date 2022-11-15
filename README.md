@@ -6,6 +6,13 @@
 - LPF is a framework for analyzing the biological pattern formation exemplified by ladybird beetles.
 - LPF can be utilized as an educational framework for understanding biological dynamics, pattern formation, and complexity.
 
+
+<p style="text-align:center;">
+<img src="assets/ladybird.gif" alt="Drawing" width="700px"/>
+
+<img src="assets/pattern.gif" alt="Drawing" width="700px"/>
+</p>
+
 ## Features
 - Reaction-diffusion PDE models for the color pattern formation of ladybird bettles.
 - Evolutionary search based on [PyGMO](https://esa.github.io/pygmo2/) providing the concept of [island](https://esa.github.io/pygmo2/tutorials/using_island.html) and [archipelago](https://esa.github.io/pygmo2/tutorials/using_archipelago.html).
