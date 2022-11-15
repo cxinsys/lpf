@@ -8,9 +8,9 @@
 
 
 <p style="text-align:center;">
-<img src="assets/ladybird.gif" alt="Drawing" width="700px"/>
+<img src="assets/ladybird.gif" alt="Drawing" width="800px"/>
 
-<img src="assets/pattern.gif" alt="Drawing" width="700px"/>
+<img src="assets/pattern.gif" alt="Drawing" width="800px"/>
 </p>
 
 ## Features
