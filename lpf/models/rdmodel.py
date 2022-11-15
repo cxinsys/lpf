@@ -48,6 +48,9 @@ class ReactionDiffusionModel(object):
         if not rtol_early_stop:
             rtol_early_stop = self._rtol_early_stop
 
+        if period_output < 1:
+            raise ValueError("period_output should be greater than 0.")
+
         # if init_states.shape[0] != params.shape[0]:
         #     raise ValueError("The batch size of init_states and " \
         #                      "the batch size of params should be equal.")
@@ -109,7 +112,7 @@ class ReactionDiffusionModel(object):
             self.update(params)
             self.check_invalid_values()
 
-            if (i+1) % period_output == 0:
+            if i == 0 or (i + 1) % period_output == 0:
                 if dpath_ladybird:
                     for j in range(batch_size):
                         fpath_ladybird = pjoin(dpath_ladybird,
