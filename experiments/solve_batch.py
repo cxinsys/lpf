@@ -66,6 +66,8 @@ if __name__ == "__main__":
         dt=dt,
         n_iters=n_iters,
         initializer=initializer,
+        color_u=[161, 102, 0],
+        color_v=[59, 161, 90],
         device=device
     )
 
@@ -75,7 +77,7 @@ if __name__ == "__main__":
 
     model.solve(params,
                 n_iters=n_iters,
-                period_output=1000,  # n_iters - 1,
+                period_output=10000,  # n_iters - 1,
                 dpath_model=dpath_output,
                 dpath_ladybird=dpath_output,
                 dpath_pattern=dpath_output,

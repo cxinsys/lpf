@@ -64,8 +64,8 @@ class LiawModel(ReactionDiffusionModel):
         if not color_v:
             color_v = np.array([231, 79, 3], dtype=np.uint8)
 
-        self._color_u = color_u
-        self._color_v = color_v
+        self._color_u = np.array(color_u, dtype=np.uint8)
+        self._color_v = np.array(color_v, dtype=np.uint8)
 
         if ladybird is None:
             ladybird = "haxyridis"
