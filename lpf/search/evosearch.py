@@ -119,23 +119,31 @@ class EvoSearch:
         if mode == "pop":
             fpath_model = pjoin(self.dpath_population,
                                 "model_%s.json"%(str_now))            
+
             fpath_ladybird = pjoin(self.dpath_population,
-                                "ladybird_%s.png"%(str_now))
+                                   "ladybird_%s.png"%(str_now))
+
+            fpath_pattern = pjoin(self.dpath_population,
+                                  "pattern_%s.png"%(str_now))
             
         elif mode == "best":            
             fpath_model = pjoin(self.dpath_best,
                                 "model_%s.json"%(str_now))            
+            
             fpath_ladybird = pjoin(self.dpath_best,
-                                "ladybird_%s.png"%(str_now))
+                                   "ladybird_%s.png"%(str_now))
+
+            fpath_pattern = pjoin(self.dpath_best,
+                                  "pattern_%s.png"%(str_now))
         else:
             raise ValueError("mode should be 'pop' or 'best'")
+
 
         if arr_color is None:            
             digest = get_hash_digest(dv)            
             if digest not in self.cache:                
                 try:
-                    self.model.solve(init_states=init_states,
-                                     params=params,
+                    self.model.solve(params=params,
                                      initializer=initializer)
                     
                 except (ValueError, FloatingPointError) as err:
@@ -147,14 +155,17 @@ class EvoSearch:
                 arr_color = self.cache[digest]
         # end of if
 
-        self.model.save_model(fpath_model,
-                              index=0,
+        self.model.save_model(index=0,
+                              fpath=fpath_model,
                               init_states=init_states,
                               init_pts=init_pts,
                               params=params,
                               generation=generation,
                               fitness=fitness)
         
-        self.model.save_image(fpath_ladybird, i=0, arr_color=arr_color)
+        self.model.save_image(index=0,
+                              fpath_ladybird=fpath_ladybird,
+                              fpath_pattern=fpath_pattern,
+                              arr_color=arr_color)
             
         return True
