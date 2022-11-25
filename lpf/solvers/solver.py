@@ -1,0 +1,6 @@
+
+
+
+class Solver:
+
+    pass

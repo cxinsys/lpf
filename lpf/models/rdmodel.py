@@ -27,122 +27,145 @@ class ReactionDiffusionModel(object):
     @property
     def height(self):
         return self._height
+    
+    @property
+    def initializer(self):
+        return self._initializer
 
-    def solve(self,
-              params,
-              initializer=None,
-              n_iters=None,
-              rtol_early_stop=None,
-              period_output=1,
-              dpath_model=None,
-              dpath_ladybird=None,
-              dpath_pattern=None,
-              dpath_states=None,
-              verbose=0):
+    @property
+    def params(self):
+        return self._params
 
-        t_total_beg = time.time()
+    @property
+    def n_states(self):
+        return self._n_states
 
-        if not n_iters:
-            n_iters = self._n_iters
+    @property
+    def y_linear(self):
+        return self._y_linear
 
-        if not rtol_early_stop:
-            rtol_early_stop = self._rtol_early_stop
+    @property
+    def y_mesh(self):
+        return self._y_mesh
 
-        if period_output < 1:
-            raise ValueError("period_output should be greater than 0.")
+    def initialize(self):
+        self._initializer.initialize(self)
 
-        # if init_states.shape[0] != params.shape[0]:
-        #     raise ValueError("The batch size of init_states and " \
-        #                      "the batch size of params should be equal.")
+    # def solve(self,
+    #           params,
+    #           initializer=None,
+    #           n_iters=None,
+    #           rtol_early_stop=None,
+    #           period_output=1,
+    #           dpath_model=None,
+    #           dpath_ladybird=None,
+    #           dpath_pattern=None,
+    #           dpath_states=None,
+    #           verbose=0):
 
-        if initializer:
-            initializer.initialize(self)
-        else:
-            self._initializer.initialize(self)
-            initializer = self._initializer
+    #     t_total_beg = time.time()
 
-        batch_size = params.shape[0]
-        dname_model = "model_%0{}d".format(int(np.floor(np.log10(batch_size))) + 1)
+    #     if not n_iters:
+    #         n_iters = self._n_iters
 
-        if dpath_model:
-            fstr_fname_model \
-                = "model_%0{}d.json".format(int(np.floor(np.log10(batch_size))) + 1)
+    #     if not rtol_early_stop:
+    #         rtol_early_stop = self._rtol_early_stop
 
-            for i in range(batch_size):
-                dpath_models = pjoin(dpath_model, "models")
-                os.makedirs(dpath_models, exist_ok=True)
-                fpath_model = pjoin(dpath_models, fstr_fname_model % (i + 1))
+    #     if period_output < 1:
+    #         raise ValueError("period_output should be greater than 0.")
 
-                self.save_model(index=i,
-                                fpath=fpath_model,
-                                init_states=initializer.init_states,
-                                init_pts=initializer.init_pts,
-                                params=params)
-            # end of for
+    #     # if init_states.shape[0] != params.shape[0]:
+    #     #     raise ValueError("The batch size of init_states and " \
+    #     #                      "the batch size of params should be equal.")
 
-        if dpath_ladybird:
-            for i in range(batch_size):
-                os.makedirs(pjoin(dpath_ladybird, dname_model % (i + 1)), exist_ok=True)
-            # end of for
+    #     if initializer:
+    #         initializer.initialize(self)
+    #     else:
+    #         self._initializer.initialize(self)
+    #         initializer = self._initializer
 
-            fstr_fname_ladybird \
-                = "ladybird_%0{}d.png".format(int(np.floor(np.log10(n_iters))) + 1)
+    #     batch_size = params.shape[0]
+    #     dname_model = "model_%0{}d".format(int(np.floor(np.log10(batch_size))) + 1)
 
-        if dpath_pattern:
-            for i in range(batch_size):
-                os.makedirs(pjoin(dpath_pattern, dname_model % (i + 1)), exist_ok=True)
-            # end of for
+    #     if dpath_model:
+    #         fstr_fname_model \
+    #             = "model_%0{}d.json".format(int(np.floor(np.log10(batch_size))) + 1)
 
-            fstr_fname_pattern \
-                = "pattern_%0{}d.png".format(int(np.floor(np.log10(n_iters))) + 1)
+    #         for i in range(batch_size):
+    #             dpath_models = pjoin(dpath_model, "models")
+    #             os.makedirs(dpath_models, exist_ok=True)
+    #             fpath_model = pjoin(dpath_models, fstr_fname_model % (i + 1))
+
+    #             self.save_model(index=i,
+    #                             fpath=fpath_model,
+    #                             init_states=initializer.init_states,
+    #                             init_pts=initializer.init_pts,
+    #                             params=params)
+    #         # end of for
+
+    #     if dpath_ladybird:
+    #         for i in range(batch_size):
+    #             os.makedirs(pjoin(dpath_ladybird, dname_model % (i + 1)), exist_ok=True)
+    #         # end of for
+
+    #         fstr_fname_ladybird \
+    #             = "ladybird_%0{}d.png".format(int(np.floor(np.log10(n_iters))) + 1)
+
+    #     if dpath_pattern:
+    #         for i in range(batch_size):
+    #             os.makedirs(pjoin(dpath_pattern, dname_model % (i + 1)), exist_ok=True)
+    #         # end of for
+
+    #         fstr_fname_pattern \
+    #             = "pattern_%0{}d.png".format(int(np.floor(np.log10(n_iters))) + 1)
             
-        # if dpath_states:
-        #     for i in range(batch_size):
-        #         os.makedirs(pjoin(dpath_states, dname_individual%(i+1)), exist_ok=True)
-        #     # end of for
-        #
-        #     fstr_fname_states \
-        #         = "states_%0{}d.png".format(int(np.floor(np.log10(n_iters))) + 1)
+    #     # if dpath_states:
+    #     #     for i in range(batch_size):
+    #     #         os.makedirs(pjoin(dpath_states, dname_individual%(i+1)), exist_ok=True)
+    #     #     # end of for
+    #     #
+    #     #     fstr_fname_states \
+    #     #         = "states_%0{}d.png".format(int(np.floor(np.log10(n_iters))) + 1)
 
-        params = self.am.array(params, dtype=params.dtype)
+    #     params = self.am.array(params, dtype=params.dtype)
 
-        t_beg = time.time()
-        for i in range(n_iters):
-            self.t += self._dt
-            self.update(params)
-            self.check_invalid_values()
+    #     t_beg = time.time()
+    #     for i in range(n_iters):
+    #         self.t += self._dt
+    #         self.update(params)
+    #         self.check_invalid_values()
 
-            if i == 0 or (i + 1) % period_output == 0:
-                if dpath_ladybird:
-                    for j in range(batch_size):
-                        fpath_ladybird = pjoin(dpath_ladybird,
-                                               dname_model % (j + 1),
-                                               fstr_fname_ladybird % (i+1))
-                        if dpath_pattern:
-                            fpath_pattern = pjoin(dpath_pattern,
-                                                  dname_model % (j + 1),
-                                                  fstr_fname_pattern % (i+1))
-                            self.save_image(j, fpath_ladybird, fpath_pattern)
-                        else:
-                            self.save_image(j, fpath_ladybird)
+    #         if i == 0 or (i + 1) % period_output == 0:
+    #             if dpath_ladybird:
+    #                 for j in range(batch_size):
+    #                     fpath_ladybird = pjoin(dpath_ladybird,
+    #                                            dname_model % (j + 1),
+    #                                            fstr_fname_ladybird % (i+1))
+    #                     if dpath_pattern:
+    #                         fpath_pattern = pjoin(dpath_pattern,
+    #                                               dname_model % (j + 1),
+    #                                               fstr_fname_pattern % (i+1))
+    #                         self.save_image(j, fpath_ladybird, fpath_pattern)
+    #                     else:
+    #                         self.save_image(j, fpath_ladybird)
                                     
-                # if dpath_states:
-                #     for j in range(batch_size):
-                #         fpath_states = pjoin(dpath_states, dname_individual%(j+1), fstr_fname_states%(i+1))
-                #         self.save_states(j, fpath_states)
+    #             # if dpath_states:
+    #             #     for j in range(batch_size):
+    #             #         fpath_states = pjoin(dpath_states, dname_individual%(j+1), fstr_fname_states%(i+1))
+    #             #         self.save_states(j, fpath_states)
 
-                if verbose >= 1:
-                    print("- [Iteration #%d] elapsed time: %.5e sec."%(i+1, time.time() - t_beg))
-                    t_beg = time.time()
+    #             if verbose >= 1:
+    #                 print("- [Iteration #%d] elapsed time: %.5e sec."%(i+1, time.time() - t_beg))
+    #                 t_beg = time.time()
 
-            if rtol_early_stop and self.is_early_stopping(rtol_early_stop):
-                break
-        # end of for
+    #         if rtol_early_stop and self.is_early_stopping(rtol_early_stop):
+    #             break
+    #     # end of for
 
-        if verbose >= 1:
-            print("- [Duration] : %.5e sec." % (time.time() - t_total_beg))
+    #     if verbose >= 1:
+    #         print("- [Duration] : %.5e sec." % (time.time() - t_total_beg))
 
-    # end of solve
+    # # end of solve
         
     def update(self):
         raise NotImplementedError()

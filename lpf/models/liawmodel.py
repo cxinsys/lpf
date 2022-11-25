@@ -19,44 +19,69 @@ def laplacian2d(a, dx):
     return (a_top + a_left + a_bottom + a_right - 4*a_center) / dx**2
 
 
-def pde_u(dt, dx, u, v, u_c, v_c, Du, ru, k, su, mu):
-    return dt * (Du * laplacian2d(u, dx) + (ru*((u_c**2 * v_c)/(1 + k*u_c**2)) + su - mu*u_c))
+def f(dx, u, v, u_c, v_c, Du, ru, k, su, mu):
+    return Du * laplacian2d(u, dx) + (ru*((u_c**2 * v_c)/(1 + k*u_c**2)) + su - mu*u_c)
     # return dt * (Du * laplacian2d(u, dx) + (ru * ((u_c*u_c * v_c) / (1 + k * u_c*u_c)) + su - mu * u_c))
 
 
-def pde_v(dt, dx, u, v, u_c, v_c, Dv, rv, k, sv):
-    return dt * (Dv * laplacian2d(v, dx) + (-rv*((u_c**2 * v_c)/(1 + k*u_c**2)) + sv))
+def g(dx, u, v, u_c, v_c, Dv, rv, k, sv):
+    return Dv * laplacian2d(v, dx) + (-rv*((u_c**2 * v_c)/(1 + k*u_c**2)) + sv)
     # return dt * (Dv * laplacian2d(v, dx) + (-rv*((u_c*u_c * v_c)/(1 + k * u_c*u_c)) + sv))
 
 
 class LiawModel(ReactionDiffusionModel):
     def __init__(self,
-                 width,
-                 height,
-                 dx,
-                 dt,
-                 n_iters,
-                 thr=0.5,
-                 n_init_pts=25,
-                 rtol_early_stop=None,
+                 initializer=None,
+                 params=None,
+                 width=None,
+                 height=None,
+                 dx=None,
+                 thr_color=None,
                  color_u=None,
                  color_v=None,
-                 initializer=None,
                  device=None,
-                 ladybird=None,
-                 ):
+                 ladybird=None):
 
+        # Set the device.
+        super().__init__(device)
+
+        # Set constant members.
         self._name = "LiawModel"
+        self._n_states = 2
+
+        # Set initializer.
+        if not initializer:
+            raise ValueError("initializer should be defined.")
+        self._initializer = initializer
+
+        # Set kinetic parameters.
+        if params is None:
+            raise ValueError("params should be defined.")
+        
+        with self.am:
+            self._params = self.am.array(params, dtype=params.dtype)
+
+        # Set the size of space (2D grid).
+        if not width:
+            width = 128
+
+        if not height:
+            height = 128
+
         self._width = width
         self._height = height
-        self.shape = (width, height)
+        self.shape = (height, width)
+
+        if not dx:
+            dx = 0.1
+
         self._dx = dx
-        self._dt = dt
-        self._n_iters = n_iters
-        self._thr = thr
-        self._n_init_pts = n_init_pts
-        self._rtol_early_stop = rtol_early_stop
-        self._initializer = initializer
+
+        # Set the threshold and colors for coloring.
+        if not thr_color:
+            thr_color = 0.5
+
+        self._thr_color = thr_color
 
         if not color_u:
             color_u =  np.array([5, 5, 5], dtype=np.uint8)
@@ -67,56 +92,76 @@ class LiawModel(ReactionDiffusionModel):
         self._color_u = np.array(color_u, dtype=np.uint8)
         self._color_v = np.array(color_v, dtype=np.uint8)
 
+        # Set the template and mask for visualization.
         if ladybird is None:
             ladybird = "haxyridis"
 
         self._fpath_template = get_template_fpath(ladybird)
         self._fpath_mask = get_mask_fpath(ladybird)
 
-        super().__init__(device)
-        
-    def update(self, params):
 
-        with self.am:
-            batch_size = params.shape[0]
+    @property
+    def u(self):
+        return self._u
 
-            dt = self._dt
-            dx = self._dx
+    @property
+    def v(self):
+        return self._v
 
-            u = self.u
-            v = self.v
+    def eqfunc(self, y_linear, t):
+        """Equation function for integration.
+        """
 
-            Du = params[:, 0].reshape(batch_size, 1, 1)
-            Dv = params[:, 1].reshape(batch_size, 1, 1)
+        # with self.am:
+        batch_size = self.params.shape[0]
 
-            ru = params[:, 2].reshape(batch_size, 1, 1)
-            rv = params[:, 3].reshape(batch_size, 1, 1)
+        y_mesh = y_linear.reshape(self.n_states, batch_size, self.height, self.width)
 
-            k = params[:, 4].reshape(batch_size, 1, 1)
+        # dydt = self.am.zeros(shape=grid.shape, dtype=grid.dtype)
+        dydt_mesh = self._dydt_mesh
+        #dydt.fill(0.0)
 
-            su = params[:, 5].reshape(batch_size, 1, 1)
-            sv = params[:, 6].reshape(batch_size, 1, 1)
-            mu = params[:, 7].reshape(batch_size, 1, 1)
+        u = y_mesh[0, :, :, :]
+        v = y_mesh[1, :, :, :]
 
-            u_c = u[:, 1:-1, 1:-1]
-            v_c = v[:, 1:-1, 1:-1]
+        # Model must update its states.
+        self._u = u
+        self._v = v
 
-            self._delta_u = pde_u(dt, dx, u, v, u_c, v_c, Du, ru, k, su, mu)
-            self._delta_v = pde_v(dt, dx, u, v, u_c, v_c, Dv, rv, k, sv)
+        # dt = self._dt  # solver param
+        dx = self._dx
 
-            # Boundary conditions
-            # delta_u[0, :] = 0   # Top
-            # delta_u[-1, :] = 0  # Bottom
-            # delta_u[:, 0] = 0   # Left
-            # delta_u[:, -1] = 0  # Right
+        # u = self.u
+        # v = self.v
 
-            # delta_v[0, :] = 0   # Top
-            # delta_v[-1, :] = 0  # Bottom
-            # delta_v[:, 0] = 0   # Left
-            # delta_v[:, -1] = 0  # Right
+        Du = self.params[:, 0].reshape(batch_size, 1, 1)
+        Dv = self.params[:, 1].reshape(batch_size, 1, 1)
 
-            u[:, 1:-1, 1:-1] = u_c + self._delta_u
-            v[:, 1:-1, 1:-1] = v_c + self._delta_v
+        ru = self.params[:, 2].reshape(batch_size, 1, 1)
+        rv = self.params[:, 3].reshape(batch_size, 1, 1)
+
+        k = self.params[:, 4].reshape(batch_size, 1, 1)
+
+        su = self.params[:, 5].reshape(batch_size, 1, 1)
+        sv = self.params[:, 6].reshape(batch_size, 1, 1)
+        mu = self.params[:, 7].reshape(batch_size, 1, 1)
+
+        u_c = u[:, 1:-1, 1:-1]
+        v_c = v[:, 1:-1, 1:-1]
+
+        self._f = f(dx, u, v, u_c, v_c, Du, ru, k, su, mu)
+        self._g = g(dx, u, v, u_c, v_c, Dv, rv, k, sv)
+
+        dydt_mesh[0, :, 1:-1, 1:-1] = self._f  # du/dt
+        dydt_mesh[1, :, 1:-1, 1:-1] = self._g  # dv/dt
+
+        #u[:, 1:-1, 1:-1] = u_c + self._delta_u
+        #v[:, 1:-1, 1:-1] = v_c + self._delta_v
+
+        # return dydt.flatten()
+        return self._dydt_linear #dydt.ravel()
+        #return dydt.reshape((-1,))
+
 
     def check_invalid_values(self):
         if self.am.any(self.am.isnan(self.u)) or self.am.any(self.am.isnan(self.v)):
@@ -124,8 +169,8 @@ class LiawModel(ReactionDiffusionModel):
 
     def is_early_stopping(self, rtol):
                 
-        adu = self.am.abs(self._delta_u)
-        adv = self.am.abs(self._delta_v)
+        adu = self.am.abs(self._f)
+        adv = self.am.abs(self._g)
         
         au = self.am.abs(self.u[:, 1:-1, 1:-1])
         av = self.am.abs(self.v[:, 1:-1, 1:-1])
@@ -134,9 +179,9 @@ class LiawModel(ReactionDiffusionModel):
         
         return (adu <= (rtol * au)).all() and (adv <= (rtol * av)).all()
 
-    def colorize(self, thr=None):
-        if not thr:
-            thr = self._thr
+    def colorize(self, thr_color=None):
+        if not thr_color:
+            thr_color = self._thr_color
             
         batch_size = self.u.shape[0]
         color = np.zeros((batch_size, self._height, self._width, 3),
@@ -146,7 +191,7 @@ class LiawModel(ReactionDiffusionModel):
         color[:, :, :, 1] = self._color_v[1]
         color[:, :, :, 2] = self._color_v[2]
         
-        idx = self.am.get(self.u) > thr
+        idx = self.am.get(self.u) > thr_color
         color[idx, 0] = self._color_u[0]
         color[idx, 1] = self._color_u[1]
         color[idx, 2] = self._color_u[2]
@@ -270,7 +315,7 @@ class LiawModel(ReactionDiffusionModel):
             n2v["mu"] = float(params[index, 7])
 
             # Save init points
-            n2v["n_init_pts"] = self._n_init_pts
+            n2v["n_init_pts"] = self.initializer.init_pts[index].shape[0]
 
             for i, (ir, ic) in enumerate(init_pts[index, :]):
                 # Convert int to str due to JSON format.
@@ -280,11 +325,14 @@ class LiawModel(ReactionDiffusionModel):
             # Save hyper-parameters and etc.
             n2v["width"] = self._width
             n2v["height"] =self._height
-            n2v["dt"] = self._dt
             n2v["dx"] = self._dx
-            n2v["n_iters"] = self._n_iters
-            n2v["thr"] = self._thr
-            n2v["initializer"] = self._initializer.name if self._initializer else None
+            n2v["thr_color"] = self._thr_color
+            
+            # n2v["dt"] = self._dt
+            
+            # n2v["n_iters"] = self._n_iters
+            
+            # n2v["initializer"] = self._initializer.name if self._initializer else None
 
             n2v["color_u"] = self._color_u.tolist()
             n2v["color_v"] = self._color_v.tolist()

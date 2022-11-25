@@ -8,9 +8,11 @@ import shutil
 import numpy as np
 np.seterr(all='raise')
 
-from lpf.models import LiawModel
-from lpf.initializers import LiawInitializer
 from lpf.data import load_model_dicts
+from lpf.initializers import LiawInitializer
+from lpf.models import LiawModel
+from lpf.solvers import EulerSolver
+
 
 
 if __name__ == "__main__":
@@ -22,7 +24,7 @@ if __name__ == "__main__":
     height = 128
     thr = 0.5
     n_iters = 500000
-    shape = (width, height)
+    shape = (height, width)
 
     # Create the output directory.
     str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
@@ -59,30 +61,33 @@ if __name__ == "__main__":
     initializer.update(model_dicts)
 
     # Create a model.
+    params = LiawModel.parse_params(model_dicts)
     model = LiawModel(
-        width=width,
-        height=height,
-        dx=dx,
-        dt=dt,
-        n_iters=n_iters,
         initializer=initializer,
-        color_u=[161, 102, 0],
-        color_v=[59, 161, 90],
-        device=device
+        params=params,  # model
+        width=width,  # space
+        height=height,  # space
+        dx=dx,  # space
+        #color_u=[161, 102, 0],  # model
+        #color_v=[59, 161, 90],  # model
+        device=device  # solver and model
     )
 
-    params = LiawModel.parse_params(model_dicts)
+    solver = EulerSolver()
 
     t_beg = time.time()
 
-    model.solve(params,
-                n_iters=n_iters,
-                period_output=10000,  # n_iters - 1,
-                dpath_model=dpath_output,
-                dpath_ladybird=dpath_output,
-                dpath_pattern=dpath_output,
-                verbose=1)
-    
+    solver.solve(
+        model=model,
+        dt=dt,
+        n_iters=n_iters,
+        period_output=1000,
+        dpath_model=dpath_output,
+        dpath_ladybird=dpath_output,
+        dpath_pattern=dpath_output,
+        verbose=1
+    )
+
     t_end = time.time()
 
     print("Elapsed time: %f sec." % (t_end - t_beg))

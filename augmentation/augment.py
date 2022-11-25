@@ -56,7 +56,7 @@ if __name__ == "__main__":
     thr = float(config["THR"])
     n_iters = int(config["N_ITERS"])
     rtol_early_stop = float(config["RTOL_EARLY_STOP"])
-    shape = (width, height)
+    shape = (height, width)
 
     
     dict_fpath = {}

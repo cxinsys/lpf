@@ -24,7 +24,7 @@ if __name__ == "__main__":
     height = 128
     thr = 0.5
     n_iters = 500000
-    shape = (width, height)
+    shape = (height, width)
 
 
     # Create the output directory.
