@@ -6,20 +6,20 @@ from datetime import datetime
 import shutil
 
 import numpy as np
-np.seterr(all='raise')
+# np.seterr(all='raise')
 
 from lpf.data import load_model_dicts
 from lpf.initializers import LiawInitializer
 from lpf.models import LiawModel
 from lpf.solvers import EulerSolver
-
+from lpf.solvers import RungeKuttaSolver
 
 
 if __name__ == "__main__":
 
     device = "cuda:0"
     dx = 0.1
-    dt = 0.01
+    dt = 0.03
     width = 128
     height = 128
     thr = 0.5
@@ -73,7 +73,7 @@ if __name__ == "__main__":
         device=device  # solver and model
     )
 
-    solver = EulerSolver()
+    solver = RungeKuttaSolver()  # EulerSolver()
 
     t_beg = time.time()
 
