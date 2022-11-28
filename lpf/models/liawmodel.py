@@ -17,6 +17,7 @@ class LiawModel(ReactionDiffusionModel):
 
     def __init__(self,
                  initializer=None,
+                 n_init_pts=None,
                  params=None,
                  width=None,
                  height=None,
@@ -35,16 +36,15 @@ class LiawModel(ReactionDiffusionModel):
         self._n_states = 2
 
         # Set initializer.
-        if not initializer:
-            raise ValueError("initializer should be defined.")
         self._initializer = initializer
 
+        if n_init_pts:  # used for search
+            self._n_init_pts = n_init_pts
+
         # Set kinetic parameters.
-        if params is None:
-            raise ValueError("params should be defined.")
-        
-        with self.am:
-            self._params = self.am.array(params, dtype=params.dtype)
+        if params is not None:
+            with self.am:
+                self._params = self.am.array(params, dtype=params.dtype)
 
         # Set the size of space (2D grid).
         if not width:
@@ -367,14 +367,13 @@ class LiawModel(ReactionDiffusionModel):
         return init_states
 
     def get_param_bounds(self):
-        
+        n_init_pts = self._n_init_pts
+
         if not hasattr(self, "bounds_min"):
-            self.bounds_min = self.am.zeros((10 + 2 * self._n_init_pts),
-                                            dtype=np.float64)
+            self.bounds_min = self.am.zeros((10 + 2 * n_init_pts), dtype=np.float64)
             
         if not hasattr(self, "bounds_max"):
-            self.bounds_max = self.am.zeros((10 + 2 * self._n_init_pts),
-                                            dtype=np.float64)
+            self.bounds_max = self.am.zeros((10 + 2 * n_init_pts), dtype=np.float64)
         
         # Du
         self.bounds_min[0] = -4
@@ -417,19 +416,19 @@ class LiawModel(ReactionDiffusionModel):
         self.bounds_max[9] = 1.5
         
         # init coords (25 points).     
-        for index in range(10, 2 * self._n_init_pts, 2):
+        for index in range(10, 2 * n_init_pts, 2):
             self.bounds_min[index] = 0
             self.bounds_max[index] = self._height - 1
         # end of for
 
-        for index in range(11, 2 * self._n_init_pts, 2):
+        for index in range(11, 2 * n_init_pts, 2):
             self.bounds_min[index] = 0
             self.bounds_max[index] = self._width - 1
         # end of for
         
         return self.bounds_min, self.bounds_max
 
-    def get_len_dv(self):  # length of the decision vector in PyGMO
+    def len_decision_vector(self):  # length of the decision vector in PyGMO
         return 10 + 2 * self._n_init_pts
 
 # end of class LiawModel

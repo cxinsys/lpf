@@ -1,5 +1,6 @@
 from lpf.array import get_array_module
-from lpf.initializers import Initializer
+
+
 
 class ReactionDiffusionModel(object):
 
@@ -28,9 +29,6 @@ class ReactionDiffusionModel(object):
 
     @initializer.setter
     def initializer(self, obj):
-        if not isinstance(obj, Initializer):
-            raise TypeError("initializer should be a subclass of lpf.initializers.Initializer.")
-
         self._initializer = obj
 
     @property
@@ -39,9 +37,6 @@ class ReactionDiffusionModel(object):
 
     @params.setter
     def params(self, obj):
-        if not self.am.is_ndarray(obj):
-            raise TypeError("params should be a ndarray of %s."%(self.am.__name__))
-
         self._params = obj
 
     @property

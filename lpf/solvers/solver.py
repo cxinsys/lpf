@@ -78,6 +78,9 @@ class Solver:
         if period_output < 1:
             raise ValueError("period_output should be greater than 0.")
 
+        if not model.initializer:
+            raise ValueError("model should have a initializer.")
+
         model.initialize()
         batch_size = model.params.shape[0]
         dname_model = "model_%0{}d".format(int(np.floor(np.log10(batch_size))) + 1)

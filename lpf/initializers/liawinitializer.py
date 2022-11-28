@@ -6,7 +6,7 @@ from lpf.models import ReactionDiffusionModel
 
 class LiawInitializer(Initializer):
     
-    def __init__(self, init_states=None, init_pts=None, dtype=None,):
+    def __init__(self, init_states=None, init_pts=None, dtype=None):
         super().__init__(name="LiawInitializer",
                          init_states=init_states,
                          init_pts=init_pts,

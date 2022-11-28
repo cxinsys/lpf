@@ -10,17 +10,13 @@ import pygmo as pg
 
 from lpf.data import load_model_dicts
 from lpf.data import load_targets
-from lpf.models import LiawModel
 from lpf.solvers import SolverFactory
 from lpf.search import EvoSearch
 from lpf.objectives import ObjectiveFactory
-from lpf.converters import LiawConverter
-
-
-
+from lpf.models import ModelFactory
+from lpf.converters import ConverterFactory
 
 np.seterr(all='raise')
-
 
 if __name__ == "__main__":
 
@@ -45,7 +41,6 @@ if __name__ == "__main__":
     with open(fpath_config, "rt") as fin:
         config = yaml.safe_load(fin)
     
-
     if args.gpu > 0:
         print("[CUDA DEVICE ID]", args.gpu)
         for cfg in config["OBJECTIVES"]:
@@ -56,41 +51,37 @@ if __name__ == "__main__":
         
              print("[OBJECTIVE DEVICE] %s"%(cfg))
         # end of for
+    # end of if
 
-    # Create a search object.
-    n_init_pts = config["N_INIT_PTS"]
-
-    # Create the model.
+    # Create a model.
     dx = float(config["DX"])
     width = int(config["WIDTH"])
     height = int(config["HEIGHT"])
-
-    solver_name = config["SOLVER"]
-    dt = float(config["DT"])
-    n_iters = int(config["N_ITERS"])
-
-    shape = (height, width)
-   
-    # Create the objectives.
-    objectives = ObjectiveFactory.create(config["OBJECTIVES"])
-
-    model = LiawModel(
+    n_init_pts = int(config["N_INIT_PTS"])
+    model = ModelFactory.create(
+        name=config["MODEL"],
+        n_init_pts=int(n_init_pts),
         width=width,
         height=height,                 
-        dx=dx,
+        dx=dx
     )
 
-    solver = SolverFactory.crete(name=solver_name,
-                                 dt=dt,
-                                 n_iter=n_iters)
-    
-    # Load targets.
-    targets = load_targets(config["LADYBIRD_TYPE"], config["LADYBIRD_SUBTYPES"])
+    # Create a solver.
+    solver = SolverFactory.create(name=config["SOLVER"],
+                                  dt=float(config["DT"]),
+                                  n_iters=int(config["N_ITERS"]))
 
+    # Create a converter.
+    converter = ConverterFactory.create(config["INITIALIZER"])
+
+    # Create objectives.
+    objectives = ObjectiveFactory.create(config["OBJECTIVES"])
+
+    # Load the target laybirds.
+    targets = load_targets(config["LADYBIRD_TYPE"], config["LADYBIRD_SUBTYPES"])
     droot_output = apath(config["DPATH_OUTPUT"])
 
-    converter = LiawConverter()
-
+    # Create an evolutionary search problem.
     search = EvoSearch(config=config,
                        model=model,
                        solver=solver,
@@ -111,16 +102,15 @@ if __name__ == "__main__":
 
     dpath_init_pop = osp.abspath(config["INIT_POP"])
     if dpath_init_pop:
-
         # To test the batch processing, add model JSON files.
-        model_dicts = load_model_dicts("../population/init_pop_axyridis/")
+        model_dicts = load_model_dicts(dpath_init_pop)
 
         eval_init_fitness = int(config["EVAL_INIT_FITNESS"])
         for i, model_dict in enumerate(model_dicts):
             if i >= pop_size:
                 break
 
-            dv = converter.to_dv(model_dict)
+            dv = converter.to_dv(model_dict, n_init_pts)
             if eval_init_fitness:
                 pop.set_x(i, dv)
             elif "fitness" in model_dict:

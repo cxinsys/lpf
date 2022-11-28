@@ -33,8 +33,7 @@ class EvoSearch:
         self.objectives = objectives
 
         self.bounds_min, self.bounds_max = self.model.get_param_bounds()
-        self.len_dv = self.model.get_len_dv()
-        
+
         # Create a cache using dict.
         self.cache = {}
 
@@ -51,7 +50,7 @@ class EvoSearch:
         # Write the config file.
         fpath_config = pjoin(self.dpath_output, "config.yaml")
         with open(fpath_config, 'wt') as fout:
-            yaml.dump(config, fout)
+            yaml.dump(config, fout, default_flow_style=False)
 
     def fitness(self, x):
         digest = get_hash_digest(x)
@@ -62,13 +61,12 @@ class EvoSearch:
             x = x[None, :]
             initializer = self.converter.to_initializer(x)
             params = self.converter.to_params(x)
-            self.initializer = initializer
 
             self.model.initializer = initializer
             self.model.params = params
 
             try:
-                self.solver.solve()
+                self.solver.solve(self.model)
             except (ValueError, FloatingPointError) as err:
                 print("[ERROR IN FITNESS EVALUATION]", err)
                 return [np.inf]
@@ -109,10 +107,10 @@ class EvoSearch:
              arr_color=None):
 
         dv = dv[None, :]
-        params = self.converter.to_params(dv)
-        initializer = self.converter.to_initializer(dv)            
-        self.model.initializer = initializer
-        
+
+        self.model.initializer = self.converter.to_initializer(dv)
+        self.model.params = self.converter.to_params(dv)
+
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
         if mode == "pop":
             fpath_model = pjoin(self.dpath_population,
@@ -140,13 +138,12 @@ class EvoSearch:
             digest = get_hash_digest(dv)            
             if digest not in self.cache:                
                 try:
-                    self.model.solve(params=params,
-                                     initializer=initializer)
-                    
+                    self.solver.solve(model=self.model)
                 except (ValueError, FloatingPointError) as err:
                     return False
                 
-                arr_color = self.model.colorize() 
+                arr_color = self.model.colorize()
+                self.cache[digest] = arr_color
             else: 
                 # Fetch the stored array from the cache.
                 arr_color = self.cache[digest]
@@ -154,9 +151,9 @@ class EvoSearch:
 
         self.model.save_model(index=0,
                               fpath=fpath_model,
-                              initializer=initializer,
+                              initializer=self.model.initializer,
+                              params=self.model.params,
                               solver=self.solver,
-                              params=params,
                               generation=generation,
                               fitness=fitness)
         
