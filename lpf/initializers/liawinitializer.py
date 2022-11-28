@@ -91,4 +91,22 @@ class LiawInitializer(Initializer):
             model._dydt_mesh = model.am.zeros(shape_grid, dtype=init_states.dtype)
             model._dydt_linear = model._dydt_mesh.ravel()
         # end of with
-        
+
+
+    def to_dict(self, index):
+        n2v = {}  # Mapping variable names to values.
+
+        n2v["initializer"] = self.name
+
+        n2v["u0"] = float(self.init_states[index, 0])
+        n2v["v0"] = float(self.init_states[index, 1])
+
+        # Save init points
+        n2v["n_init_pts"] = self.init_pts[index].shape[0]
+
+        for i, (ir, ic) in enumerate(self.init_pts[index, :]):
+            # Convert int to str due to JSON format.
+            n2v["init_pts_%d"%(i)] = [int(ir), int(ic)]
+        # end of for
+
+        return n2v

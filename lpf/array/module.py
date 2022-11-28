@@ -80,6 +80,9 @@ class NumpyModule(ArrayModule):
     def get(self, arr):
         return arr
 
+    def is_array(self, obj):
+        return isinstance(obj, (np.ndarray, np.generic))
+
 
 class CupyModule(NumpyModule):
 
@@ -122,3 +125,6 @@ class CupyModule(NumpyModule):
 
     def get(self, arr):
         return arr.get()
+
+    def is_array(self, obj):
+        return isinstance(obj, (cp.ndarray, cp.generic))

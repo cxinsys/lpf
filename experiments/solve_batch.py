@@ -6,20 +6,19 @@ from datetime import datetime
 import shutil
 
 import numpy as np
-# np.seterr(all='raise')
+np.seterr(all='raise')
 
 from lpf.data import load_model_dicts
 from lpf.initializers import LiawInitializer
 from lpf.models import LiawModel
-from lpf.solvers import EulerSolver
-from lpf.solvers import RungeKuttaSolver
+from lpf.solvers import EulerSolver, RungeKuttaSolver
 
 
 if __name__ == "__main__":
 
     device = "cuda:0"
     dx = 0.1
-    dt = 0.03
+    dt = 0.01  # A too big dt causes an overflow in the solver.
     width = 128
     height = 128
     thr = 0.5
@@ -55,7 +54,8 @@ if __name__ == "__main__":
     #     model_dicts.append(n2v)
 
     # To test the batch processing, add model JSON files.
-    model_dicts = load_model_dicts("../population/init_pop_succinea/")
+    # model_dicts = load_model_dicts("../population/init_pop_succinea/")
+    model_dicts = load_model_dicts("../population/test_pop_01/")
 
     # Update the initializer.
     initializer.update(model_dicts)
@@ -73,7 +73,7 @@ if __name__ == "__main__":
         device=device  # solver and model
     )
 
-    solver = RungeKuttaSolver()  # EulerSolver()
+    solver = EulerSolver()
 
     t_beg = time.time()
 

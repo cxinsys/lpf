@@ -10,6 +10,7 @@ np.seterr(all='raise')
 
 from lpf.models import LiawModel
 from lpf.initializers import LiawInitializer
+from lpf.solvers import EulerSolver
 
 
 if __name__ == "__main__":
@@ -89,13 +90,14 @@ if __name__ == "__main__":
         # init_states, params = model.parse_model_dicts(model_dicts)
         t_beg = time.time()
         try:
-            model.solve(init_states,
-                        params,
-                        init_pts=init_pts,
-                        n_iters=n_iters,
-                        period_output=n_iters,
-                        dpath_images=dpath_output,
-                        verbose=1)
+            solver = EulerSolver()
+            solver.solve(init_states,
+                         params,
+                         init_pts=init_pts,
+                         n_iters=n_iters,
+                         period_output=n_iters,
+                         dpath_images=dpath_output,
+                         verbose=1)
         except Exception as err:
             print("[IGNORE THE INDIVIDUAL WITH ERROR]", err)
             shutil.rmtree(dpath_output)
@@ -105,11 +107,10 @@ if __name__ == "__main__":
         
         
         for j in range(batch_size):
-            fpath=pjoin(dpath_output, "individual_%d"%(j+1), "model.json")
-            model.save_model(fpath,
-                             i=j, 
-                             init_states=init_states,
-                             init_pts=init_pts,
+            fpath = pjoin(dpath_output, "individual_%d"%(j+1), "model.json")
+            model.save_model(i=j,
+                             fpath=fpath,
+                             initializer=initializer,
                              params=params)
         # end of for
         

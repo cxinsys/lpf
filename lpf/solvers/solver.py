@@ -8,11 +8,39 @@ import numpy as np
 
 class Solver:
 
+    def __init__(self,
+                 model=None,
+                 dt=None,
+                 n_iters=None,
+                 rtol=None,
+                 period_output=None,
+                 dpath_model=None,
+                 dpath_ladybird=None,
+                 dpath_pattern=None,
+                 dpath_states=None,
+                 verbose=None):
+
+        self._name = None
+        self._model = model
+        self._dt = dt
+        self._n_iters = n_iters
+        self._rtol = rtol
+        self._period_output = period_output
+        self._dpath_model = dpath_model
+        self._dpath_ladybird = dpath_ladybird
+        self._dpath_pattern = dpath_pattern
+        self._dpath_states = dpath_states
+        self._verbose = verbose
+
+    @property
+    def name(self):
+        return self._name
+
     def solve(self,
               model=None,
               dt=None,
               n_iters=None,
-              rtol_early_stop=None,
+              rtol=None,
               period_output=1,
               dpath_model=None,
               dpath_ladybird=None,
@@ -23,34 +51,47 @@ class Solver:
         t_total_beg = time.time()
 
         if not model:
-            raise ValueError("model should be defined.")
+            if not self._model:
+                raise ValueError("model should be defined.")
+            model = self._model
 
         if not dt:
-            dt = 0.01
-
-        self._dt = dt
+            if not self._dt:
+                self._dt = dt = 0.01
+            dt = self._dt
 
         if not n_iters:
-            raise ValueError("n_iters should be defined.")
+            if not self._n_iters:
+                raise ValueError("n_iters should be defined.")
+            n_iters = self._n_iters
 
         if n_iters < 1:
-            raise ValueError("n_iters should be greater than 0.")
+            raise ValueError("n_iters should be greater than or equal to 1.")
+
+        if not rtol:
+            if self._rtol:
+                rtol = self._rtol
+
+        if rtol and rtol < 0:
+            raise ValueError("rtol should be greater than 0.")
 
         if period_output < 1:
             raise ValueError("period_output should be greater than 0.")
 
-        # if init_states.shape[0] != params.shape[0]:
-        #     raise ValueError("The batch size of init_states and " \
-        #                      "the batch size of params should be equal.")
-
         model.initialize()
-
         batch_size = model.params.shape[0]
         dname_model = "model_%0{}d".format(int(np.floor(np.log10(batch_size))) + 1)
 
         if dpath_model:
             fstr_fname_model \
                 = "model_%0{}d.json".format(int(np.floor(np.log10(batch_size))) + 1)
+            
+            dict_solver = self.to_dict()
+            dict_solver["solver"] = self.name
+            dict_solver["dt"] = dt
+            dict_solver["n_iters"] = n_iters
+            if rtol:
+                dict_solver["rtol"] = rtol
 
             for i in range(batch_size):
                 dpath_models = pjoin(dpath_model, "models")
@@ -59,9 +100,9 @@ class Solver:
 
                 model.save_model(index=i,
                                  fpath=fpath_model,
-                                 init_states=model.initializer.init_states,
-                                 init_pts=model.initializer.init_pts,
-                                 params=model.params)
+                                 params=model.params,
+                                 initializer=model.initializer,
+                                 solver=self)
             # end of for
 
         if dpath_ladybird:
@@ -80,13 +121,13 @@ class Solver:
             fstr_fname_pattern \
                 = "pattern_%0{}d.png".format(int(np.floor(np.log10(n_iters))) + 1)
 
-        # if dpath_states:
-        #     for i in range(batch_size):
-        #         os.makedirs(pjoin(dpath_states, dname_individual%(i+1)), exist_ok=True)
-        #     # end of for
-        #
-        #     fstr_fname_states \
-        #         = "states_%0{}d.png".format(int(np.floor(np.log10(n_iters))) + 1)
+        if dpath_states:
+            for i in range(batch_size):
+                os.makedirs(pjoin(dpath_states, dname_model%(i+1)), exist_ok=True)
+            # end of for
+
+            fstr_fname_states \
+                = "states_%0{}d.pickle".format(int(np.floor(np.log10(n_iters))) + 1)
 
         t = 0.0
         t_beg = time.time()
@@ -95,11 +136,10 @@ class Solver:
             y_linear = model.y_linear
 
         for i in range(n_iters):
-            t += self._dt
+            t += dt
 
             with model.am:
                 y_linear += self.step(model, t, dt, y_linear)
-
 
             # model.check_invalid_values()  # This code can be a bottleneck.
 
@@ -109,25 +149,29 @@ class Solver:
                         fpath_ladybird = pjoin(dpath_ladybird,
                                                dname_model % (j + 1),
                                                fstr_fname_ladybird % (i + 1))
+
+                        fpath_pattern = None
                         if dpath_pattern:
                             fpath_pattern = pjoin(dpath_pattern,
                                                   dname_model % (j + 1),
                                                   fstr_fname_pattern % (i + 1))
-                            model.save_image(j, fpath_ladybird, fpath_pattern)
-                        else:
-                            model.save_image(j, fpath_ladybird)
 
-                # if dpath_states:
-                #     for j in range(batch_size):
-                #         fpath_states = pjoin(dpath_states, dname_individual%(j+1), fstr_fname_states%(i+1))
-                #         self.save_states(j, fpath_states)
+                        model.save_image(j, fpath_ladybird, fpath_pattern)
+
+                if dpath_states:
+                    for j in range(batch_size):
+                        fpath_states = pjoin(dpath_states,
+                                             dname_model % (j + 1),
+                                             fstr_fname_states%(i + 1))
+
+                        model.save_states(j, fpath_states)
 
                 if verbose >= 1:
                     print("- [Iteration #%d] elapsed time: %.5e sec." % (i + 1, time.time() - t_beg))
                     t_beg = time.time()
             # end of if
 
-            if rtol_early_stop and model.is_early_stopping(rtol_early_stop):
+            if rtol and model.is_early_stopping(rtol):
                 break
             # end of if
 
@@ -142,3 +186,12 @@ class Solver:
 
     def step(self, model, t, dt, y_linear):
         raise NotImplementedError
+
+    def to_dict(self):
+        n2v = {}  # Mapping variable names to values.
+        n2v["solver"] = self.name
+        n2v["dt"] = self._dt
+        n2v["n_iters"] = self._n_iters
+        n2v["rtol"] = self._rtol
+
+        return n2v

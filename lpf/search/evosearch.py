@@ -5,25 +5,23 @@ from collections.abc import Sequence
 
 import yaml
 import numpy as np
-import pygmo as pg
-from PIL import Image
 
-from lpf.utils import get_module_dpath
 from lpf.utils import get_hash_digest
 
 
 class EvoSearch:
     def __init__(self,
-                 config,
-                 model,
-                 converter,                 
-                 targets,
-                 objectives,
+                 config=None,
+                 model=None,
+                 solver=None,
+                 converter=None,
+                 targets=None,
+                 objectives=None,
                  droot_output=None):
         
-        # Load hyperparameters.
         self.config = config
         self.model = model
+        self.solver = solver
         self.converter = converter
 
         if isinstance(targets, Sequence) and len(targets) < 1:
@@ -66,8 +64,11 @@ class EvoSearch:
             params = self.converter.to_params(x)
             self.initializer = initializer
 
+            self.model.initializer = initializer
+            self.model.params = params
+
             try:
-                self.model.solve(initializer=initializer, params=params)
+                self.solver.solve()
             except (ValueError, FloatingPointError) as err:
                 print("[ERROR IN FITNESS EVALUATION]", err)
                 return [np.inf]
@@ -109,11 +110,8 @@ class EvoSearch:
 
         dv = dv[None, :]
         params = self.converter.to_params(dv)
-        init_states = self.converter.to_init_states(dv)
-        init_pts = self.converter.to_init_pts(dv)        
-        
         initializer = self.converter.to_initializer(dv)            
-        self.model._initializer = initializer
+        self.model.initializer = initializer
         
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
         if mode == "pop":
@@ -138,8 +136,7 @@ class EvoSearch:
         else:
             raise ValueError("mode should be 'pop' or 'best'")
 
-
-        if arr_color is None:            
+        if arr_color is None:
             digest = get_hash_digest(dv)            
             if digest not in self.cache:                
                 try:
@@ -157,8 +154,8 @@ class EvoSearch:
 
         self.model.save_model(index=0,
                               fpath=fpath_model,
-                              init_states=init_states,
-                              init_pts=init_pts,
+                              initializer=initializer,
+                              solver=self.solver,
                               params=params,
                               generation=generation,
                               fitness=fitness)

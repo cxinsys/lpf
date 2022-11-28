@@ -55,7 +55,7 @@ if __name__ == "__main__":
     height = int(config["HEIGHT"])
     thr = float(config["THR"])
     n_iters = int(config["N_ITERS"])
-    rtol_early_stop = float(config["RTOL_EARLY_STOP"])
+    rtol = float(config["RTOL_EARLY_STOP"])
     shape = (height, width)
 
     
@@ -155,8 +155,7 @@ if __name__ == "__main__":
             
             model.save_model(index=j,
                              fpath=fpath_model_new,
-                             init_states=initializer.init_states,
-                             init_pts=initializer.init_pts,
+                             initializer=initializer,
                              params=params)
             
             model.save_image(index=j,

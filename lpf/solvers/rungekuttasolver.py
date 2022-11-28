@@ -5,6 +5,10 @@ class RungeKuttaSolver(Solver):
     """Runge-Kutta solver (RK45)
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._name = "RungeKutta"
+
     def step(self, model, t, dt, y_linear):
         k1 = model.pdefunc(t, y_linear)
         k2 = model.pdefunc(t + 0.5 * dt, y_linear + 0.5 * dt * k1)

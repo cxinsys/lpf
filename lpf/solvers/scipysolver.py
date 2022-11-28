@@ -2,29 +2,37 @@ import os
 from os.path import join as pjoin
 import gc
 import time
+import warnings
+warnings.filterwarnings(action='default')
 
-import numpy as np
-from functools import partial
-
-from tqdm import tqdm
 import numpy as np
 from scipy.integrate import solve_ivp
 
-
-
-from lpf.array import get_array_module
 from lpf.solvers.solver import Solver
 
 
 class ScipySolver(Solver):
+    """ (Experimental) ODE solvers in SciPy
+        (To be deprecated...) too slow and too complicated for this problems...
+    """
+
+    def __init__(self, method=None):
+
+        super().__init__()
+
+        if not method:
+            method = 'RK45'
+
+        self._method = method
+
+        warnings.warn("Maybe deprecated in the future...", PendingDeprecationWarning)
 
 
     def solve(self,
               model=None,
-              method=None,
               dt=None,
               n_iters=None,
-              rtol_early_stop=None,
+              rtol=None,
               period_output=1,
               dpath_model=None,
               dpath_ladybird=None,
@@ -37,9 +45,6 @@ class ScipySolver(Solver):
         if not model:
             raise ValueError("model should be defined.")
 
-        if not method:
-            method = 'RK45'
-
         if not dt:
             dt = 0.01
 
@@ -51,8 +56,8 @@ class ScipySolver(Solver):
         if n_iters < 1:
             raise ValueError("n_iters should be greater than 0.")
 
-        if not rtol_early_stop:
-           rtol_early_stop = 1e-3
+        if not rtol:
+           rtol = 1e-3
 
         if period_output < 1:
             raise ValueError("period_output should be greater than 0.")
@@ -77,8 +82,7 @@ class ScipySolver(Solver):
 
                 model.save_model(index=i,
                                  fpath=fpath_model,
-                                 init_states=model.initializer.init_states,
-                                 init_pts=model.initializer.init_pts,
+                                 initializer=model.initializer,
                                  params=model.params)
             # end of for
 
@@ -112,101 +116,40 @@ class ScipySolver(Solver):
         with model.am:
             y_linear = model.y_linear
 
-        #
-        # def eventfunc(t, y):
-        #     if t == 0 or (t + 1) % period_output == 0:
-        #         if dpath_ladybird:
-        #             for j in range(batch_size):
-        #                 fpath_ladybird = pjoin(dpath_ladybird,
-        #                                        dname_model % (j + 1),
-        #                                        fstr_fname_ladybird % (i + 1))
-        #                 if dpath_pattern:
-        #                     fpath_pattern = pjoin(dpath_pattern,
-        #                                           dname_model % (j + 1),
-        #                                           fstr_fname_pattern % (i + 1))
-        #                     model.save_image(j, fpath_ladybird, fpath_pattern)
-        #                 else:
-        #                     model.save_image(j, fpath_ladybird)
-        #
-        #         # if dpath_states:
-        #         #     for j in range(batch_size):
-        #         #         fpath_states = pjoin(dpath_states, dname_individual%(j+1), fstr_fname_states%(i+1))
-        #         #         self.save_states(j, fpath_states)
-        #
-        #         if verbose >= 1:
-        #             print("- [Iteration #%d] elapsed time: %.5e sec." % (i + 1, time.time() - t_beg))
-        #             t_beg = time.time()
-
 
         def _pdefunc(t, y):
             dydt = model.pdefunc(t, y)
             if t == 0 or (t + 1) % period_output == 0:
-                    if dpath_ladybird:
-                        for j in range(batch_size):
-                            fpath_ladybird = pjoin(dpath_ladybird,
-                                                   dname_model % (j + 1),
-                                                   fstr_fname_ladybird % (i + 1))
-                            if dpath_pattern:
-                                fpath_pattern = pjoin(dpath_pattern,
-                                                      dname_model % (j + 1),
-                                                      fstr_fname_pattern % (i + 1))
-                                model.save_image(j, fpath_ladybird, fpath_pattern)
-                            else:
-                                model.save_image(j, fpath_ladybird)
+                if dpath_ladybird:
+                    for j in range(batch_size):
+                        fpath_ladybird = pjoin(dpath_ladybird,
+                                               dname_model % (j + 1),
+                                               fstr_fname_ladybird % (t + 1))
+                        if dpath_pattern:
+                            fpath_pattern = pjoin(dpath_pattern,
+                                                  dname_model % (j + 1),
+                                                  fstr_fname_pattern % (t + 1))
+                            model.save_image(j, fpath_ladybird, fpath_pattern)
+                        else:
+                            model.save_image(j, fpath_ladybird)
 
-                    if verbose >= 1:
-                        print("- [Iteration #%d] elapsed time: %.5e sec." % (i + 1, time.time() - self._t_beg))
-                        self._t_beg = time.time()
+                if verbose >= 1:
+                    print("- [Iteration #%d] elapsed time: %.5e sec." % (t + 1, time.time() - self._t_beg))
+                    self._t_beg = time.time()
             # end of if
             return dydt
 
-        t_eval = np.arange(0, n_iters, 1)
+
+        duration = [0, n_iters * dt]
+        t_eval = np.arange(*duration)
 
         self._t_beg = time.time()
 
-        sol = solve_ivp(_pdefunc, [0, n_iters], y_linear,
-                        method=method,
+        sol = solve_ivp(_pdefunc, duration, y_linear,
+                        method=self._method,
                         t_eval=t_eval,
-                        rtol=rtol_early_stop)
+                        rtol=rtol)
 
-        # for i in range(n_iters):
-        #     t += self._dt
-        #
-        #     with model.am:
-        #         dydt = model.eqfunc(y_linear, t)
-        #         # y_next = y + (dydt * self._dt)  # Euler method
-        #         y_linear += dydt * dt
-        #
-        #     # model.check_invalid_values()  # This code can be a bottleneck.
-        #
-        #     if i == 0 or (i + 1) % period_output == 0:
-        #         if dpath_ladybird:
-        #             for j in range(batch_size):
-        #                 fpath_ladybird = pjoin(dpath_ladybird,
-        #                                        dname_model % (j + 1),
-        #                                        fstr_fname_ladybird % (i + 1))
-        #                 if dpath_pattern:
-        #                     fpath_pattern = pjoin(dpath_pattern,
-        #                                           dname_model % (j + 1),
-        #                                           fstr_fname_pattern % (i + 1))
-        #                     model.save_image(j, fpath_ladybird, fpath_pattern)
-        #                 else:
-        #                     model.save_image(j, fpath_ladybird)
-        #
-        #         # if dpath_states:
-        #         #     for j in range(batch_size):
-        #         #         fpath_states = pjoin(dpath_states, dname_individual%(j+1), fstr_fname_states%(i+1))
-        #         #         self.save_states(j, fpath_states)
-        #
-        #         if verbose >= 1:
-        #             print("- [Iteration #%d] elapsed time: %.5e sec." % (i + 1, time.time() - t_beg))
-        #             t_beg = time.time()
-        #     # end of if
-        #
-        #     if rtol_early_stop and model.is_early_stopping(rtol_early_stop):
-        #         break
-        #     # end of if
-        # # end of for i
 
         gc.collect()
 

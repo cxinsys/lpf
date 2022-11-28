@@ -1,11 +1,14 @@
 import json
 from collections.abc import Sequence
+import pickle
 
 import numpy as np
 import PIL
 from PIL import Image
  
 from lpf.models import ReactionDiffusionModel
+from lpf.initializers import Initializer
+from lpf.solvers import Solver
 from lpf.utils import get_template_fpath
 from lpf.utils import get_mask_fpath
 
@@ -97,26 +100,14 @@ class LiawModel(ReactionDiffusionModel):
         a_center = a[:, 1:-1, 1:-1]
         return (a_top + a_left + a_bottom + a_right - 4 * a_center) / dx ** 2
 
-    # def f(self, dx, u, params):
-    #     return (ru * ((u_c ** 2 * v_c) / (1 + k * u_c ** 2)) + su - mu * u_c)
-    #     # return dt * (Du * laplacian2d(u, dx) + (ru * ((u_c*u_c * v_c) / (1 + k * u_c*u_c)) + su - mu * u_c))
-    #
-    # def g(self, dx, u, params):
-    #     return (-rv * ((u_c ** 2 * v_c) / (1 + k * u_c ** 2)) + sv)
-    #     # return dt * (Dv * laplacian2d(v, dx) + (-rv*((u_c*u_c * v_c)/(1 + k * u_c*u_c)) + sv))
-
     def pdefunc(self, t, y_linear):
         """Equation function for integration.
         """
 
-        # with self.am:
         batch_size = self.params.shape[0]
 
         y_mesh = y_linear.reshape(self.n_states, batch_size, self.height, self.width)
-
-        # dydt = self.am.zeros(shape=grid.shape, dtype=grid.dtype)
         dydt_mesh = self._dydt_mesh
-        #dydt.fill(0.0)
 
         u = y_mesh[0, :, :, :]
         v = y_mesh[1, :, :, :]
@@ -124,9 +115,9 @@ class LiawModel(ReactionDiffusionModel):
         # Model must update its states.
         self._u = u
         self._v = v
-
         dx = self._dx
 
+        # Get the kinetic parameters.
         Du = self.params[:, 0].reshape(batch_size, 1, 1)
         Dv = self.params[:, 1].reshape(batch_size, 1, 1)
 
@@ -142,25 +133,21 @@ class LiawModel(ReactionDiffusionModel):
         u_c = u[:, 1:-1, 1:-1]
         v_c = v[:, 1:-1, 1:-1]
 
+        # Reactions
         f = ru * ((u_c ** 2 * v_c) / (1 + k * u_c ** 2)) + su - mu * u_c
         g = -rv * ((u_c ** 2 * v_c) / (1 + k * u_c ** 2)) + sv
 
+        # Diffusions + Reactions
         dydt_mesh[0, :, 1:-1, 1:-1] = Du * self.laplacian2d(u, dx) + f
         dydt_mesh[1, :, 1:-1, 1:-1] = Dv * self.laplacian2d(v, dx) + g
 
-        # Boundary condition
+        # Neumann boundary condition: dydt = 0
         dydt_mesh[:, :, 0, :] = 0.0
         dydt_mesh[:, :, -1, :] = 0.0
         dydt_mesh[:, :, :, 0] = 0.0
         dydt_mesh[:, :, :, -1] = 0.0
 
-        #u[:, 1:-1, 1:-1] = u_c + self._delta_u
-        #v[:, 1:-1, 1:-1] = v_c + self._delta_v
-
-        # return dydt.flatten()
-        return self._dydt_linear #dydt.ravel()
-        #return dydt.reshape((-1,))
-
+        return self._dydt_linear  # It is the same as dydt.ravel()
 
     def check_invalid_values(self):
         if self.am.any(self.am.isnan(self.u)) or self.am.any(self.am.isnan(self.v)):
@@ -173,9 +160,7 @@ class LiawModel(ReactionDiffusionModel):
         
         au = self.am.abs(self.u[:, 1:-1, 1:-1])
         av = self.am.abs(self.v[:, 1:-1, 1:-1])
-        
-        # max_rc = max((adu/au).max(), (adv/av).max())
-        
+
         return (adu <= (rtol * au)).all() and (adv <= (rtol * av)).all()
 
     def colorize(self, thr_color=None):
@@ -238,7 +223,7 @@ class LiawModel(ReactionDiffusionModel):
         The following code basically pastes the img_template to the img_wing with the mask.
         """
         img_left = Image.composite(img_canvas, img_wing, mask)
-        img_right = img_left.transpose(PIL.Image.FLIP_LEFT_RIGHT)
+        img_right = img_left.transpose(PIL.Image.Transpose.FLIP_LEFT_RIGHT)
   
         arr_left = np.array(img_left)
         arr_right = np.array(img_right)
@@ -261,15 +246,17 @@ class LiawModel(ReactionDiffusionModel):
         if fpath_pattern:
             pattern.save(fpath_pattern)
     
-    def save_states(self, index=0, fpath=None, states=None):
-        raise NotImplementedError()
+    def save_states(self, index=0, fpath=None):
+        with open(fpath, "wt") as fout:
+            self.u
+            self.v
 
     def save_model(self,
                    index=None,
                    fpath=None,
-                   init_states=None,
-                   init_pts=None,
+                   initializer=None,
                    params=None,
+                   solver=None,
                    generation=None,
                    fitness=None):
         
@@ -283,11 +270,11 @@ class LiawModel(ReactionDiffusionModel):
             if index < 0 or index >= batch_size:
                 raise ValueError("index should be non-negative and less than the batch size.")
 
-        if init_states is None:
-            raise ValueError("init_states should be given.")
-            
-        if init_pts is None:
-            raise ValueError("init_pts should be given.")
+        if initializer is None:
+            if self.initializer is None:
+                raise ValueError("initializer should be defined in model or given for save_model function.")
+
+            initializer = self.initializer
 
         if params is None:
             raise ValueError("params should be given.")
@@ -296,14 +283,10 @@ class LiawModel(ReactionDiffusionModel):
             n2v = {}
 
             n2v["index"] = index
-           
             n2v["generation"] = generation
             n2v["fitness"] = fitness
 
             # Save kinetic parameters
-            n2v["u0"] = float(init_states[index, 0])
-            n2v["v0"] = float(init_states[index, 1])
-            
             n2v["Du"] = float(params[index, 0])
             n2v["Dv"] = float(params[index, 1])
             n2v["ru"] = float(params[index, 2])
@@ -313,28 +296,29 @@ class LiawModel(ReactionDiffusionModel):
             n2v["sv"] = float(params[index, 6])
             n2v["mu"] = float(params[index, 7])
 
-            # Save init points
-            n2v["n_init_pts"] = self.initializer.init_pts[index].shape[0]
-
-            for i, (ir, ic) in enumerate(init_pts[index, :]):
-                # Convert int to str due to JSON format.
-                n2v["init_pts_%d"%(i)] = [int(ir), int(ic)]
-            # end of for
-            
-            # Save hyper-parameters and etc.
+            # Save parameters for space and colorization.
             n2v["width"] = self._width
             n2v["height"] =self._height
             n2v["dx"] = self._dx
             n2v["thr_color"] = self._thr_color
-            
-            # n2v["dt"] = self._dt
-            
-            # n2v["n_iters"] = self._n_iters
-            
-            # n2v["initializer"] = self._initializer.name if self._initializer else None
-
             n2v["color_u"] = self._color_u.tolist()
             n2v["color_v"] = self._color_v.tolist()
+
+            # Get the members of initializer: n_init_pts, init_pts, init_states
+            if isinstance(initializer, dict):
+                n2v.update(initializer)
+            elif isinstance(initializer, Initializer):
+                n2v.update(initializer.to_dict(index))
+            else:
+                raise TypeError("initializer should be dict or a subclass of Initializer.")
+
+            # Get the members of solver
+            if isinstance(solver, dict):
+                n2v.update(solver)
+            elif isinstance(solver, Solver):
+                n2v.update(solver.to_dict())
+            else:
+                raise TypeError("solver should be dict or a subclass of Solver.")
 
             json.dump(n2v, fout)
     
@@ -448,7 +432,4 @@ class LiawModel(ReactionDiffusionModel):
     def get_len_dv(self):  # length of the decision vector in PyGMO
         return 10 + 2 * self._n_init_pts
 
-
-
-
-# end of class
+# end of class LiawModel

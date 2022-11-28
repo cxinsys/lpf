@@ -13,8 +13,7 @@ np.seterr(all='raise')
 
 from lpf.models import LiawModel
 from lpf.initializers import LiawInitializer
-from lpf.data import load_model_dicts
-
+from lpf.solvers import EulerSolver
 
 if __name__ == "__main__":
 
@@ -56,7 +55,7 @@ if __name__ == "__main__":
     height = int(config["HEIGHT"])
     thr = float(config["THR"])
     n_iters = int(config["N_ITERS"])
-    rtol_early_stop = float(config["RTOL_EARLY_STOP"])
+    rtol = float(config["RTOL_EARLY_STOP"])
     shape = (width, height)
     
     
@@ -148,24 +147,22 @@ if __name__ == "__main__":
             width=width,
             height=height,
             dx=dx,
-            dt=dt,
-            n_iters=n_iters,
             initializer=initializer,
             device=device
         )
     
         # Solve the PDE.
         params = LiawModel.parse_params(batch_model_dicts)
+        solver = EulerSolver()
+        solver.solve(model=model,
+                     dt=dt,
+                     n_iters=n_iters,
+                     period_output=period_output,
+                     dpath_ladybird=dpath_output,
+                     dpath_pattern=dpath_output,
+                     verbose=verbose)
         
-        model.solve(params,
-                    n_iters=n_iters,
-                    period_output=period_output,
-                    dpath_ladybird=dpath_output,
-                    dpath_pattern=dpath_output,
-                    verbose=verbose)
-        
-     
-        
+
         for j in range(len(batch_model_dicts)):
             str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
             fpath_model_new = pjoin(dpath_augdataset,
@@ -177,8 +174,8 @@ if __name__ == "__main__":
             
             model.save_model(index=j,
                              fpath=fpath_model_new,
-                             init_states=initializer.init_states,
-                             init_pts=initializer.init_pts,
+                             initializer=initializer,
+                             solver=solver,
                              params=params)
             
             model.save_image(index=j,

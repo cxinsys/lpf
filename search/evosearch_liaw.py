@@ -8,12 +8,15 @@ import yaml
 import numpy as np
 import pygmo as pg
 
-from lpf.models import LiawModel
-from lpf.objectives import ObjectiveFactory as ObjFac
-from lpf.search import EvoSearch
-from lpf.converters import LiawConverter
 from lpf.data import load_model_dicts
 from lpf.data import load_targets
+from lpf.models import LiawModel
+from lpf.solvers import SolverFactory
+from lpf.search import EvoSearch
+from lpf.objectives import ObjectiveFactory
+from lpf.converters import LiawConverter
+
+
 
 
 np.seterr(all='raise')
@@ -59,27 +62,27 @@ if __name__ == "__main__":
 
     # Create the model.
     dx = float(config["DX"])
-    dt = float(config["DT"])
     width = int(config["WIDTH"])
     height = int(config["HEIGHT"])
-    thr = float(config["THR"])
+
+    solver_name = config["SOLVER"]
+    dt = float(config["DT"])
     n_iters = int(config["N_ITERS"])
-    rtol_early_stop = float(config["RTOL_EARLY_STOP"])
 
     shape = (height, width)
    
     # Create the objectives.
-    objectives = ObjFac.create(config["OBJECTIVES"])
+    objectives = ObjectiveFactory.create(config["OBJECTIVES"])
 
     model = LiawModel(
         width=width,
         height=height,                 
         dx=dx,
-        dt=dt,
-        n_iters=n_iters,
-        n_init_pts=n_init_pts,
-        rtol_early_stop=rtol_early_stop,
     )
+
+    solver = SolverFactory.crete(name=solver_name,
+                                 dt=dt,
+                                 n_iter=n_iters)
     
     # Load targets.
     targets = load_targets(config["LADYBIRD_TYPE"], config["LADYBIRD_SUBTYPES"])
@@ -88,17 +91,17 @@ if __name__ == "__main__":
 
     converter = LiawConverter()
 
-    search = EvoSearch(config,
-                       model,
-                       converter,
-                       targets,
-                       objectives,
-                       droot_output)
+    search = EvoSearch(config=config,
+                       model=model,
+                       solver=solver,
+                       converter=converter,
+                       targets=targets,
+                       objectives=objectives,
+                       droot_output=droot_output)
 
     prob = pg.problem(search)
     print(prob) 
-   
-    
+
     # Create the initial population.
     t_beg = time.time()
     pop_size = int(config["POP_SIZE"])
