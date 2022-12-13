@@ -41,7 +41,7 @@ class Solver:
               dt=None,
               n_iters=None,
               rtol=None,
-              period_output=1,
+              period_output=None,
               dpath_model=None,
               dpath_ladybird=None,
               dpath_pattern=None,
@@ -75,8 +75,12 @@ class Solver:
         if rtol and rtol < 0:
             raise ValueError("rtol should be greater than 0.")
 
-        if period_output < 1:
-            raise ValueError("period_output should be greater than 0.")
+        if not period_output:
+            if self._period_output:
+                period_output = self._period_output
+
+            if period_output < 1:
+                raise ValueError("period_output should be greater than 0.")
 
         if not model.initializer:
             raise ValueError("model should have a initializer.")

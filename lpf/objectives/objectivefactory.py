@@ -99,8 +99,11 @@ class ObjectiveFactory:
 
     @staticmethod
     def create(obj, coeff=None, device=None):
+        
+        if isinstance(obj, str):
+            return ObjectiveFactory.create_single(obj, coeff, device)
 
-        if isinstance(obj, Sequence):
+        elif isinstance(obj, Sequence):
             objectives = []
             for cfg in obj:
                 name = cfg[0]
