@@ -3,7 +3,7 @@
 
 ## Introduction
 - LPF represents **Ladybird Pattern Formation**.
-- LPF is a framework for analyzing the biological pattern formation exemplified by ladybird beetles.
+- LPF is a framework for exploring the biological pattern formation exemplified by ladybird beetles.
 - LPF can be utilized as an educational framework for understanding biological dynamics, pattern formation, and complexity.
 
 
