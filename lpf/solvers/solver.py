@@ -97,6 +97,7 @@ class Solver:
             dict_solver["solver"] = self.name
             dict_solver["dt"] = dt
             dict_solver["n_iters"] = n_iters
+
             if rtol:
                 dict_solver["rtol"] = rtol
 
@@ -109,7 +110,7 @@ class Solver:
                                  fpath=fpath_model,
                                  params=model.params,
                                  initializer=model.initializer,
-                                 solver=self)
+                                 solver=dict_solver)
             # end of for
 
         if dpath_ladybird:

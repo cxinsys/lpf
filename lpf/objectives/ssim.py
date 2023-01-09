@@ -11,6 +11,7 @@ except (ImportError, ModuleNotFoundError) as err:
               "since it fails to import torch, torchvision, or torchmetrics."
     print(err)
     print(err_msg)
+    raise
 
 from lpf.objectives import Objective
 
