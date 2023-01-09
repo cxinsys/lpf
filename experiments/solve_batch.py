@@ -54,8 +54,8 @@ if __name__ == "__main__":
     #     model_dicts.append(n2v)
 
     # To test the batch processing, add model JSON files.
-    # model_dicts = load_model_dicts("../population/init_pop_succinea/")
-    model_dicts = load_model_dicts("../population/test_pop_01/")
+    model_dicts = load_model_dicts("../population/init_pop_axyridis/")
+    #model_dicts = load_model_dicts("../population/test_pop_01/")
 
     # Update the initializer.
     initializer.update(model_dicts)
