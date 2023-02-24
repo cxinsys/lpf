@@ -79,8 +79,8 @@ class Solver:
             if self._period_output:
                 period_output = self._period_output
 
-            if period_output < 1:
-                raise ValueError("period_output should be greater than 0.")
+        if period_output is not None and period_output < 1:
+            raise ValueError("period_output should be greater than 0.")
 
         if not model.initializer:
             raise ValueError("model should have a initializer.")
@@ -149,9 +149,10 @@ class Solver:
             with model.am:
                 y_linear += self.step(model, t, dt, y_linear)
 
-            # model.check_invalid_values()  # This code can be a bottleneck.
-
-            if i == 0 or (i + 1) % period_output == 0:
+            # model.check_invalid_values() # [!] This check can be a bottleneck.
+            if not period_output:
+                pass
+            elif i == 0 or (i + 1) % period_output == 0:
                 if dpath_ladybird:
                     for j in range(batch_size):
                         fpath_ladybird = pjoin(dpath_ladybird,
