@@ -65,23 +65,175 @@ def merge_image_rows(*rows, bg_color=(0, 0, 0, 0), alignment=None):
     return canvas
 
 
-def merge_images(dpath_input,
-                 n_cols,
-                 infile_header="ladybird",
-                 bg_color="white",
-                 ratio_resize=1.0,
-                 margin_top=10,
-                 margin_right=10,
-                 margin_bottom=10,
-                 margin_left=10,
-                 text_format=None,
-                 text_color=None,
-                 font=None,
-                 font_size=None,
-                 text_margin_ratio=None,
-                 verbose=0):
+def merge_multiple(imgs=None,
+                   dpath_input=None,
+                   indir_header="model",
+                   infile_header="ladybird",
+                   n_cols=2,
+                   bg_color="white",
+                   ratio_resize=1.0,
+                   margin_top=10,
+                   margin_right=10,
+                   margin_bottom=10,
+                   margin_left=10,
+                   text_format=None,
+                   text_color=None,
+                   font=None,
+                   font_size=None,
+                   text_margin_ratio=None,
+                   verbose=0):
 
-    """Merge multiple images over time.
+    """Merge the images of multiple models.
+    """
+
+    if not imgs and not dpath_input:
+        raise ValueError("Either imgs or dpath_input should be given.")
+
+    if dpath_input:
+        if not osp.isdir(dpath_input):
+            raise NotADirectoryError("%s doest not exists." % (dpath_input))
+
+        dpaths = []
+        for entity in os.listdir(dpath_input):
+            if not entity.startswith(indir_header):
+                continue
+
+            dpath = osp.join(dpath_input, entity)
+            if not osp.isdir(dpath):
+                continue
+
+            dpaths.append(dpath)
+        # end of for
+
+        dpaths.sort()
+
+        fpaths = []
+        for dpath in dpaths:
+            for entity in os.listdir(dpath):
+                if not entity.startswith(infile_header):
+                    continue
+
+                fpath = osp.join(dpath, entity)
+                if not osp.isfile(fpath):
+                    continue
+
+                fpaths.append(fpath)
+            # end of for
+        # end of for
+    # end of if
+
+    if text_format:
+        if not text_color:
+            text_color = (0, 0, 0)
+
+        if not font_size:
+            font_size = 16
+        elif not isinstance(font_size, int):
+            raise ValueError("font_size should be integer type, not %s" % (type(font_size)))
+
+        if not font:
+            font = ImageFont.truetype("arial.ttf", font_size, encoding="UTF-8")
+
+        if not text_margin_ratio:
+            text_margin_ratio = 0.2
+        elif not isinstance(text_margin_ratio, float):
+            raise ValueError("font_size should be float type, not %s" % (type(text_margin_ratio)))
+
+    # Generate images.
+    tmr = text_margin_ratio
+    imgs_out = [[]]
+    cnt_rows = 0
+
+    imgs_in = []
+    if dpath_input:
+        for i, fpath in enumerate(fpaths):
+            img = Image.open(fpath)
+            img = img.resize((int(ratio_resize * img.width), int(ratio_resize * img.height)))
+
+            fname, _ = osp.splitext(osp.basename(fpath))
+            _, iden = fname.split("_")  # Identifier in the file name
+
+            imgs_in.append((iden, img))
+
+        # end of for
+    elif imgs:
+        for i, img in enumerate(imgs):
+            img = img.resize((int(ratio_resize * img.width), int(ratio_resize * img.height)))
+            imgs_in.append((i, img))
+
+
+    n_imgs = len(imgs_in)
+    for i, (iden, img) in enumerate(imgs_in):
+        if text_format:
+            str_text = "{}{:,}".format(text_format, int(iden))
+            bbox = font.getbbox(str_text)
+
+            # bbox: (left, top, right, bottom)
+            text_width = bbox[2]
+            text_height = bbox[3]
+
+            text_margin_width = int((max(text_width - img.width, 0) / 2)) \
+                                + int(tmr * img.width)
+            text_margin_height = int(text_height + tmr * text_height)
+
+            mt = margin_top
+            mr = margin_right + text_margin_width
+            mb = margin_bottom + text_margin_height
+            ml = margin_left + text_margin_width
+
+            text_x = int((ml + img.width / 2) - (text_width / 2))
+            text_y = int(margin_top + img.height + text_height * tmr)
+
+            img = add_margins(img,
+                              margin_top=mt,
+                              margin_right=mr,
+                              margin_bottom=mb,
+                              margin_left=ml,
+                              bg_color=bg_color)
+
+            draw = ImageDraw.Draw(img)
+            text_pos = (text_x, text_y)
+            draw.text(text_pos, str_text, font=font, fill=text_color)
+        else:
+            img = add_margins(img,
+                              margin_top=margin_top,
+                              margin_right=margin_right,
+                              margin_bottom=margin_bottom,
+                              margin_left=margin_left,
+                              bg_color=bg_color)
+
+        imgs_out[cnt_rows].append(img)
+
+        if verbose > 0:
+            print("[INPUT IMAGE]", fpath)
+
+        if len(imgs_out[cnt_rows]) >= n_cols:
+            cnt_rows += 1
+            if n_imgs > (cnt_rows * n_cols):
+                imgs_out.append([])
+    # end of for
+
+    img_out = merge_image_rows(*imgs_out, bg_color=bg_color, alignment=(1, 1))
+
+    return img_out
+
+
+def merge_single_timeseries(dpath_input,
+                            n_cols,
+                            infile_header="ladybird",
+                            bg_color="white",
+                            ratio_resize=1.0,
+                            margin_top=10,
+                            margin_right=10,
+                            margin_bottom=10,
+                            margin_left=10,
+                            text_format=None,
+                            text_color=None,
+                            font=None,
+                            font_size=None,
+                            text_margin_ratio=None,
+                            verbose=0):
+    """Merge the images of a single morph over time.
     """
 
     if not osp.isdir(dpath_input):
@@ -124,12 +276,11 @@ def merge_images(dpath_input,
 
     # Generate images.
     tmr = text_margin_ratio
-    images = [[]]
+    _imgs = [[]]
     cnt_rows = 0
     for i, fpath in enumerate(fpaths):
         img = Image.open(fpath)
         img = img.resize((int(ratio_resize * img.width), int(ratio_resize * img.height)))
-         
 
         if text_format:
             fname, _ = osp.splitext(osp.basename(fpath))
@@ -141,10 +292,8 @@ def merge_images(dpath_input,
             
             text_width = bbox[2]
             text_height = bbox[3]
-            
-            
-            text_margin_width = int((max(text_width - img.width, 0) / 2)) \
-                                + int(tmr*img.width)
+
+            text_margin_width = int((max(text_width - img.width, 0) / 2)) + int(tmr*img.width)
             text_margin_height = int(text_height + tmr * text_height)
             
             mt = margin_top
@@ -172,49 +321,44 @@ def merge_images(dpath_input,
                               margin_bottom=margin_bottom,
                               margin_left=margin_left,
                               bg_color=bg_color)
-        
-        
 
-        images[cnt_rows].append(img)
+        _imgs[cnt_rows].append(img)
 
         if verbose > 0:
             print("[INPUT IMAGE]", fpath)
 
-        if len(images[cnt_rows]) >= n_cols:
+        if len(_imgs[cnt_rows]) >= n_cols:
             cnt_rows += 1
             if n_images > (cnt_rows * n_cols):
-                images.append([])
+                _imgs.append([])
     # end of for
 
-    # images.pop()
-
-    img_output = merge_image_rows(*images, bg_color=bg_color, alignment=(1, 1))
+    img_output = merge_image_rows(*_imgs, bg_color=bg_color, alignment=(1, 1))
     # img_output.save(osp.join(dpath_output, fstr_outfile%(i)))
 
     return img_output
-    # end of for
 
 
-def merge_timeseries(dpath_input,
-                     dpath_output,
-                     n_cols,
-                     infile_header="ladybird",
-                     outfile_header="frame",
-                     bg_color="white",
-                     ratio_resize=0.5,
-                     margin_top=10,
-                     margin_right=10,
-                     margin_bottom=10,
-                     margin_left=10,
-                     verbose=0):
-
-    """Merge multiple ladybird images over time.
+def merge_multiple_timeseries(dpath_input,
+                              n_cols,
+                              dpath_output=None,
+                              infile_header="ladybird",
+                              outfile_header="frame",
+                              bg_color="white",
+                              ratio_resize=0.5,
+                              margin_top=10,
+                              margin_right=10,
+                              margin_bottom=10,
+                              margin_left=10,
+                              verbose=0):
+    """Merge the images of multiple morphs over time.
     """
 
     if not osp.isdir(dpath_input):
         raise NotADirectoryError("%s doest not exists."%(dpath_input))
 
-    os.makedirs(dpath_output, exist_ok=True)
+    if dpath_output:
+        os.makedirs(dpath_output, exist_ok=True)
 
     dirs_model = []
     for dname in os.listdir(dpath_input):
@@ -254,6 +398,7 @@ def merge_timeseries(dpath_input,
     n_pad_zeros = int(np.floor(np.log10(n_iters))) + 1
     fstr_outfile = "{}_%0{}d.png".format(outfile_header, n_pad_zeros)
 
+    imgs = []
     for i, fname in enumerate(fnames):
 
         images = [[]]
@@ -285,6 +430,9 @@ def merge_timeseries(dpath_input,
         # images.pop()
 
         img_output = merge_image_rows(*images, bg_color=bg_color, alignment=(1, 1))
-        img_output.save(osp.join(dpath_output, fstr_outfile%(i)))
+        imgs.append(img_output)
+        if dpath_output:
+            img_output.save(osp.join(dpath_output, fstr_outfile%(i)))
 
     # end of for
+    return imgs
