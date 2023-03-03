@@ -3,6 +3,7 @@ import os.path as osp
 from os.path import abspath as apath
 import time
 import argparse
+import datetime
 
 import yaml
 import numpy as np
@@ -79,10 +80,22 @@ if __name__ == "__main__":
 
     # Load the target laybirds.
     targets = load_targets(config["LADYBIRD_TYPE"], config["LADYBIRD_SUBTYPES"])
-    droot_output = apath(config["DPATH_OUTPUT"])
 
-    # Create an evolutionary search problem.
-    search = EvoSearch(config=config,
+    
+    
+    # Write the config file.
+    droot_output = apath(config["DPATH_OUTPUT"])
+    
+
+    # Create directories and record the config file.
+    str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
+    dpath_output = osp.join(droot_output, "search_%s"%(str_now))    
+    fpath_config = osp.join(dpath_output, "config.yaml")
+    with open(fpath_config, 'wt') as fout:
+        yaml.dump(config, fout, default_flow_style=False)
+
+    # Create an evolutionary search problem
+    search = EvoSearch(#config=config,
                        model=model,
                        solver=solver,
                        converter=converter,
