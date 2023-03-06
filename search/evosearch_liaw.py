@@ -3,7 +3,7 @@ import os.path as osp
 from os.path import abspath as apath
 import time
 import argparse
-import datetime
+from datetime import datetime
 
 import yaml
 import numpy as np
@@ -89,7 +89,9 @@ if __name__ == "__main__":
 
     # Create directories and record the config file.
     str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
-    dpath_output = osp.join(droot_output, "search_%s"%(str_now))    
+    dpath_output = osp.join(droot_output, "search_%s"%(str_now))
+    os.makedirs(dpath_output, exist_ok=True)
+    
     fpath_config = osp.join(dpath_output, "config.yaml")
     with open(fpath_config, 'wt') as fout:
         yaml.dump(config, fout, default_flow_style=False)
@@ -148,9 +150,10 @@ if __name__ == "__main__":
     algo = pg.algorithm(pg.sade(gen=1))
     isl = pg.island(algo=algo, pop=pop, udi=udi)
 
+    print(isl)
+
     try:
         for i in range(n_gen):
-            print(isl)
             t_beg = time.time()
             isl.evolve()
             isl.wait_check()
