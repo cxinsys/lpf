@@ -11,7 +11,7 @@ from lpf.utils import get_hash_digest
 
 class EvoSearch:
     def __init__(self,
-                 # config=None,
+                 config=None,
                  model=None,
                  solver=None,
                  converter=None,
@@ -19,7 +19,7 @@ class EvoSearch:
                  objectives=None,
                  droot_output=None):
         
-        #self.config = config
+        self.config = config
         self.model = model
         self.solver = solver
         self.converter = converter
@@ -48,9 +48,9 @@ class EvoSearch:
         os.makedirs(self.dpath_best, exist_ok=True)        
         
         # Write the config file.
-        # fpath_config = pjoin(self.dpath_output, "config.yaml")
-        # with open(fpath_config, 'wt') as fout:
-        #     yaml.dump(config, fout, default_flow_style=False)
+        fpath_config = pjoin(self.dpath_output, "config.yaml")
+        with open(fpath_config, 'wt') as fout:
+            yaml.dump(config, fout, default_flow_style=False)
 
     def fitness(self, x):
         digest = get_hash_digest(x)
@@ -83,7 +83,7 @@ class EvoSearch:
             # Colorize the ladybird model.
             arr_color = self.model.colorize()
 
-            # Store the colored object in the cache.
+            # Store the colorized object in the cache.
             self.cache[digest] = arr_color
         # end of if-else
 
