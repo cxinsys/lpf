@@ -111,7 +111,8 @@ if __name__ == "__main__":
     # Create the initial population.
     t_beg = time.time()
     pop_size = int(config["POP_SIZE"])
-    pop = pg.population(prob, size=pop_size)
+    # pop = pg.population(prob, size=pop_size)
+    pop = pg.population(prob)
 
     print("[POPULATION INITIALIZATION COMPLETED]")
 
@@ -179,5 +180,5 @@ if __name__ == "__main__":
         raise err
 
 
-    print("[EVOLUTIONARY SEARH COMPLETED]")
+    print("[EVOLUTIONARY SEARCH COMPLETED]")
     udi.shutdown_pool()
