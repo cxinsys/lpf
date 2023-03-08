@@ -33,75 +33,75 @@ from lpf.objectives.lpips import MaxLearnedPerceptualImagePatchSimilarity
 class ObjectiveFactory:
 
     @staticmethod
-    def create_single(name, coeff=None, device=None):
+    def create_single(name, coeff=None, device=None, **kwargs):
         _name = name.lower()
 
         if _name == "summeansquareerror":
-            return SumMeanSquareError(coeff=coeff)
+            return SumMeanSquareError(coeff=coeff, **kwargs)
         elif _name == "meanmeansquareerror":
-            return MeanMeanSquareError(coeff=coeff)
+            return MeanMeanSquareError(coeff=coeff, **kwargs)
         elif _name == "minmeansquareerror":
-            return MinMeanSquareError(coeff=coeff)
+            return MinMeanSquareError(coeff=coeff, **kwargs)
         elif _name == "maxmeansquareerror":
-            return MaxMeanSquareError(coeff=coeff)
+            return MaxMeanSquareError(coeff=coeff, **kwargs)
 
         elif _name == "sumcolorproportion":
-            return SumColorProportion(coeff=coeff)
+            return SumColorProportion(coeff=coeff, **kwargs)
         elif _name == "meancolorproportion":
-            return MeanColorProportion(coeff=coeff)
+            return MeanColorProportion(coeff=coeff, **kwargs)
         elif _name == "mincolorproportion":
-            return MinColorProportion(coeff=coeff)
+            return MinColorProportion(coeff=coeff, **kwargs)
         elif _name == "maxcolorproportion":
-            return MaxColorProportion(coeff=coeff)
+            return MaxColorProportion(coeff=coeff, **kwargs)
 
         elif _name == "sumhistogramrootmeansquareerror":
-            return SumHistogramRootMeanSquareError(coeff=coeff)
+            return SumHistogramRootMeanSquareError(coeff=coeff, **kwargs)
         elif _name == "meanhistogramrootmeansquareerror":
-            return MeanHistogramRootMeanSquareError(coeff=coeff)
+            return MeanHistogramRootMeanSquareError(coeff=coeff, **kwargs)
         elif _name == "minhistogramrootmeansquareerror":
-            return MinHistogramRootMeanSquareError(coeff=coeff)
+            return MinHistogramRootMeanSquareError(coeff=coeff, **kwargs)
         elif _name == "maxhistogramrootmeansquareerror":
-            return MaxHistogramRootMeanSquareError(coeff=coeff)
+            return MaxHistogramRootMeanSquareError(coeff=coeff, **kwargs)
 
         elif _name == "sumvgg16perceptualloss":
-            return SumVgg16PerceptualLoss(coeff=coeff, device=device)
+            return SumVgg16PerceptualLoss(coeff=coeff, device=device, **kwargs)
         elif _name == "meanvgg16perceptualloss":
-            return MeanVgg16PerceptualLoss(coeff=coeff, device=device)
+            return MeanVgg16PerceptualLoss(coeff=coeff, device=device, **kwargs)
         elif _name == "minvgg16perceptualloss":
-            return MinVgg16PerceptualLoss(coeff=coeff, device=device)
+            return MinVgg16PerceptualLoss(coeff=coeff, device=device, **kwargs)
         elif _name == "maxvgg16perceptualloss":
-            return MaxVgg16PerceptualLoss(coeff=coeff, device=device)
+            return MaxVgg16PerceptualLoss(coeff=coeff, device=device, **kwargs)
 
         elif _name == "sumstructuralsimilarityindexmeasure":
-            return SumStructuralSimilarityIndexMeasure(coeff=coeff, device=device)
+            return SumStructuralSimilarityIndexMeasure(coeff=coeff, device=device, **kwargs)
         elif _name == "meanstructuralsimilarityindexmeasure":
-            return MeanStructuralSimilarityIndexMeasure(coeff=coeff, device=device)
+            return MeanStructuralSimilarityIndexMeasure(coeff=coeff, device=device, **kwargs)
         elif _name == "minstructuralsimilarityindexmeasure":
-            return MinStructuralSimilarityIndexMeasure(coeff=coeff, device=device)
+            return MinStructuralSimilarityIndexMeasure(coeff=coeff, device=device, **kwargs)
         elif _name == "maxstructuralsimilarityindexmeasure":
-            return MaxStructuralSimilarityIndexMeasure(coeff=coeff, device=device)
+            return MaxStructuralSimilarityIndexMeasure(coeff=coeff, device=device, **kwargs)
 
         elif "sumlearnedperceptualimagepatchsimilarity" in _name:
             _, net_type = _name.split(":")
-            return SumLearnedPerceptualImagePatchSimilarity(net_type=net_type, coeff=coeff, device=device)
+            return SumLearnedPerceptualImagePatchSimilarity(net_type=net_type, coeff=coeff, device=device, **kwargs)
         elif "meanlearnedperceptualimagepatchsimilarity" in _name:
             _, net_type = _name.split(":")
-            return MeanLearnedPerceptualImagePatchSimilarity(net_type=net_type, coeff=coeff, device=device)
+            return MeanLearnedPerceptualImagePatchSimilarity(net_type=net_type, coeff=coeff, device=device, **kwargs)
         elif "minlearnedperceptualimagepatchsimilarity" in _name:
             _, net_type = _name.split(":")
-            return MinLearnedPerceptualImagePatchSimilarity(net_type=net_type, coeff=coeff, device=device)
+            return MinLearnedPerceptualImagePatchSimilarity(net_type=net_type, coeff=coeff, device=device, **kwargs)
         elif "maxlearnedperceptualimagepatchsimilarity" in _name:
             _, net_type = _name.split(":")
-            return MaxLearnedPerceptualImagePatchSimilarity(net_type=net_type, coeff=coeff, device=device)
+            return MaxLearnedPerceptualImagePatchSimilarity(net_type=net_type, coeff=coeff, device=device, **kwargs)
 
         raise ValueError("%s is not a supported objective."%(name))
 
 
     @staticmethod
-    def create(obj, coeff=None, device=None):
+    def create(obj, coeff=None, device=None, **kwargs):
         
         if isinstance(obj, str):
-            return ObjectiveFactory.create_single(obj, coeff, device)
+            return ObjectiveFactory.create_single(obj, coeff, device, **kwargs)
 
         elif isinstance(obj, Sequence):
             objectives = []
@@ -111,10 +111,10 @@ class ObjectiveFactory:
                 device = cfg[2]
 
                 print("[OBJECTIVE DEVICE] %s: %s" % (name, device))
-                objectives.append(ObjectiveFactory.create_single(name, coeff, device))
+                objectives.append(ObjectiveFactory.create_single(name, coeff, device, **kwargs))
             # end of for
 
             return objectives
         # end of if
         else:
-            return ObjectiveFactory.create_single(obj, coeff, device)
+            return ObjectiveFactory.create_single(obj, coeff, device, **kwargs)
