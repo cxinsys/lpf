@@ -7,7 +7,7 @@ import pygmo as pg
 from PIL import Image
 
 from lpf.data import load_model_dicts
-from lpf.data import load_targets
+from lpf.data import load_custom_targets
 from lpf.solvers import SolverFactory
 from lpf.search import EvoSearch
 from lpf.objectives import ObjectiveFactory
@@ -58,19 +58,19 @@ if __name__ == "__main__":
 
 
     # Load the target laybirds.
-    targets = []
-    
     dpath_photos = osp.join(LPF_REPO_HOME, "lpf/data/haxyridis/photo")
-    print("[DPATH PHOTOS]", dpath_photos)
-    for entity in os.listdir(dpath_photos):
-        fpath_photo = osp.join(dpath_photos, entity)        
-        if osp.isfile(fpath_photo) and entity.startswith("spectabilis") and entity.endswith("png"):
-            print(" - ", fpath_photo)
-            img = Image.open(fpath_photo)
-            targets.append(img)
-    
-    for img in targets:    
-        print(img)
+#    print("[DPATH PHOTOS]", dpath_photos)
+#    for entity in os.listdir(dpath_photos):
+#        fpath_photo = osp.join(dpath_photos, entity)        
+#        if osp.isfile(fpath_photo) and entity.startswith("spectabilis") and entity.endswith("png"):
+#            print(" - ", fpath_photo)
+#            img = Image.open(fpath_photo)
+#            targets.append(img)
+#    
+#    for img in targets:    
+#        print(img)
+
+    targets = load_custom_targets(dpath_photos, "conspicua")#"spectabilis")
 
 
     # Create an evolutionary search problem.
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     t_beg = time.time()
 
     # Create the initial population.
-    pop_size = 1  # We set population size = 16.
+    pop_size = 16  # We set population size = 16.
     pop = pg.population(prob)
     dvs = []
     
