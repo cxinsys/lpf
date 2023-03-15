@@ -102,6 +102,7 @@ class EvoSearch:
     def save(self, 
              mode,
              dv,             
+             max_generation=None,
              generation=None,
              fitness=None,
              arr_color=None):
@@ -112,25 +113,35 @@ class EvoSearch:
         self.model.params = self.converter.to_params(dv)
 
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
+        
+        if not generation:
+            str_gen = ""
+        else:
+            if not max_generation:
+                max_generation = 1000000
+                
+            fstr_gen = "gen-%0{}d_".format(int(np.ceil(np.log10(max_generation)))+1)
+            str_gen = fstr_gen%(int(generation))
+        
         if mode == "pop":
             fpath_model = pjoin(self.dpath_population,
-                                "model_%s.json"%(str_now))            
+                                "%smodel_%s.json"%(str_gen, str_now))    
 
             fpath_ladybird = pjoin(self.dpath_population,
-                                   "ladybird_%s.png"%(str_now))
+                                   "%sladybird_%s.png"%(str_gen, str_now))
 
             fpath_pattern = pjoin(self.dpath_population,
-                                  "pattern_%s.png"%(str_now))
+                                  "%spattern_%s.png"%(str_gen, str_now))
             
         elif mode == "best":            
             fpath_model = pjoin(self.dpath_best,
-                                "model_%s.json"%(str_now))            
+                                "%smodel_%s.json"%(str_gen, str_now))
             
             fpath_ladybird = pjoin(self.dpath_best,
-                                   "ladybird_%s.png"%(str_now))
+                                   "%sladybird_%s.png"%(str_gen, str_now))
 
             fpath_pattern = pjoin(self.dpath_best,
-                                  "pattern_%s.png"%(str_now))
+                                  "%spattern_%s.png"%(str_gen, str_now))
         else:
             raise ValueError("mode should be 'pop' or 'best'")
 
