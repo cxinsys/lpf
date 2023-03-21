@@ -62,7 +62,10 @@ def load_custom_targets(dpath, file_header, resize_shape=None):
 
     for entity in os.listdir(dpath):
         fpath = osp.join(dpath, entity)
-        if osp.isfile(fpath) and entity.startswith(file_header) and entity.endswith("png"):
+        if "~lock." in entity:
+            continue
+        
+        if osp.isfile(fpath) and entity.startswith(file_header) and entity.endswith(".png"):
 
             fpath = osp.join(dpath, entity)
             img = Image.open(fpath)
