@@ -7,7 +7,7 @@ import pygmo as pg
 from PIL import Image
 
 from lpf.data import load_model_dicts
-from lpf.data import load_targets
+from lpf.data import load_custom_targets
 from lpf.solvers import SolverFactory
 from lpf.search import EvoSearch
 from lpf.objectives import ObjectiveFactory
@@ -49,28 +49,17 @@ if __name__ == "__main__":
     obj_config = [
         ['MeanMeanSquareError', '1e-1', 'cpu'],
         ['MeanColorProportion', '1e0', 'cpu'],
-        ['MeanVgg16PerceptualLoss', '1e-4', 'cuda:0'],
-        ['MeanLearnedPerceptualImagePatchSimilarity:vgg', '1.5e1', 'cuda:0'],
-        ['MeanLearnedPerceptualImagePatchSimilarity:alex', '4e0', 'cuda:0']
+        ['MeanVgg16PerceptualLoss', '1e-4', 'cuda:2'],
+        ['MeanLearnedPerceptualImagePatchSimilarity:vgg', '1.5e1', 'cuda:2'],
+        ['MeanLearnedPerceptualImagePatchSimilarity:alex', '4e0', 'cuda:2']
     ]
     
     objectives = ObjectiveFactory.create(obj_config)
 
 
     # Load the target laybirds.
-    targets = []
-    
     dpath_photos = osp.join(LPF_REPO_HOME, "lpf/data/haxyridis/photo")
-    print("[DPATH PHOTOS]", dpath_photos)
-    for entity in os.listdir(dpath_photos):
-        fpath_photo = osp.join(dpath_photos, entity)        
-        if osp.isfile(fpath_photo) and entity.startswith("spectabilis") and entity.endswith("png"):
-            print(" - ", fpath_photo)
-            img = Image.open(fpath_photo)
-            targets.append(img)
-    
-    for img in targets:    
-        print(img)
+    targets = load_custom_targets(dpath_photos, "spectabilis")
 
 
     # Create an evolutionary search problem.
@@ -93,7 +82,7 @@ if __name__ == "__main__":
     t_beg = time.time()
 
     # Create the initial population.
-    pop_size = 1  # We set population size = 16.
+    pop_size = 16  # We set population size = 16.
     pop = pg.population(prob)
     dvs = []
     
@@ -145,7 +134,7 @@ if __name__ == "__main__":
     
             # Save the best.
             pop = isl.get_population()
-            search.save("best", pop.champion_x, generation=i+1, fitness=pop.champion_f[0])
+            search.save("best", pop.champion_x, max_generation=n_gen, generation=i+1, fitness=pop.champion_f[0])
     
             # Save the population.
             arr_x = pop.get_x()
@@ -153,7 +142,7 @@ if __name__ == "__main__":
             for j in range(arr_x.shape[0]):
                 x = arr_x[j]
                 fitness = arr_f[j, 0]
-                search.save("pop", x, generation=i+1, fitness=fitness)
+                search.save("pop", x, max_generation=n_gen, generation=i+1, fitness=fitness)
         # end of for
     except Exception as err:
         print(err)

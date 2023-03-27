@@ -164,7 +164,7 @@ if __name__ == "__main__":
 
             # Save the best.
             pop = isl.get_population()
-            search.save("best", pop.champion_x, generation=i+1, fitness=pop.champion_f[0])
+            search.save("best", pop.champion_x, max_generation=n_gen, generation=i+1, fitness=pop.champion_f[0])
 
             # Save the population.
             arr_x = pop.get_x()
@@ -172,7 +172,7 @@ if __name__ == "__main__":
             for j in range(arr_x.shape[0]):
                 x = arr_x[j]
                 fitness = arr_f[j, 0]
-                search.save("pop", x, generation=i+1, fitness=fitness)
+                search.save("pop", x, max_generation=n_gen, generation=i+1, fitness=fitness)
         # end of for
     except Exception as err:
         print(err)

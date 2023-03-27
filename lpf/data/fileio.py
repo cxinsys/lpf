@@ -62,21 +62,23 @@ def load_custom_targets(dpath, file_header, resize_shape=None):
 
     for entity in os.listdir(dpath):
         fpath = osp.join(dpath, entity)
-        if osp.isfile(fpath) and entity.startswith(file_header) and entity.endswith("png"):
+        if "~lock." in entity:
             continue
+        
+        if osp.isfile(fpath) and entity.startswith(file_header) and entity.endswith(".png"):
 
-        fpath = osp.join(dpath, entity)
-        img = Image.open(fpath)
-
-        img_no_trans = Image.new("RGBA", img.size, "WHITE")
-        img_no_trans.paste(img, mask=img)
-        img = img_no_trans
-
-        if resize_shape:
-            img = img.resize(resize_shape)
-
-        targets.append(img.convert('RGB'))
-        print("[TARGET] %s has been added..." % (entity))
+            fpath = osp.join(dpath, entity)
+            img = Image.open(fpath)
+    
+            img_no_trans = Image.new("RGBA", img.size, "WHITE")
+            img_no_trans.paste(img, mask=img)
+            img = img_no_trans
+    
+            if resize_shape:
+                img = img.resize(resize_shape)
+    
+            targets.append(img.convert('RGB'))
+            print("[TARGET] %s has been added..." % (entity))
     # end of for
 
     return targets
