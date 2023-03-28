@@ -59,8 +59,7 @@ if __name__ == "__main__":
 
     # Load the target laybirds.
     dpath_photos = osp.join(LPF_REPO_HOME, "lpf/data/haxyridis/photo")
-    targets = load_custom_targets(dpath_photos, "spectabilis") #"conspicua")#"spectabilis")
-
+    targets = load_custom_targets(dpath_photos, "spectabilis")
 
     # Create an evolutionary search problem.
     droot_output = osp.join("./output")
