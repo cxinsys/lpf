@@ -44,12 +44,18 @@ if __name__ == "__main__":
     with open(fpath_config, "rt") as fin:
         config = yaml.safe_load(fin)
     
-    if args.gpu > 0:
+    if args.gpu >= 0:
         print("[CUDA DEVICE ID]", args.gpu)
         for cfg in config["OBJECTIVES"]:
              if "cuda" not in cfg[2]:
                  continue
 
+             _, device_id = cfg[2].split(":")
+             device_id = int(device_id) 
+
+             if isinstance(device_id, int):
+                 continue
+             
              cfg[2] = "cuda:%d"%(args.gpu)
         
              print("[OBJECTIVE DEVICE] %s"%(cfg))
