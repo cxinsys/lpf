@@ -110,8 +110,7 @@ if __name__ == "__main__":
         yaml.dump(config, fout, default_flow_style=False)
 
     # Create an evolutionary search problem
-    search = EvoSearch(#config=config,
-                       model=model,
+    search = EvoSearch(model=model,
                        solver=solver,
                        converter=converter,
                        targets=targets,
@@ -141,12 +140,12 @@ if __name__ == "__main__":
 
             dv = converter.to_dv(model_dict, n_init_pts)
             if eval_init_fitness:
-                pop.set_xf(i, dv, [np.inf])
+                pop.push_back(i, dv)
             elif "fitness" in model_dict:
                 fitness = float(model_dict["fitness"])
                 pop.set_xf(i, dv, [fitness])
             else:
-                raise ValueError("'fitness' should be defined in the JSON file if EVAL_INIT_FITNESS is False.")
+                pop.set_xf(i, dv, [np.inf])
 
         # end of for
     # end of if
