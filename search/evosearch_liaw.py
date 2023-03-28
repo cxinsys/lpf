@@ -111,8 +111,8 @@ if __name__ == "__main__":
     # Create the initial population.
     t_beg = time.time()
     pop_size = int(config["POP_SIZE"])
-    # pop = pg.population(prob, size=pop_size)
-    pop = pg.population(prob)
+    pop = pg.population(prob, size=pop_size)
+    # pop = pg.population(prob)
 
     print("[POPULATION INITIALIZATION COMPLETED]")
 
@@ -128,7 +128,7 @@ if __name__ == "__main__":
 
             dv = converter.to_dv(model_dict, n_init_pts)
             if eval_init_fitness:
-                pop.set_x(i, dv)
+                pop.set_xf(i, dv, [np.inf])
             elif "fitness" in model_dict:
                 fitness = float(model_dict["fitness"])
                 pop.set_xf(i, dv, [fitness])
