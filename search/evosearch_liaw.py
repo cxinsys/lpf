@@ -8,6 +8,7 @@ from datetime import datetime
 import yaml
 import numpy as np
 import pygmo as pg
+from PIL import ImageColor
 
 from lpf.data import load_model_dicts
 from lpf.data import load_targets
@@ -18,6 +19,7 @@ from lpf.models import ModelFactory
 from lpf.converters import ConverterFactory
 
 np.seterr(all='raise')
+
 
 if __name__ == "__main__":
 
@@ -59,12 +61,24 @@ if __name__ == "__main__":
     width = int(config["WIDTH"])
     height = int(config["HEIGHT"])
     n_init_pts = int(config["N_INIT_PTS"])
+
+    color_u = None
+    color_v = None
+
+    if "COLOR_U" in config:
+        color_u = ImageColor.getcolor(config["COLOR_U"], "RGB")
+
+    if "COLOR_V" in confing:
+        color_v = ImageColor.getcolor(config["COLOR_V"], "RGB")
+
     model = ModelFactory.create(
         name=config["MODEL"],
         n_init_pts=int(n_init_pts),
         width=width,
         height=height,                 
-        dx=dx
+        dx=dx,
+        color_u=color_u,
+        color_v=color_v
     )
 
     # Create a solver.
@@ -80,7 +94,6 @@ if __name__ == "__main__":
 
     # Load the target laybirds.
     targets = load_targets(config["LADYBIRD_TYPE"], config["LADYBIRD_SUBTYPES"])
-
     
     
     # Write the config file.
