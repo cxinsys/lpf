@@ -69,10 +69,10 @@ class LiawModel(ReactionDiffusionModel):
         self._thr_color = thr_color
 
         if not color_u:
-            color_u =  np.array([5, 5, 5], dtype=np.uint8)
+            color_u = (5, 5, 5)
 
         if not color_v:
-            color_v = np.array([231, 79, 3], dtype=np.uint8)
+            color_v = (231, 79, 3) 
 
         self._color_u = np.array(color_u, dtype=np.uint8)
         self._color_v = np.array(color_v, dtype=np.uint8)
