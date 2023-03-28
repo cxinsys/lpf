@@ -49,9 +49,9 @@ if __name__ == "__main__":
     obj_config = [
         ['MeanMeanSquareError', '1e-1', 'cpu'],
         ['MeanColorProportion', '1e0', 'cpu'],
-        ['MeanVgg16PerceptualLoss', '1e-4', 'cuda:0'],
-        ['MeanLearnedPerceptualImagePatchSimilarity:vgg', '1.5e1', 'cuda:0'],
-        ['MeanLearnedPerceptualImagePatchSimilarity:alex', '4e0', 'cuda:0']
+        ['MeanVgg16PerceptualLoss', '1e-4', 'cuda:1'],
+        ['MeanLearnedPerceptualImagePatchSimilarity:vgg', '1.5e1', 'cuda:1'],
+        ['MeanLearnedPerceptualImagePatchSimilarity:alex', '4e0', 'cuda:1']
     ]
     
     objectives = ObjectiveFactory.create(obj_config)
@@ -59,17 +59,6 @@ if __name__ == "__main__":
 
     # Load the target laybirds.
     dpath_photos = osp.join(LPF_REPO_HOME, "lpf/data/haxyridis/photo")
-#    print("[DPATH PHOTOS]", dpath_photos)
-#    for entity in os.listdir(dpath_photos):
-#        fpath_photo = osp.join(dpath_photos, entity)        
-#        if osp.isfile(fpath_photo) and entity.startswith("spectabilis") and entity.endswith("png"):
-#            print(" - ", fpath_photo)
-#            img = Image.open(fpath_photo)
-#            targets.append(img)
-#    
-#    for img in targets:    
-#        print(img)
-
     targets = load_custom_targets(dpath_photos, "spectabilis") #"conspicua")#"spectabilis")
 
 
