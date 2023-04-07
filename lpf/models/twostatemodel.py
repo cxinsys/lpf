@@ -43,7 +43,8 @@ class TwoStateModel(ReactionDiffusionModel):
         # Set kinetic parameters.
         if params is not None:
             with self.am:
-                self._params = self.am.array(params, dtype=params.dtype)
+                self._params = self.am.array(params, dtype=params.dtype)                
+                self._batch_size = self._params.shape[0]
 
         # Set the size of space (2D grid).
         if not width:
@@ -244,11 +245,15 @@ class TwoStateModel(ReactionDiffusionModel):
     def to_dict(self,
                 index=None,
                 initializer=None,
+                params=None,
                 solver=None,
                 generation=None,
                 fitness=None):
         
         n2v = {}
+        
+        n2v["model_name"] = self._name
+
         
         if index:
             n2v["index"] = index
@@ -272,8 +277,8 @@ class TwoStateModel(ReactionDiffusionModel):
             n2v.update(initializer)
         elif isinstance(initializer, Initializer):
             n2v.update(initializer.to_dict(index))
-        else:
-            raise TypeError("initializer should be dict or a subclass of Initializer.")
+        # else:
+        #     raise TypeError("initializer should be dict or a subclass of Initializer.")
        
         # Get the members of solver
         if isinstance(solver, dict):
@@ -301,18 +306,18 @@ class TwoStateModel(ReactionDiffusionModel):
         if index is None:
             index = 0
         else:
-            batch_size = params.shape[0]
+            batch_size = self._batch_size
             if index < 0 or index >= batch_size:
                 raise ValueError("index should be non-negative and less than the batch size.")
 
         if initializer is None:
-            if self.initializer is None:
-                raise ValueError("initializer should be defined in model or given for save_model function.")
+            # if self.initializer is None:
+            #     raise ValueError("initializer should be defined in model or given for save_model function.")
 
             initializer = self.initializer
 
-        if params is None:
-            raise ValueError("params should be given.")
+        # if params is None:
+        #     raise ValueError("params should be given.")
 
         with open(fpath, "wt") as fout:   
             model_dict = self.to_dict(index=index,

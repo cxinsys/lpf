@@ -6,7 +6,7 @@ import PIL
 from PIL import Image
  
 from lpf.models import TwoStateModel
-from lpf.initializers import Initializer
+# from lpf.initializers import Initializer
 from lpf.solvers import Solver
 from lpf.utils import get_template_fpath
 from lpf.utils import get_mask_fpath
@@ -25,8 +25,8 @@ def check_model(model, name):
     if model.initializer is None:
         raise TypeError("%s must have an initializer."%(name))
    
-    if not isinstance(model.initializer, Initializer):
-        raise TypeError("%s.initializer must be a derivative of Initializer class."%(name))
+    # if not isinstance(model.initializer, Initializer):
+    #     raise TypeError("%s.initializer must be a derivative of Initializer class."%(name))
 
     if model.n_states != 2:
         raise ValueError("%s.n_states must be two."%(name))
@@ -38,6 +38,8 @@ class TwoStateDiploidModel(TwoStateModel):
                  *args,
                  paternal_model=None,
                  maternal_model=None,
+                 alpha=0.5,
+                 beta=0.5,
                  **kwargs):
 
         # Call the __init__ of parent class.
@@ -54,14 +56,61 @@ class TwoStateDiploidModel(TwoStateModel):
         if id(paternal_model) == id(maternal_model):
             raise ValueError("paternal_model and maternal_model "\
                              "must be different objects.")
+
                 
-        if paternal_model.params.shape[0] != maternal_model.params.shape[0]:
+        if paternal_model.batch_size != maternal_model.batch_size:
             raise ValueError("The batch size of paternal_model "\
                              "and maternal_model must be the same.")
-
+        
+        self._batch_size = paternal_model.batch_size
+                
         self._paternal_model = paternal_model
         self._maternal_model = maternal_model
+        
+        self._alpha = alpha
+        self._beta = beta
+        
+    @property
+    def paternal_model(self):
+        return self._paternal_model
+    
+    @property
+    def maternal_model(self):
+        return self._maternal_model    
+    
+    @property
+    def alpha(self):
+        return self._alpha
+    
+    @property
+    def beta(self):
+        return self._beta
 
+    def initialize(self):
+        pa_model = self._paternal_model
+        ma_model = self._maternal_model
+        
+        alpha = self._alpha
+        beta = self._beta
+        
+        pa_model.initialize()
+        ma_model.initialize()
+        
+        with self.am:
+
+            self._y_linear = alpha * pa_model._y_linear \
+                             + beta * ma_model._y_linear
+                             
+            self._dydt_linear = self.am.zeros(self._y_linear.shape, 
+                                              dtype=self._y_linear.dtype)
+            
+            self._u = alpha * pa_model._u + beta * ma_model._u
+            self._v = alpha * pa_model._v + beta * ma_model._v
+        
+        
+    def has_initializer(self):
+        return self._paternal_model.has_initializer() \
+               and self._maternal_model.has_initializer()
 
     def pdefunc(self, t, y_linear):
         """Equation function for integration.
@@ -122,19 +171,69 @@ class TwoStateDiploidModel(TwoStateModel):
         pa_model = self._paternal_model
         ma_model = self._maternal_model
         
+        alpha = self._alpha
+        beta = self._beta
+        
         with self.am:
             
             dydt_linear_pa = pa_model.pdefunc(t, y_linear)
             dydt_linear_ma = ma_model.pdefunc(t, y_linear)            
             
-            self._u[:] = 0.5 * (pa_model._u + ma_model._u)
-            self._v[:] = 0.5 * (pa_model._v + ma_model._v)
+            self._u[:] = alpha * pa_model._u + beta * ma_model._u
+            self._v[:] = alpha * pa_model._v + beta * ma_model._v
             
-            self._dydt_linear[:] = 0.5 * (dydt_linear_pa + dydt_linear_ma)            
+            self._dydt_linear[:] = alpha * dydt_linear_pa \
+                                   + beta  * dydt_linear_ma
         
         return self._dydt_linear
 
+    def to_dict(self,
+                index=None,
+                initializer=None,
+                params=None,
+                solver=None,
+                generation=None,
+                fitness=None):       
 
+        model_dict = super().to_dict(index=index,
+                                     initializer=initializer,
+                                     solver=solver,
+                                     generation=generation,
+                                     fitness=fitness)       
+        
+        model_dict["model_name"] = self._name
+        
+        pa_model_dict = self.paternal_model.to_dict(
+                                  index=index,
+                                  initializer=initializer,
+                                  params=params,
+                                  solver=solver,
+                                  generation=generation,
+                                  fitness=fitness)
+        
+        ma_model_dict = self.maternal_model.to_dict(
+                                  index=index,
+                                  initializer=initializer,
+                                  params=params,
+                                  solver=solver,
+                                  generation=generation,
+                                  fitness=fitness)
+
+        model_dict["paternal_model"] = pa_model_dict
+        model_dict["maternal_model"] = ma_model_dict
+    
+        return model_dict
+    
+    # def save_model(self,
+    #                index=None,
+    #                fpath=None,
+    #                initializer=None,
+    #                params=None,
+    #                solver=None,
+    #                generation=None,
+    #                fitness=None):
+        
+        
     # @staticmethod
     # def parse_params(model_dicts):
     #     """Parse the parameters from the model dictionaries.

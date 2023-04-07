@@ -38,6 +38,10 @@ class ReactionDiffusionModel(object):
     @params.setter
     def params(self, obj):
         self._params = obj
+        
+    @property
+    def batch_size(self):
+        return self._batch_size
 
     @property
     def n_states(self):
@@ -53,6 +57,9 @@ class ReactionDiffusionModel(object):
 
     def initialize(self):
         self._initializer.initialize(self)
+        
+    def has_initializer(self):
+        return self._initializer is not None
 
     def update(self):
         raise NotImplementedError()

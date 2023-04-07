@@ -82,11 +82,11 @@ class Solver:
         if period_output is not None and period_output < 1:
             raise ValueError("period_output should be greater than 0.")
 
-        if not model.initializer:
-            raise ValueError("model should have a initializer.")
+        if not model.has_initializer():
+            raise ValueError("model should have an initializer.")
 
         model.initialize()
-        batch_size = model.params.shape[0]
+        batch_size = model.batch_size # model.params.shape[0]
         dname_model = "model_%0{}d".format(int(np.floor(np.log10(batch_size))) + 1)
 
         if dpath_model:
@@ -108,7 +108,6 @@ class Solver:
 
                 model.save_model(index=i,
                                  fpath=fpath_model,
-                                 params=model.params,
                                  initializer=model.initializer,
                                  solver=dict_solver)
             # end of for

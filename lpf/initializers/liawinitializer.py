@@ -1,7 +1,7 @@
 import numpy as np
 
 from lpf.initializers import Initializer
-from lpf.models import ReactionDiffusionModel
+from lpf.models import TwoStateModel
 
 
 class LiawInitializer(Initializer):
@@ -43,8 +43,8 @@ class LiawInitializer(Initializer):
 
     def initialize(self, model, init_states=None, init_pts=None):
 
-        if not isinstance(model, ReactionDiffusionModel):
-            err_msg = "model should be a subclass of ReactionDiffusionModel."
+        if not isinstance(model, TwoStateModel):
+            err_msg = "model should be a subclass of TwoStateModel."
             raise TypeError(err_msg)
 
         if init_states is None:

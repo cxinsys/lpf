@@ -49,12 +49,16 @@ class LiawModel(TwoStateModel):
                 fitness=None):
                
         if params is None:
-            raise ValueError("params should be given.")
+            if self._params is None:
+                raise ValueError("params should be given.")
+                
+            params = self._params
             
             
         # Get the dict from the parent class.
         n2v = super().to_dict(index=index,
                               initializer=initializer,
+                              params=params,
                               solver=solver,
                               generation=generation,
                               fitness=fitness)
