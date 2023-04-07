@@ -50,9 +50,14 @@ class TwoStateDiploidModel(TwoStateModel):
         check_model(paternal_model, "paternal_model")        
         check_model(maternal_model, "maternal_model")
         
+        # Check the compatibilty between paternal and maternal models.
         if id(paternal_model) == id(maternal_model):
             raise ValueError("paternal_model and maternal_model "\
                              "must be different objects.")
+                
+        if paternal_model.params.shape[0] != maternal_model.params.shape[0]:
+            raise ValueError("The batch size of paternal_model "\
+                             "and maternal_model must be the same.")
 
         self._paternal_model = paternal_model
         self._maternal_model = maternal_model
@@ -122,8 +127,8 @@ class TwoStateDiploidModel(TwoStateModel):
             dydt_linear_pa = pa_model.pdefunc(t, y_linear)
             dydt_linear_ma = ma_model.pdefunc(t, y_linear)            
             
-            self._u = 0.5 * (pa_model._u + ma_model._u)
-            self._v = 0.5 * (pa_model._v + ma_model._v)
+            self._u[:] = 0.5 * (pa_model._u + ma_model._u)
+            self._v[:] = 0.5 * (pa_model._v + ma_model._v)
             
             self._dydt_linear[:] = 0.5 * (dydt_linear_pa + dydt_linear_ma)            
         
