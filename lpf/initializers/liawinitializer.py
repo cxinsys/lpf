@@ -62,8 +62,6 @@ class LiawInitializer(Initializer):
         with model.am:
             init_pts = model.am.array(init_pts, dtype=init_pts.dtype)
 
-            # model.t = 0.0
-
             batch_size = init_states.shape[0]
 
             shape_grid = (model.n_states,
@@ -78,15 +76,15 @@ class LiawInitializer(Initializer):
             v0 = v0.reshape(batch_size, 1, 1)
 
             # shape = (batch_size, model.height, model.width)
-            model._u = y_mesh[0, :, :, :]  # model.am.zeros(shape, dtype=self.dtype)
+            model._u = y_mesh[0, :, :, :]
 
             for i in range(batch_size):
                 model._u[i, init_pts[i, :, 0], init_pts[i, :, 1]] = u0[i]
 
-            y_mesh[1, :, :, :] = v0  # * model.am.ones(shape, dtype=self.dtype)
+            y_mesh[1, :, :, :] = v0
             model._v = y_mesh[1, :, :, :]
 
-            model._y_linear = y_mesh.ravel() # grid_y.flatten()
+            model._y_linear = y_mesh.ravel()
             
             model._dydt_mesh = model.am.zeros(shape_grid, dtype=init_states.dtype)
             model._dydt_linear = model._dydt_mesh.ravel()

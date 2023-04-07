@@ -149,7 +149,6 @@ class Solver:
             with model.am:
                 y_linear += self.step(model, t, dt, y_linear)
 
-            # model.check_invalid_values() # [!] This check can be a bottleneck.
             if not period_output:
                 pass
             elif i == 0 or (i + 1) % period_output == 0:
