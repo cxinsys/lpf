@@ -22,6 +22,32 @@ class LiawModel(TwoStateModel):
         # Set constant members.
         self._name = "LiawModel"
 
+    def initialize(self):
+        with self.am:
+            #init_pts = self.am.array(init_pts, dtype=init_pts.dtype)
+
+            #batch_size = init_states.shape[0]
+
+            self._shape_grid = (self._n_states,
+                                self._batch_size,
+                                self._height,
+                                self._width)
+            
+            self._y_mesh = self.am.zeros(self._shape_grid,
+                                         dtype=self._params.dtype)
+            
+            self._u = self._y_mesh[0, :, :, :]            
+            self._v = self._y_mesh[1, :, :, :]
+
+            self._y_linear = self._y_mesh.ravel()
+            
+            self._dydt_mesh = self.am.zeros(self._shape_grid,
+                                            dtype=self._params.dtype)
+            self._dydt_linear = self._dydt_mesh.ravel()
+        # end of with
+        
+        self._initializer.initialize(self)
+
     def reactions(self, t, u_c, v_c):
         batch_size = self.params.shape[0]
 
@@ -34,8 +60,14 @@ class LiawModel(TwoStateModel):
         sv = self.params[:, 6].reshape(batch_size, 1, 1)
         mu = self.params[:, 7].reshape(batch_size, 1, 1)
                 
-        f = ru * ((u_c ** 2 * v_c) / (1 + k * u_c ** 2)) + su - mu * u_c
-        g = -rv * ((u_c ** 2 * v_c) / (1 + k * u_c ** 2)) + sv
+        try:
+            f = ru * ((u_c ** 2 * v_c) / (1 + k * u_c ** 2)) + su - mu * u_c
+            g = -rv * ((u_c ** 2 * v_c) / (1 + k * u_c ** 2)) + sv
+        except FloatingPointError as err:
+            print(f.max(), f.min())
+            print(g.max(), g.min())
+            print(err)
+            raise err
         
         return f, g     
             

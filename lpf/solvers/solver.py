@@ -140,13 +140,13 @@ class Solver:
         t_beg = time.time()
 
         with model.am:
-            y_linear = model.y_linear
+            y_mesh = model.y_mesh
 
         for i in range(n_iters):
             t += dt
 
             with model.am:
-                y_linear += self.step(model, t, dt, y_linear)
+                y_mesh += self.step(model, t, dt, y_mesh)
 
             if not period_output:
                 pass
@@ -191,7 +191,7 @@ class Solver:
 
     # end of solve
 
-    def step(self, model, t, dt, y_linear):
+    def step(self, model, t, dt, y_mesh):
         raise NotImplementedError
 
     def to_dict(self):

@@ -9,6 +9,6 @@ class EulerSolver(Solver):
         super().__init__(*args, **kwargs)
         self._name = "Euler"
 
-    def step(self, model, t, dt, y_linear):
-        dydt = model.pdefunc(t, y_linear)
+    def step(self, model, t, dt, y_mesh):
+        dydt = model.pdefunc(t, y_mesh)
         return dydt * dt

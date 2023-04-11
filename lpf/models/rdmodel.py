@@ -24,6 +24,10 @@ class ReactionDiffusionModel(object):
         return self._height
     
     @property
+    def shape_grid(self):
+        return self._shape_grid
+    
+    @property
     def initializer(self):
         return self._initializer
 

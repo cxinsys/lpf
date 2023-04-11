@@ -103,13 +103,15 @@ class TwoStateModel(ReactionDiffusionModel):
     def reactions(self, t, u_c, v_c):
         raise NotImplementedError()
 
-    def pdefunc(self, t, y_linear):
+    def pdefunc(self, t, y_mesh=None, y_linear=None):
         """Equation function for integration.
         """
 
         batch_size = self.params.shape[0]
 
-        y_mesh = y_linear.reshape(self.n_states, batch_size, self.height, self.width)
+        # if y_mesh is None:
+        #     y_mesh = y_linear.reshape(self._shape_grid)
+            
         dydt_mesh = self._dydt_mesh
 
         u = y_mesh[0, :, :, :]
@@ -139,8 +141,11 @@ class TwoStateModel(ReactionDiffusionModel):
         dydt_mesh[:, :, -1, :] = 0.0
         dydt_mesh[:, :, :, 0] = 0.0
         dydt_mesh[:, :, :, -1] = 0.0
+        
+        
+        # print(self._dydt_linear.max(), self._dydt_linear.min())
 
-        return self._dydt_linear  # It is the same as dydt.ravel()
+        return self._dydt_mesh # It is the same as dydt.ravel()
 
 
     def is_early_stopping(self, rtol):

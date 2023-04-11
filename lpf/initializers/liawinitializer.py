@@ -1,7 +1,7 @@
 import numpy as np
 
 from lpf.initializers import Initializer
-from lpf.models import TwoStateModel
+import lpf.models
 
 
 class LiawInitializer(Initializer):
@@ -43,7 +43,7 @@ class LiawInitializer(Initializer):
 
     def initialize(self, model, init_states=None, init_pts=None):
 
-        if not isinstance(model, TwoStateModel):
+        if not isinstance(model, lpf.models.TwoStateModel):
             err_msg = "model should be a subclass of TwoStateModel."
             raise TypeError(err_msg)
 
@@ -62,32 +62,17 @@ class LiawInitializer(Initializer):
         with model.am:
             init_pts = model.am.array(init_pts, dtype=init_pts.dtype)
 
-            batch_size = init_states.shape[0]
+            batch_size = model.batch_size  # init_states.shape[0]
 
-            shape_grid = (model.n_states,
-                          batch_size,
-                          model.height,
-                          model.width)
-            
-            model._y_mesh = model.am.zeros(shape_grid, dtype=init_states.dtype)
-
+        
             u0 = model.am.array(init_states[:, 0], dtype=init_states.dtype)
             v0 = model.am.array(init_states[:, 1], dtype=init_states.dtype)
             v0 = v0.reshape(batch_size, 1, 1)
 
-            # shape = (batch_size, model.height, model.width)
-            model._u = model._y_mesh[0, :, :, :]
-
             for i in range(batch_size):
                 model._u[i, init_pts[i, :, 0], init_pts[i, :, 1]] = u0[i]
 
-            model._y_mesh[1, :, :, :] = v0
-            model._v = model._y_mesh[1, :, :, :]
-
-            model._y_linear = model._y_mesh.ravel()
-            
-            model._dydt_mesh = model.am.zeros(shape_grid, dtype=init_states.dtype)
-            model._dydt_linear = model._dydt_mesh.ravel()
+            model._y_mesh[1, :, :, :] = v0            
         # end of with
 
 
