@@ -41,6 +41,8 @@ Now, we can activate our virtual environment for LPF as follows.
 conda activate lpf
 ```
 
+### Package installation
+
 In the repository directory under the active anaconda environment, execute the following command.
 
 ```
