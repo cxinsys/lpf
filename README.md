@@ -41,6 +41,19 @@ Now, we can activate our virtual environment for LPF as follows.
 conda activate lpf
 ```
 
+In the repository directory under the active anaconda environment, execute the following command.
+
+```
+python setup.py develop
+```
+
+After installing the package, we can update the package with `git pull` command.
+This is why we install this package with `python setup.py develop` instead of `python setup.py install`.
+
+```
+git pull
+```
+
 ### Dependency of the PDE solver
 
 :bulb: To optimize the solver for a batch of parameter sets based on GPU computing, install CuPy. However, if you want to use only the cpu, you can omit it.
