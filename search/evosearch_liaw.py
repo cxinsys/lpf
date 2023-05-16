@@ -47,18 +47,16 @@ if __name__ == "__main__":
     if args.gpu >= 0:
         print("[CUDA DEVICE ID]", args.gpu)
         for cfg in config["OBJECTIVES"]:
-             if "cuda" not in cfg[2]:
+            if "cuda" not in cfg[2]:
                  continue
 
-             _, device_id = cfg[2].split(":")
-             device_id = int(device_id) 
+            if ":" in cfg[2]:
+                _, device_id = cfg[2].split(":")
+                device_id = int(device_id) 
+            else:
+                cfg[2] = "cuda:%d"%(args.gpu)
 
-             if isinstance(device_id, int):
-                 continue
-             
-             cfg[2] = "cuda:%d"%(args.gpu)
-        
-             print("[OBJECTIVE DEVICE] %s"%(cfg))
+            print("[OBJECTIVE DEVICE] %s"%(cfg))
         # end of for
     # end of if
 
@@ -74,7 +72,7 @@ if __name__ == "__main__":
     if "COLOR_U" in config:
         color_u = ImageColor.getcolor(config["COLOR_U"], "RGB")
 
-    if "COLOR_V" in confing:
+    if "COLOR_V" in config:
         color_v = ImageColor.getcolor(config["COLOR_V"], "RGB")
 
     model = ModelFactory.create(
@@ -146,7 +144,7 @@ if __name__ == "__main__":
 
             dv = converter.to_dv(model_dict, n_init_pts)
             if eval_init_fitness:
-                pop.push_back(i, dv)
+                pop.set_x(i, dv)
             elif "fitness" in model_dict:
                 fitness = float(model_dict["fitness"])
                 pop.set_xf(i, dv, [fitness])

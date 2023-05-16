@@ -26,7 +26,7 @@ class LiawModel(TwoStateModel):
         with self.am:
             #init_pts = self.am.array(init_pts, dtype=init_pts.dtype)
 
-            #batch_size = init_states.shape[0]
+            self._batch_size = self._initializer.init_states.shape[0]
 
             self._shape_grid = (self._n_states,
                                 self._batch_size,
@@ -64,8 +64,6 @@ class LiawModel(TwoStateModel):
             f = ru * ((u_c ** 2 * v_c) / (1 + k * u_c ** 2)) + su - mu * u_c
             g = -rv * ((u_c ** 2 * v_c) / (1 + k * u_c ** 2)) + sv
         except FloatingPointError as err:
-            print(f.max(), f.min())
-            print(g.max(), g.min())
             print(err)
             raise err
         

@@ -39,7 +39,7 @@ class LiawConverter(Converter):
             if cnt_init_pts == n_init_pts:
                 break
 
-            if "init_pts" in name:
+            if name.startswith("init_pts"):
                 dv.append(int(val[0]))
                 dv.append(int(val[1]))
                 cnt_init_pts += 1
