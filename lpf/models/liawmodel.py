@@ -34,8 +34,7 @@ class LiawModel(TwoStateModel):
         except FloatingPointError as err:
             raise err
         
-        return f, g     
-            
+        return f, g
     
     def to_dict(self,
                 index=None,

@@ -1,7 +1,6 @@
 from lpf.array import get_array_module
 
 
-
 class ReactionDiffusionModel(object):
 
     def __init__(self, device=None):
@@ -41,6 +40,9 @@ class ReactionDiffusionModel(object):
 
     @params.setter
     def params(self, obj):
+        if obj is not None:
+            self._batch_size = self.params.shape[0]
+
         self._params = obj
         
     @property

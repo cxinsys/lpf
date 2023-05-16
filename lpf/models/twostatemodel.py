@@ -92,7 +92,6 @@ class TwoStateModel(ReactionDiffusionModel):
     def v(self):
         return self._v
 
-
     def initialize(self):
         with self.am:
             self._shape_grid = (self._n_states,
