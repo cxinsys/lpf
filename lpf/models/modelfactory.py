@@ -1,4 +1,5 @@
 from lpf.models import LiawModel
+from lpf.models import GrayScottModel
 from lpf.models import TwoStateDiploidModel
 
 class ModelFactory:
@@ -9,6 +10,9 @@ class ModelFactory:
 
         if "liaw" in _name:
             return LiawModel(*args, **kwargs)
+
+        if "grayscott" in _name:
+            return GrayScottModel(*args, **kwargs)
 
         if "twostatediploid" in _name:
             return TwoStateDiploidModel(*args, **kwargs)
