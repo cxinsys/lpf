@@ -92,6 +92,29 @@ class TwoStateModel(ReactionDiffusionModel):
     def v(self):
         return self._v
 
+
+    def initialize(self):
+        with self.am:
+            self._shape_grid = (self._n_states,
+                                self._batch_size,
+                                self._height,
+                                self._width)
+
+            self._y_mesh = self.am.zeros(self._shape_grid,
+                                         dtype=self._params.dtype)
+
+            self._u = self._y_mesh[0, :, :, :]
+            self._v = self._y_mesh[1, :, :, :]
+
+            self._y_linear = self._y_mesh.ravel()
+
+            self._dydt_mesh = self.am.zeros(self._shape_grid,
+                                            dtype=self._params.dtype)
+            self._dydt_linear = self._dydt_mesh.ravel()
+        # end of with
+
+        self._initializer.initialize(self)
+
     def laplacian2d(self, a, dx):
         a_top = a[:, 0:-2, 1:-1]
         a_left = a[:, 1:-1, 0:-2]
@@ -254,7 +277,7 @@ class TwoStateModel(ReactionDiffusionModel):
                 solver=None,
                 generation=None,
                 fitness=None):
-        
+
         n2v = {}
         
         n2v["model_name"] = self._name
