@@ -40,10 +40,9 @@ class ReactionDiffusionModel(object):
 
     @params.setter
     def params(self, obj):
-        if obj is not None:
-            self._batch_size = self.params.shape[0]
-
         self._params = obj
+        if self._params is not None:
+            self._batch_size = self._params.shape[0]
         
     @property
     def batch_size(self):
