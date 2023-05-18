@@ -1,6 +1,6 @@
 from lpf.models import LiawModel
 from lpf.models import GrayScottModel
-from lpf.models import TwoStateDiploidModel
+from lpf.models import TwoComponentDiploidModel
 
 class ModelFactory:
     
@@ -14,7 +14,7 @@ class ModelFactory:
         if "grayscott" in _name:
             return GrayScottModel(*args, **kwargs)
 
-        if "twostatediploid" in _name:
-            return TwoStateDiploidModel(*args, **kwargs)
+        if "twocomponentdiploid" in _name:
+            return TwoComponentDiploidModel(*args, **kwargs)
 
         raise ValueError("%s is not a supported model."%(name))

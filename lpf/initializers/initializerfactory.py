@@ -1,4 +1,4 @@
-from lpf.initializers.twostateconstantinitializer import TwoStateConstantInitializer
+from lpf.initializers.TwoComponentConstantInitializer import TwoComponentConstantInitializer
 from lpf.initializers.liawinitializer import LiawInitializer
 
 class InitializerFactory:
@@ -7,8 +7,8 @@ class InitializerFactory:
     def create(name, *args, **kwargs):
         _name = name.lower()
 
-        if "twostateconstant" in _name:
-            return TwoStateConstantInitializer(*args, **kwargs)
+        if "twocomponentconstant" in _name:
+            return TwoComponentConstantInitializer(*args, **kwargs)
 
         if "liaw" in _name:
             return LiawInitializer(*args, **kwargs)

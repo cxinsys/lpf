@@ -3,10 +3,10 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from lpf.models import TwoStateModel
+from lpf.models import TwoComponentModel
 
 
-class GrayScottModel(TwoStateModel):
+class GrayScottModel(TwoComponentModel):
 
     def __init__(self, *args, **kwargs):
 

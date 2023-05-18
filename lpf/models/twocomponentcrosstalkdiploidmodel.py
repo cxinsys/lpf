@@ -1,10 +1,10 @@
 import numpy as np
  
-from lpf.models import TwoStateDiploidModel
+from lpf.models import TwoComponentDiploidModel
 
 
 
-class TwoStateCrosstalkDiploidModel(TwoStateDiploidModel):
+class TwoComponentCrosstalkDiploidModel(TwoComponentDiploidModel):
 
     def initialize(self):
         pa_model = self._paternal_model
@@ -70,4 +70,4 @@ class TwoStateCrosstalkDiploidModel(TwoStateDiploidModel):
         return self._dydt_mesh
 
 
-# end of class TwoStateCrosstalkDiploidModel
+# end of class TwoComponentCrosstalkDiploidModel

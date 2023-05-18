@@ -43,8 +43,8 @@ class LiawInitializer(Initializer):
 
     def initialize(self, model, init_states=None, init_pts=None):
 
-        if not isinstance(model, lpf.models.TwoStateModel):
-            err_msg = "model should be a subclass of TwoStateModel."
+        if not isinstance(model, lpf.models.TwoComponentModel):
+            err_msg = "model should be a subclass of TwoComponentModel."
             raise TypeError(err_msg)
 
         if init_states is None:

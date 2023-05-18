@@ -1,15 +1,15 @@
 import numbers
 import numpy as np
 
-from lpf.models import TwoStateModel
+from lpf.models import TwoComponentModel
 
 
 def check_model(model, name):
     if model is None:
         raise ValueError(f"{name} must be provided.") 
         
-    if not isinstance(model, TwoStateModel):
-        raise TypeError(f"{name} must be a derivative of TwoStateModel class.")
+    if not isinstance(model, TwoComponentModel):
+        raise TypeError(f"{name} must be a derivative of TwoComponentModel class.")
         
     if not hasattr(model, "initializer"):
         raise AttributeError("%s must have initializer member variable."%(name))
@@ -24,7 +24,7 @@ def check_model(model, name):
         raise ValueError("%s.n_states must be two."%(name))
 
 
-class TwoStateDiploidModel(TwoStateModel):
+class TwoComponentDiploidModel(TwoComponentModel):
 
     def __init__(self,
                  *args,
@@ -38,7 +38,7 @@ class TwoStateDiploidModel(TwoStateModel):
         super().__init__(*args, **kwargs)
         
         # Set the name of model.
-        self._name = "TwoStateDiploidModel"
+        self._name = "TwoComponentDiploidModel"
         
         # Check types and members of paternal and maternal models.
         check_model(paternal_model, "paternal_model")        
@@ -221,4 +221,4 @@ class TwoStateDiploidModel(TwoStateModel):
         return model_dict
     
 
-# end of class TwoStateDiploidModel
+# end of class TwoComponentDiploidModel

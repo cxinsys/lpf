@@ -12,7 +12,7 @@ from lpf.utils import get_template_fpath
 from lpf.utils import get_mask_fpath
 
 
-class TwoStateModel(ReactionDiffusionModel):
+class TwoComponentModel(ReactionDiffusionModel):
 
     def __init__(self,
                  initializer=None,
@@ -31,7 +31,7 @@ class TwoStateModel(ReactionDiffusionModel):
         super().__init__(device)
 
         # Set constant members.
-        self._name = "TwoStateModel"
+        self._name = "TwoComponentModel"
         self._n_states = 2
 
         # Set initializer.
@@ -389,4 +389,4 @@ class TwoStateModel(ReactionDiffusionModel):
     def len_decision_vector(self):  # length of the decision vector in PyGMO
         raise NotImplementedError()
 
-# end of class TwoStateModel
+# end of class TwoComponentModel

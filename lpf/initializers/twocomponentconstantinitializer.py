@@ -4,10 +4,10 @@ from lpf.initializers import Initializer
 import lpf.models
 
 
-class TwoStateConstantInitializer(Initializer):
+class TwoComponentConstantInitializer(Initializer):
 
     def __init__(self, init_states=None, init_pts=None, dtype=None):
-        super().__init__(name="TwoStateConstantInitializer",
+        super().__init__(name="TwoComponentConstantInitializer",
                          init_states=init_states,
                          init_pts=init_pts,
                          dtype=dtype)
@@ -27,8 +27,8 @@ class TwoStateConstantInitializer(Initializer):
 
     def initialize(self, model, init_states=None, init_pts=None):
 
-        if not isinstance(model, lpf.models.TwoStateModel):
-            err_msg = "model should be a subclass of TwoStateModel."
+        if not isinstance(model, lpf.models.TwoComponentModel):
+            err_msg = "model should be a subclass of TwoComponentModel."
             raise TypeError(err_msg)
 
         if init_states is None:
