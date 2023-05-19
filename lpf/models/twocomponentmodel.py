@@ -169,7 +169,6 @@ class TwoComponentModel(ReactionDiffusionModel):
 
         return self._dydt_mesh # It is the same as dydt.ravel()
 
-
     def is_early_stopping(self, rtol):
                 
         adu = self.am.abs(self._f)
@@ -268,7 +267,6 @@ class TwoComponentModel(ReactionDiffusionModel):
             self.u
             self.v
             
-            
     def to_dict(self,
                 index=None,
                 initializer=None,
@@ -316,8 +314,7 @@ class TwoComponentModel(ReactionDiffusionModel):
             raise TypeError("solver should be dict or a subclass of Solver.")
              
         return n2v
-     
-        
+
     def save_model(self,
                    index=None,
                    fpath=None,
@@ -358,11 +355,9 @@ class TwoComponentModel(ReactionDiffusionModel):
     
         return model_dict
 
-
     @staticmethod
     def parse_params(model_dicts):
         raise NotImplementedError()
-
 
     @staticmethod
     def parse_init_states(self, model_dicts):
@@ -384,7 +379,6 @@ class TwoComponentModel(ReactionDiffusionModel):
 
     def get_param_bounds(self):
         raise NotImplementedError()
-
 
     def len_decision_vector(self):  # length of the decision vector in PyGMO
         raise NotImplementedError()

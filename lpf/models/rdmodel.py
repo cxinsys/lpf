@@ -60,18 +60,40 @@ class ReactionDiffusionModel(object):
     def y_mesh(self):
         return self._y_mesh
 
+    @property
+    def thr_color(self):
+        return self._thr_color
+
     def initialize(self):
         self._initializer.initialize(self)
         
     def has_initializer(self):
         return self._initializer is not None
 
+    def laplacian2d(self, a, dx):
+        raise NotImplementedError()
+
+    def reactions(self, t, u_c, v_c):
+        raise NotImplementedError()
+
+    def pdefunc(self, t, y_mesh=None, y_linear=None):
+        raise NotImplementedError()
+
     def update(self):
         raise NotImplementedError()
         
     def is_early_stopping(self, rtol):       
         raise NotImplementedError()
-        
+
+    def colorize(self, thr_color=None):
+        raise NotImplementedError()
+
+    def create_image(self, index=0, arr_color=None):
+        raise NotImplementedError()
+
+    def to_dict(self):
+        raise NotImplementedError()
+
     def save_image(self, index, fpath):
         raise NotImplementedError()
         
