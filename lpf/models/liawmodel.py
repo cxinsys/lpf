@@ -141,7 +141,7 @@ class LiawModel(TwoComponentModel):
         self.bounds_min[9] = 0
         self.bounds_max[9] = 1.5
         
-        # init coords (25 points).     
+        # Initial points (initializing positions).
         for index in range(10, 2 * n_init_pts, 2):
             self.bounds_min[index] = 0
             self.bounds_max[index] = self._height - 1
@@ -154,7 +154,7 @@ class LiawModel(TwoComponentModel):
         
         return self.bounds_min, self.bounds_max
 
-    def len_decision_vector(self):  # length of the decision vector in PyGMO
+    def len_decision_vector(self):  # The length of the decision vector in PyGMO
         return 10 + 2 * self._n_init_pts
 
 # end of class LiawModel

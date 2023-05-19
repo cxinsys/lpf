@@ -131,7 +131,7 @@ class GiererMeinhardtModel(TwoComponentModel):
         self.bounds_min[7] = 0
         self.bounds_max[7] = 1.5
 
-        # init coords (25 points).
+        # Initial points (initializing positions).
         for index in range(8, 2 * n_init_pts, 2):
             self.bounds_min[index] = 0
             self.bounds_max[index] = self._height - 1
@@ -144,7 +144,7 @@ class GiererMeinhardtModel(TwoComponentModel):
 
         return self.bounds_min, self.bounds_max
 
-    def len_decision_vector(self):  # length of the decision vector in PyGMO
+    def len_decision_vector(self):  # The length of the decision vector in PyGMO
         return 8 + 2 * self._n_init_pts
 
 # end of class GrayScottModel
