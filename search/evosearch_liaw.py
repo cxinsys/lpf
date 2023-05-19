@@ -169,6 +169,7 @@ if __name__ == "__main__":
 
     print(isl)
 
+    # Start searching.
     try:
         for i in range(n_gen):
             t_beg = time.time()
