@@ -4,4 +4,6 @@ from lpf.models.twocomponentdiploidmodel import TwoComponentDiploidModel
 from lpf.models.twocomponentcrosstalkdiploidmodel import TwoComponentCrosstalkDiploidModel
 from lpf.models.liawmodel import LiawModel
 from lpf.models.grayscottmodel import GrayScottModel
+from lpf.models.gierermeinhardtmodel import GiererMeinhardtModel
+from lpf.models.schnakenbergmodel import SchnakenbergModel
 from lpf.models.modelfactory import ModelFactory
