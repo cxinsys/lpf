@@ -65,6 +65,10 @@ class EvoSearch:
             self.model.initializer = initializer
             self.model.params = params
 
+            # Check constraints and ignore the decision vector if it does not satisfy.
+            # if not self.model.check_constraints():
+            #    return [np.inf]
+
             try:
                 self.solver.solve(self.model)
             except (ValueError, FloatingPointError) as err:
