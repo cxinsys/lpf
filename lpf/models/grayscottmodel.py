@@ -1,4 +1,3 @@
-import json
 from collections.abc import Sequence
 
 import numpy as np
@@ -129,4 +128,4 @@ class GrayScottModel(TwoComponentModel):
     def len_decision_vector(self):  # length of the decision vector in PyGMO
         return 6 + 2 * self._n_init_pts
 
-# end of class LiawModel
+# end of class GrayScottModel
