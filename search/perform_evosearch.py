@@ -68,12 +68,16 @@ if __name__ == "__main__":
 
     color_u = None
     color_v = None
+    thr_color = None
 
     if "COLOR_U" in config:
         color_u = ImageColor.getcolor(config["COLOR_U"], "RGB")
 
     if "COLOR_V" in config:
         color_v = ImageColor.getcolor(config["COLOR_V"], "RGB")
+
+    if "THR_COLOR" in config:
+        thr_color = float(config["THR_COLOR"])
 
     model = ModelFactory.create(
         name=config["MODEL"],
@@ -82,7 +86,8 @@ if __name__ == "__main__":
         height=height,                 
         dx=dx,
         color_u=color_u,
-        color_v=color_v
+        color_v=color_v,
+        thr_color=thr_color
     )
 
     # Create a solver.

@@ -23,18 +23,25 @@ if __name__ == "__main__":
     LPF_REPO_HOME = osp.abspath("..")
     LPF_REPO_HOME
 
-   # Create a model.
+    # Create a model.
     dx = 0.1
     width = 128
     height = 128
     n_init_pts = 25
-    
+
+    thr_color = None
+    color_u = None
+    color_v = None
+
     model = ModelFactory.create(
         name="Liaw",
         n_init_pts=n_init_pts,
         width=width,
         height=height,                 
-        dx=dx
+        dx=dx,
+        color_u=color_u,
+        color_v=color_v,
+        thr_color=thr_color
     )
 
     # Create a solver.
