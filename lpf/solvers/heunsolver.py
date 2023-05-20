@@ -10,7 +10,7 @@ class HeunSolver(Solver):
         self._name = "HeunSolver"
 
     def step(self, model, t, dt, y_mesh):
-        k1 = model.pdefunc(t, y_mesh)
-        k2 = model.pdefunc(t + dt, y_mesh + dt * k1)
-        return dt * 0.5 * (k1 + k2)
+        k1 = dt * model.pdefunc(t, y_mesh)
+        k2 = dt * model.pdefunc(t + dt, y_mesh + k1)
+        return 0.5 * (k1 + k2)
 
