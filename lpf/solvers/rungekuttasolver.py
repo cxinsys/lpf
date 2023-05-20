@@ -7,7 +7,7 @@ class RungeKuttaSolver(Solver):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._name = "RungeKutta"
+        self._name = "RungeKuttaSolver"
 
     def step(self, model, t, dt, y_mesh):
         k1 = model.pdefunc(t, y_mesh)

@@ -7,7 +7,7 @@ class EulerSolver(Solver):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._name = "Euler"
+        self._name = "EulerSolver"
 
     def step(self, model, t, dt, y_mesh):
         dydt = model.pdefunc(t, y_mesh)
