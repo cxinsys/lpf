@@ -21,13 +21,10 @@ class GrayScottModel(TwoComponentModel):
         F = self.params[:, 2].reshape(batch_size, 1, 1)
         k = self.params[:, 3].reshape(batch_size, 1, 1)
 
-        try:
-            u_vsq = u_c * v_c ** 2
-            f = -u_vsq + F * (1 - u_c)
-            g = u_vsq - (F + k) * v_c
-        except FloatingPointError as err:
-            raise err
-        
+        u_vsq = u_c * v_c ** 2
+        f = -u_vsq + F * (1 - u_c)
+        g = u_vsq - (F + k) * v_c
+
         return f, g
     
     def to_dict(self,

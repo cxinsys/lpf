@@ -27,12 +27,9 @@ class LiawModel(TwoComponentModel):
         sv = self.params[:, 6].reshape(batch_size, 1, 1)
         mu = self.params[:, 7].reshape(batch_size, 1, 1)
                 
-        try:
-            f = ru * ((u_c ** 2 * v_c) / (1 + k * u_c ** 2)) + su - mu * u_c
-            g = -rv * ((u_c ** 2 * v_c) / (1 + k * u_c ** 2)) + sv
-        except FloatingPointError as err:
-            raise err
-        
+        f = ru * ((u_c ** 2 * v_c) / (1 + k * u_c ** 2)) + su - mu * u_c
+        g = -rv * ((u_c ** 2 * v_c) / (1 + k * u_c ** 2)) + sv
+
         return f, g
     
     def to_dict(self,

@@ -28,12 +28,9 @@ class SchnakenbergModel(TwoComponentModel):
         sv = self.params[:, 4].reshape(batch_size, 1, 1)
         mu = self.params[:, 5].reshape(batch_size, 1, 1)
 
-        try:
-            usq_v = u_c ** 2 * v_c
-            f = su - mu * u_c + rho * usq_v
-            g = sv - rho * usq_v
-        except FloatingPointError as err:
-            raise err
+        usq_v = u_c ** 2 * v_c
+        f = su - mu * u_c + rho * usq_v
+        g = sv - rho * usq_v
 
         return f, g
 

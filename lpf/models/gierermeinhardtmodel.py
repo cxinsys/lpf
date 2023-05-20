@@ -28,12 +28,9 @@ class GiererMeinhardtModel(TwoComponentModel):
         mu = self.params[:, 4].reshape(batch_size, 1, 1)
         nu = self.params[:, 5].reshape(batch_size, 1, 1)
 
-        try:
-            usq = u_c ** 2
-            f = ru * usq / v_c - mu * u_c
-            g = rv * usq - nu * v_c
-        except FloatingPointError as err:
-            raise err
+        usq = u_c ** 2
+        f = ru * usq / v_c - mu * u_c
+        g = rv * usq - nu * v_c
 
         return f, g
 
