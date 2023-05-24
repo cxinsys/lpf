@@ -306,12 +306,15 @@ class TwoComponentModel(ReactionDiffusionModel):
         #     raise TypeError("initializer should be dict or a subclass of Initializer.")
        
         # Get the members of solver
-        if isinstance(solver, dict):
+        if not solver:
+            n2v["solver"] = None
+        elif isinstance(solver, dict):
             n2v.update(solver)
         elif isinstance(solver, Solver):
             n2v.update(solver.to_dict())
-        else:
-            raise TypeError("solver should be dict or a subclass of Solver.")
+        
+        # else:
+        #     raise TypeError("solver should be dict or a subclass of Solver.")
              
         return n2v
 

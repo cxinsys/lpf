@@ -289,7 +289,7 @@ def merge_single_timeseries(imgs=None,
 
             fname, _ = osp.splitext(osp.basename(fpath))
             _, iden = fname.split("_")  # Identifier in the file name
-
+            
             imgs_in.append((iden, img))
         # end of for
     elif imgs:
@@ -300,8 +300,6 @@ def merge_single_timeseries(imgs=None,
     n_imgs = len(imgs_in)
     for i, (iden, img) in enumerate(imgs_in):
         if text_format:
-            fname, _ = osp.splitext(osp.basename(fpath))
-            _, iden = fname.split("_")  # identifier in the file name
 
             # bbox: (left, top, right, bottom)
             str_text = "{}{:,}".format(text_format, int(iden))

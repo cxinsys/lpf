@@ -2,6 +2,7 @@ import numbers
 import numpy as np
 
 from lpf.models import TwoComponentModel
+from lpf.solvers import Solver
 
 
 def check_model(model, name):
@@ -30,6 +31,7 @@ class TwoComponentDiploidModel(TwoComponentModel):
                  *args,
                  paternal_model=None,
                  maternal_model=None,
+                 initializer=None,
                  alpha=0.5,
                  beta=0.5,
                  **kwargs):
@@ -167,14 +169,14 @@ class TwoComponentDiploidModel(TwoComponentModel):
             
         return self._dydt_mesh
 
-    def to_dict(self,
+    def to_dict(self,      
                 index=None,
                 initializer=None,
                 params=None,
                 solver=None,
                 generation=None,
-                fitness=None):       
-
+                fitness=None):
+        
         model_dict = super().to_dict(index=index,
                                      initializer=initializer,
                                      solver=solver,
@@ -182,20 +184,15 @@ class TwoComponentDiploidModel(TwoComponentModel):
                                      fitness=fitness)       
         
         model_dict["model_name"] = self._name
-        
+          
+            
         pa_model_dict = self.paternal_model.to_dict(
                                   index=index,
-                                  initializer=initializer,
-                                  params=params,
-                                  solver=solver,
                                   generation=generation,
                                   fitness=fitness)
         
         ma_model_dict = self.maternal_model.to_dict(
                                   index=index,
-                                  initializer=initializer,
-                                  params=params,
-                                  solver=solver,
                                   generation=generation,
                                   fitness=fitness)
 
