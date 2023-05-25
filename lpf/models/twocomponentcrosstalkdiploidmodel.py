@@ -1,7 +1,4 @@
-import numpy as np
- 
 from lpf.models import TwoComponentDiploidModel
-
 
 
 class TwoComponentCrosstalkDiploidModel(TwoComponentDiploidModel):
@@ -17,7 +14,6 @@ class TwoComponentCrosstalkDiploidModel(TwoComponentDiploidModel):
         ma_model.initialize()
         
         with self.am:
-
             self._shape_grid = (self.n_states,
                                 self.batch_size,
                                 self.height,
@@ -28,24 +24,22 @@ class TwoComponentCrosstalkDiploidModel(TwoComponentDiploidModel):
 
             alpha = self._alpha
             beta = self._beta
-        
+
+            # The total u and v are determined by a linear combination of paternal and maternal u and v.
             self._y_mesh[0, :] = alpha * pa_model._y_mesh[0, :] + beta * ma_model._y_mesh[0, :]
             self._y_mesh[1, :] = alpha * pa_model._y_mesh[1, :] + beta * ma_model._y_mesh[1, :]
             
-
-            # The total u and v are determined by a linear combination of paternal and maternal u and v.
-            self._u = self._y_mesh[0, :]  #alpha * pa_model._u + beta * ma_model._u
-            self._v = self._y_mesh[1, :]  #alpha * pa_model._v + beta * ma_model._v
+            self._u = self._y_mesh[0, :]
+            self._v = self._y_mesh[1, :]
             
             self._y_linear = self._y_mesh.ravel()
              
             self._dydt_mesh = self.am.zeros(self._shape_grid,
                                             dtype=pa_model.params.dtype)
             self._dydt_linear = self._dydt_mesh.ravel()
-            
-            
 
-    def pdefunc(self, t, y_mesh=None, y_linear=None, ):
+
+    def pdefunc(self, t, y_mesh=None, y_linear=None):
         """Equation function for integration.
         """
         
@@ -68,6 +62,5 @@ class TwoComponentCrosstalkDiploidModel(TwoComponentDiploidModel):
             # self._v[:] = alpha * pa_model._v + beta * ma_model._v
             
         return self._dydt_mesh
-
 
 # end of class TwoComponentCrosstalkDiploidModel

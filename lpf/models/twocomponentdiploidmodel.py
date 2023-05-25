@@ -2,7 +2,6 @@ import numbers
 import numpy as np
 
 from lpf.models import TwoComponentModel
-from lpf.solvers import Solver
 
 
 def check_model(model, name):
@@ -70,7 +69,7 @@ class TwoComponentDiploidModel(TwoComponentModel):
         self._maternal_model = maternal_model
         
         
-        if isinstance(alpha, numbers.Number):            
+        if isinstance(alpha, numbers.Number):
             self._alpha = alpha
         else:
             with self.am:
@@ -142,7 +141,7 @@ class TwoComponentDiploidModel(TwoComponentModel):
         return self._paternal_model.has_initializer() \
                and self._maternal_model.has_initializer()
 
-    def pdefunc(self, t, y_mesh=None, y_linear=None, ):
+    def pdefunc(self, t, y_mesh=None, y_linear=None):
         """Equation function for integration.
         """
         
@@ -184,7 +183,6 @@ class TwoComponentDiploidModel(TwoComponentModel):
                                      fitness=fitness)       
         
         model_dict["model_name"] = self._name
-          
             
         pa_model_dict = self.paternal_model.to_dict(
                                   index=index,
@@ -198,8 +196,7 @@ class TwoComponentDiploidModel(TwoComponentModel):
 
         model_dict["paternal_model"] = pa_model_dict
         model_dict["maternal_model"] = ma_model_dict        
-        
-        
+
         if not isinstance(self._alpha, numbers.Number):
             with self.am:
                 alpha = float(self._alpha[index])
@@ -216,6 +213,5 @@ class TwoComponentDiploidModel(TwoComponentModel):
         model_dict["beta"] = beta
     
         return model_dict
-    
 
 # end of class TwoComponentDiploidModel
