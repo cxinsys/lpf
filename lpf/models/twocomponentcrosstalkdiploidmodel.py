@@ -32,12 +32,10 @@ class TwoComponentCrosstalkDiploidModel(TwoComponentDiploidModel):
             self._u = self._y_mesh[0, :]
             self._v = self._y_mesh[1, :]
             
-            self._y_linear = self._y_mesh.ravel()
+            # self._y_linear = self._y_mesh.ravel()
              
             self._dydt_mesh = self.am.zeros(self._shape_grid,
                                             dtype=pa_model.params.dtype)
-            self._dydt_linear = self._dydt_mesh.ravel()
-
 
     def pdefunc(self, t, y_mesh=None, y_linear=None):
         """Equation function for integration.
@@ -51,8 +49,8 @@ class TwoComponentCrosstalkDiploidModel(TwoComponentDiploidModel):
             alpha = self.alpha
             beta = self.beta            
             
-            dydt_linear_pa = pa_model.pdefunc(t, y_mesh=y_mesh)
-            dydt_linear_ma = ma_model.pdefunc(t, y_mesh=y_mesh)
+            dydt_mesh_pa = pa_model.pdefunc(t, y_mesh=y_mesh)
+            dydt_mesh_ma = ma_model.pdefunc(t, y_mesh=y_mesh)
         
             self._dydt_mesh[0, :] = alpha * pa_model._dydt_mesh[0, :] + beta * ma_model._dydt_mesh[0, :]
             self._dydt_mesh[1, :] = alpha * pa_model._dydt_mesh[1, :] + beta * ma_model._dydt_mesh[1, :]

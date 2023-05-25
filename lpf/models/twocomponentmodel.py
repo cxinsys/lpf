@@ -105,11 +105,10 @@ class TwoComponentModel(ReactionDiffusionModel):
             self._u = self._y_mesh[0, :, :, :]
             self._v = self._y_mesh[1, :, :, :]
 
-            self._y_linear = self._y_mesh.ravel()
+            # self._y_linear = self._y_mesh.ravel()
 
             self._dydt_mesh = self.am.zeros(self._shape_grid,
                                             dtype=self._params.dtype)
-            self._dydt_linear = self._dydt_mesh.ravel()
         # end of with
 
         self._initializer.initialize(self)
@@ -163,11 +162,8 @@ class TwoComponentModel(ReactionDiffusionModel):
         dydt_mesh[:, :, -1, :] = 0.0
         dydt_mesh[:, :, :, 0] = 0.0
         dydt_mesh[:, :, :, -1] = 0.0
-        
-        
-        # print(self._dydt_linear.max(), self._dydt_linear.min())
 
-        return self._dydt_mesh # It is the same as dydt.ravel()
+        return self._dydt_mesh
 
     def is_early_stopping(self, rtol):
                 

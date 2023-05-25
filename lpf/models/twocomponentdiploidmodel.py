@@ -67,8 +67,7 @@ class TwoComponentDiploidModel(TwoComponentModel):
                 
         self._paternal_model = paternal_model
         self._maternal_model = maternal_model
-        
-        
+
         if isinstance(alpha, numbers.Number):
             self._alpha = alpha
         else:
@@ -130,12 +129,10 @@ class TwoComponentDiploidModel(TwoComponentModel):
             self._u = alpha * pa_model._u + beta * ma_model._u
             self._v = alpha * pa_model._v + beta * ma_model._v
             
-            self._y_linear = self._y_mesh.ravel()
+            # self._y_linear = self._y_mesh.ravel()
              
             self._dydt_mesh = self.am.zeros(self._shape_grid,
                                             dtype=pa_model.params.dtype)
-            self._dydt_linear = self._dydt_mesh.ravel()
-            
         
     def has_initializer(self):
         return self._paternal_model.has_initializer() \
