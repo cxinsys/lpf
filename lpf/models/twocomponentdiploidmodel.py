@@ -166,7 +166,7 @@ class TwoComponentDiploidModel(TwoComponentModel):
         return self._dydt_mesh
 
     def to_dict(self,      
-                index=None,
+                index=0,
                 initializer=None,
                 params=None,
                 solver=None,

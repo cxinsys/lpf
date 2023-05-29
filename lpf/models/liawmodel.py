@@ -33,7 +33,7 @@ class LiawModel(TwoComponentModel):
         return f, g
     
     def to_dict(self,
-                index=None,
+                index=0,
                 params=None,
                 initializer=None,
                 solver=None,

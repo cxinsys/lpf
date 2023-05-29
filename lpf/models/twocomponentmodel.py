@@ -264,7 +264,7 @@ class TwoComponentModel(ReactionDiffusionModel):
             self.v
             
     def to_dict(self,
-                index=None,
+                index=0,
                 initializer=None,
                 params=None,
                 solver=None,
@@ -294,12 +294,17 @@ class TwoComponentModel(ReactionDiffusionModel):
         n2v["color_v"] = self._color_v.tolist()
        
         # Get the members of initializer: n_init_pts, init_pts, init_states
-        if isinstance(initializer, dict):
+        if not initializer and self._initializer:
+            initializer = self._initializer
+
+        if initializer is None:
+            pass
+        elif isinstance(initializer, dict):
             n2v.update(initializer)
         elif isinstance(initializer, Initializer):
             n2v.update(initializer.to_dict(index))
-        # else:
-        #     raise TypeError("initializer should be dict or a subclass of Initializer.")
+        else:
+             raise TypeError("initializer should be dict or a subclass of Initializer.")
        
         # Get the members of solver
         if not solver:
