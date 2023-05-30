@@ -16,6 +16,10 @@ class ReactionDiffusionModel(ABC):
         return self._name
 
     @property
+    def dtype(self):
+        return self._dtype
+
+    @property
     def width(self):
         return self._width
 
