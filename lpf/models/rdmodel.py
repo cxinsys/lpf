@@ -1,7 +1,8 @@
+from abc import ABC
 from lpf.array import get_array_module
 
 
-class ReactionDiffusionModel(object):
+class ReactionDiffusionModel(ABC):
 
     def __init__(self, device=None):
         self._am = get_array_module(device)

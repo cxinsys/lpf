@@ -275,7 +275,6 @@ class TwoComponentModel(ReactionDiffusionModel):
         
         n2v["model_name"] = self._name
 
-        
         if index:
             n2v["index"] = index
             
