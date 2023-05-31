@@ -43,7 +43,7 @@ if __name__ == "__main__":
     width = 128
     height = 128
     thr_color = 0.5
-    n_iters = 5000
+    n_iters = 500000
     shape = (height, width)
 
     # Create the output directory.
