@@ -64,6 +64,11 @@ class RandomDiploidReproducer(object):
         init_states = np.vstack([pa_init_states, ma_init_states])
         init_pts = np.vstack([pa_init_pts, ma_init_pts])
         params = np.vstack([pa_params, ma_params])
+        
+        # Shuffle the values along the batch axis.
+        np.random.shuffle(init_states)
+        np.random.shuffle(init_pts)
+        np.random.shuffle(params)
 
         return init_states, init_pts, params
 
