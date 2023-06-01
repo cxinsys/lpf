@@ -191,7 +191,7 @@ if __name__ == "__main__":
         beta=beta,
         diploid_model_class=TwoComponentDiploidModel,
         haploid_model_class=LiawModel,
-        haploid_model_initializer=LiawInitializer,
+        haploid_initializer_class=LiawInitializer,
         dpath_output=dpath_output,
         device=device,
         verbose=1        

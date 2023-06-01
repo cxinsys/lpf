@@ -35,7 +35,7 @@ class RandomTwoComponentDiploidReproducer(object):
                  beta=0.5,
                  diploid_model_class=None,
                  haploid_model_class=None,
-                 haploid_model_initializer=None,
+                 haploid_initializer_class=None,
                  dpath_output=None,
                  device="cpu",
                  verbose=0):
@@ -54,7 +54,7 @@ class RandomTwoComponentDiploidReproducer(object):
             beta (float): Maternal coefficient of the linear combination in two-component system.
             diploid_model_class (lpf.models.TwoComponentDiploidModel):
             haploid_model_class (lpf.models.TwoComponentModel):
-            haploid_model_initializer (lpf.models.TwoComponentInitializer):
+            haploid_initializer_class (lpf.models.TwoComponentInitializer):
             dpath_output (str, optional): Directory path of output.
             device (str, optional): Computing device.
             verbose (int, optional): Verbosity of messages for progress information.
@@ -84,15 +84,15 @@ class RandomTwoComponentDiploidReproducer(object):
         elif not issubclass(haploid_model_class, lpf.models.TwoComponentModel):
             raise TypeError("diploid_model_class must be a subclass of lpf.models.TwoComponentModel.")
 
-        if haploid_model_initializer is None:
-            haploid_model_initializer = LiawInitializer
-        elif not issubclass(haploid_model_initializer, lpf.initializers.TwoComponentInitializer):
+        if haploid_initializer_class is None:
+            haploid_initializer_class = LiawInitializer
+        elif not issubclass(haploid_initializer_class, lpf.initializers.TwoComponentInitializer):
             raise TypeError("diploid_model_class must be a subclass of lpf.initializers.TwoComponentInitializer.")
 
         
         self._diploid_model_class = diploid_model_class
         self._haploid_model_class = haploid_model_class
-        self._haploid_model_initializer = haploid_model_initializer
+        self._haploid_initializer_class = haploid_initializer_class
         self._n_generations = n_generations
         self._pop_size = pop_size
         self._n_cross = n_cross
@@ -392,7 +392,7 @@ class RandomTwoComponentDiploidReproducer(object):
                     img_ladybird, img_pattern = model.create_image(k, arr_color)
 
                     # Paternal model
-                    initializer = self._haploid_model_initializer(
+                    initializer = self._haploid_initializer_class(
                         init_states=pa_model.initializer.init_states[None, k, :],
                         init_pts=pa_model.initializer.init_pts[None, k, :, :]
                     )
