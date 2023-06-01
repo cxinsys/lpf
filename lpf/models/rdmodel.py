@@ -26,6 +26,10 @@ class ReactionDiffusionModel(ABC):
     @property
     def height(self):
         return self._height
+
+    @property
+    def dx(self):
+        return self._dx
     
     @property
     def shape_grid(self):

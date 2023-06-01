@@ -1,10 +1,10 @@
 import numpy as np
 
-from lpf.initializers import Initializer
+from lpf.initializers import TwoComponentInitializer
 import lpf.models
 
 
-class LiawInitializer(Initializer):
+class LiawInitializer(TwoComponentInitializer):
     
     def __init__(self, init_states=None, init_pts=None, dtype=None):
         super().__init__(name="LiawInitializer",
@@ -74,7 +74,6 @@ class LiawInitializer(Initializer):
 
             model._y_mesh[1, :, :, :] = v0            
         # end of with
-
 
     def to_dict(self, index):
         n2v = {}  # Mapping variable names to values.

@@ -1,8 +1,8 @@
+from abc import ABC
 import numpy as np
-from PIL import Image
 
 
-class Initializer:
+class Initializer(ABC):
     def __init__(self,
                  name=None,
                  init_states=None,

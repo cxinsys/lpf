@@ -1,28 +1,25 @@
 import os
 import os.path as osp
 from os.path import join as pjoin
-import time
 from datetime import datetime
 import shutil
-import random
 import argparse
 
 import numpy as np
 np.seterr(all='raise')
 
 from lpf.initializers import LiawInitializer
-from lpf.converters import LiawConverter
 from lpf.models import LiawModel
 from lpf.models import TwoComponentDiploidModel
-from lpf.models import TwoComponentCrosstalkDiploidModel
 from lpf.solvers import EulerSolver
-from lpf.reproducers import RandomDiploidReproducer
+from lpf.reproducers import RandomTwoComponentDiploidReproducer
 
 
 if __name__ == "__main__":
 
-
-    parser = argparse.ArgumentParser(description='Configruations for simulation experiment.')
+    parser = argparse.ArgumentParser(
+        description='Configruations for simulation experiment.'
+    )
 
     parser.add_argument('--gpu',
                         dest='gpu',
@@ -37,14 +34,22 @@ if __name__ == "__main__":
     if args.gpu >= 0:
         device = "cuda:%d"%(int(args.gpu))
 
-
+    # Define spatiotemporal parameters.
     dx = 0.1
     dt = 0.01
     width = 128
     height = 128
     thr_color = 0.5
-    n_iters = 5000
-    shape = (height, width)
+    n_iters = 500000
+    
+    # Define hyper-parameters for population evolution.      
+    n_generations = 1000
+    pop_size = 32  # The size of population (the number of organisms)
+    n_cross = 4  # The number of crossing experiments
+    n_gametes = 32  # The number of gametes (the number of daughter cells)
+    prob_crossover = 0.3
+    alpha = 0.5
+    beta = 0.5
 
     # Create the output directory.
     str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
@@ -152,170 +157,48 @@ if __name__ == "__main__":
         dx=dx,
         device=device
     )
-    
-    
-    # Create a diploid model.
-    model = TwoComponentDiploidModel(
-        paternal_model=pa_model,
-        maternal_model=ma_model,
-        alpha=0.5,
-        beta=0.5,
-        device=device
-    )
-        
-    
-    # Start population evolution.      
-    n_generations = 1000
-    pop_size = 32  # The size of population (the number of organisms)
-    n_cross = 4  # The number of crossing experiments
-    n_gametes = 32  # The number of gametes (daughter celss)
-    prob_crossover = 0.3
-    n_progenies_per_cross = pop_size // n_cross
-    
-    fstr_gen = "generation-%0{}d".format(int(np.floor(np.log10(n_generations))) + 1)
-    fstr_duration = "[Generation #%d] Elapsed time: %f sec."
-        
-    pops = [[]]  # population per generation.
-    
-    str_gen = fstr_gen%(0)
-    dpath_gen = pjoin(dpath_output, str_gen)
-    os.makedirs(dpath_gen, exist_ok=True)
-    
-    for i in range(pop_size):
-        str_id = "%s_model-%d"%(str_gen, i + 1)
-        pops[0].append({
-            "ID": str_id,
-            "MODEL": model,
-            "PATERNAL": None,
-            "MATERNAL": None,
-            "MORPH": None,
-            "MODEL_DICT": model.to_dict()            
-        })
-        fpath_model = pjoin(dpath_gen, "model_%s.json"%(str_id))                
-        model.save_model(index=0, fpath=fpath_model)
-    # end of for
-        
-    reproducer = RandomDiploidReproducer()
-    
-    for i in range(1, n_generations):
-        t_beg = time.time()
-        
-        # Add a list that contains the organisms of this generation.
-        pops.append([])
-        
-        # Create a directory that contains the files of this generation.
-        str_gen = fstr_gen%(i)
-        dpath_gen = pjoin(dpath_output, str_gen)
-        os.makedirs(dpath_gen, exist_ok=True)
-            
-        cnt_progenies = 0
-        # Repeat crossing experiments.
-        for j in range(n_cross):
-            male_model_dict = random.choice(pops[i - 1])
-            female_model_dict = random.choice(pops[i - 1])
-            
-            id_male = male_model_dict["ID"]
-            male_model = male_model_dict["MODEL"] 
-            
-            id_female = female_model_dict["ID"]
-            female_model = female_model_dict["MODEL"] 
-            
-            pa_model, ma_model = reproducer.cross(male_model=male_model,
-                                                  female_model=female_model,
-                                                  n_progenies=n_progenies_per_cross,
-                                                  n_gametes=n_gametes,
-                                                  prob_crossover=prob_crossover,
-                                                  device=device)
-            
-            # Create the model.
-            model = TwoComponentDiploidModel(
-                paternal_model=pa_model,
-                maternal_model=ma_model,
-                alpha=0.5,
-                beta=0.5,
-                device=device
-            )
-                
-            
-            # Perform a numerical simulation.
-            solver = EulerSolver()        
-        
-            solver.solve(
-                model=model,
-                dt=dt,
-                n_iters=n_iters,
-                period_output=n_iters,
-                verbose=0
-            )
-                    
-            arr_color = model.colorize(thr_color=thr_color)
 
     
-            # Update and save the progenies.                
-            for k in range(n_progenies_per_cross):
-                img_ladybird, img_pattern = model.create_image(k, arr_color)
-                            
-                # Paternal model
-                initializer = LiawInitializer(
-                    init_states=pa_model.initializer.init_states[None, k, :],
-                    init_pts=pa_model.initializer.init_pts[None, k, :, :]
-                )
-                
-                progeny_pa_model = LiawModel(
-                    initializer=initializer,
-                    params=pa_model.params[None, k, :],
-                    width=width,
-                    height=height,
-                    dx=dx,
-                    device=device
-                )
-                
-                # Maternal model
-                initializer = LiawInitializer(
-                    init_states=ma_model.initializer.init_states[None, k, :],
-                    init_pts=ma_model.initializer.init_pts[None, k, :, :]
-                )
-                
-                progeny_ma_model = LiawModel(
-                    initializer=initializer,
-                    params=ma_model.params[None, k, :],
-                    width=width,
-                    height=height,
-                    dx=dx,
-                    device=device
-                )
-                
-                progeny_model = TwoComponentDiploidModel(
-                    paternal_model=progeny_pa_model,
-                    maternal_model=progeny_ma_model,
-                    alpha=0.5,
-                    beta=0.5,
-                    device=device
-                )
-                
-                cnt_progenies += 1
-                str_id = "%s_model-%d"%(str_gen, cnt_progenies)
-                pops[i].append({
-                    "ID": str_id,
-                    "MODEL": progeny_model,
-                    "PATERNAL": id_male,
-                    "MATERNAL": id_female,
-                    "MORPH": img_ladybird,
-                    "MODEL_DICT": model.to_dict()            
-                })
-                
-                fpath_model = pjoin(dpath_gen, "model_%s.json"%(str_id))
-                fpath_ladybird = pjoin(dpath_gen, "ladybird_%s.png"%(str_id))
-                fpath_pattern = pjoin(dpath_gen, "pattern_%s.png"%(str_id))
-                
-                progeny_model.save_model(index=0, fpath=fpath_model)
-                img_ladybird.save(fpath_ladybird)
-                img_pattern.save(fpath_pattern)            
-            # end of for k in range(pop_size)
-        # end of for j in range(n_cross)
-        
-        t_end = time.time()    
-        print(fstr_duration % (i, t_end - t_beg))        
-    # end of for i in range(1, n_generations)
+    # Create a population.
+    init_pop = []
+    
+    for i in range(pop_size):
+        model = TwoComponentDiploidModel(
+            paternal_model=pa_model,
+            maternal_model=ma_model,
+            alpha=alpha,
+            beta=beta,
+            device=device
+        )
+        init_pop.append(model)
+    # end of for
+    
+    solver = EulerSolver(
+        model=model,
+        dt=dt,
+        n_iters=n_iters,
+        period_output=n_iters,
+        verbose=0
+    )
+    
+    reproducer = RandomTwoComponentDiploidReproducer(
+        population=init_pop,
+        solver=solver,
+        pop_size=pop_size,
+        n_cross=n_cross,
+        n_gametes=n_gametes,
+        prob_crossover=prob_crossover,
+        alpha=alpha,
+        beta=beta,
+        diploid_model_class=TwoComponentDiploidModel,
+        haploid_model_class=LiawModel,
+        haploid_model_initializer=LiawInitializer,
+        dpath_output=dpath_output,
+        device=device,
+        verbose=1        
+    )
+    
+    reproducer.evolve(n_generations=n_generations)
+    
 
         

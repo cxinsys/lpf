@@ -1,10 +1,10 @@
 import numpy as np
 
-from lpf.initializers import Initializer
+from lpf.initializers import TwoComponentInitializer
 import lpf.models
 
 
-class TwoComponentConstantInitializer(Initializer):
+class TwoComponentConstantInitializer(TwoComponentInitializer):
 
     def __init__(self, init_states=None, init_pts=None, dtype=None):
         super().__init__(name="TwoComponentConstantInitializer",

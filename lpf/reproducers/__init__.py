@@ -1,1 +1,1 @@
-from lpf.reproducers.randomdiploidreproducer import RandomDiploidReproducer
+from lpf.reproducers.randomtwocomponentdiploidreproducer import RandomTwoComponentDiploidReproducer
