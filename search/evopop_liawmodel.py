@@ -174,7 +174,6 @@ if __name__ == "__main__":
     # end of for
     
     solver = EulerSolver(
-        model=model,
         dt=dt,
         n_iters=n_iters,
         period_output=n_iters,
