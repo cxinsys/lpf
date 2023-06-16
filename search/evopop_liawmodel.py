@@ -44,10 +44,10 @@ if __name__ == "__main__":
     
     # Define hyper-parameters for population evolution.      
     n_generations = 1000
-    pop_size = 32  # The size of population (the number of organisms)
-    n_cross = 4  # The number of crossing experiments
-    n_gametes = 32  # The number of gametes (the number of daughter cells)
-    prob_crossover = 0.3
+    pop_size = 64  # The size of population (the number of organisms)
+    n_cross = 8  # The number of crossing experiments
+    n_gametes = 16  # The number of gametes (the number of daughter cells)
+    prob_crossover = 0.5
     alpha = 0.5
     beta = 0.5
 
