@@ -195,8 +195,12 @@ class RandomTwoComponentDiploidReproducer(object):
 
         # Apply crossover.
         if prob_crossover > 0.0 and type(pa_model) == type(ma_model):
+            
+            # Number of individuals that undergo crossover.
             n_haploid_crossover = n_crossover // 2
-            i_beg = n_haploid - n_haploid_crossover
+            
+            # Number of individuals that do NOT undergo crossover.
+            i_beg = n_haploid - n_haploid_crossover  
 
             # Crossover between initial states.
             shape = [n_haploid_crossover, *pa_init_states.shape[1:]]
@@ -304,7 +308,6 @@ class RandomTwoComponentDiploidReproducer(object):
         fstr_gen = "generation-%0{}d".format(int(np.floor(np.log10(n_generations))) + 1)
         fstr_duration = "[Generation #%d] Elapsed time: %f sec."
 
-        # pops = self._population  # population per generation.
 
         str_gen = fstr_gen % (0)
 
@@ -373,18 +376,9 @@ class RandomTwoComponentDiploidReproducer(object):
                 )
 
                 # Perform a numerical simulation.
-                # solver = EulerSolver()
-
-                # solver.solve(
-                #     model=model,
-                #     dt=dt,
-                #     n_iters=n_iters,
-                #     period_output=n_iters,
-                #     verbose=0
-                # )
                 self._solver.solve(model=model)
 
-                # arr_color = model.colorize(thr_color=thr_color)
+                # Colorize the morphs from the states.
                 arr_color = model.colorize()
 
                 # Update and save the progenies.
