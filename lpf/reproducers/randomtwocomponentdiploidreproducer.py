@@ -258,12 +258,14 @@ class RandomTwoComponentDiploidReproducer(object):
         female_init_states, female_init_pts, female_params \
             = self.generate_gametes(female_model, n_gametes, prob_crossover)
 
-        ind = np.random.randint(low=0, high=n_gametes, size=n_progenies)
+        # Randomly select the gametes of male and female.
+        ind_male = np.random.randint(low=0, high=n_gametes, size=n_progenies)
+        ind_female = np.random.randint(low=0, high=n_gametes, size=n_progenies)
 
         male_init_states, male_init_pts, male_params \
-            = male_init_states[ind, :], male_init_pts[ind, :], male_params[ind, :]
+            = male_init_states[ind_male, :], male_init_pts[ind_male, :], male_params[ind_male, :]
         female_init_states, female_init_pts, female_params \
-            = female_init_states[ind, :], female_init_pts[ind, :], female_params[ind, :]
+            = female_init_states[ind_female, :], female_init_pts[ind_female, :], female_params[ind_female, :]
 
         name = male_model.paternal_model.initializer.name
         male_initializer = InitializerFactory.create(name,
@@ -307,7 +309,6 @@ class RandomTwoComponentDiploidReproducer(object):
 
         fstr_gen = "generation-%0{}d".format(int(np.floor(np.log10(n_generations))) + 1)
         fstr_duration = "[Generation #%d] Elapsed time: %f sec."
-
 
         str_gen = fstr_gen % (0)
 
@@ -447,8 +448,10 @@ class RandomTwoComponentDiploidReproducer(object):
                         img_pattern.save(fpath_pattern)
                     # end of if
 
-                # end of for k in range(pop_size)
+                # end of for k in range(n_progenies_per_cross)
             # end of for j in range(n_cross)
+
+            # pop_size = n_cross * n_progenies_per_cross
 
             t_end = time.time()
             if verbose > 0:
