@@ -5,6 +5,7 @@ import random
 import time
 
 import numpy as np
+from numpy.random import default_rng
 
 import lpf
 
@@ -259,8 +260,12 @@ class RandomTwoComponentDiploidReproducer(object):
             = self.generate_gametes(female_model, n_gametes, prob_crossover)
 
         # Randomly select the gametes of male and female.
-        ind_male = np.random.randint(low=0, high=n_gametes, size=n_progenies)
-        ind_female = np.random.randint(low=0, high=n_gametes, size=n_progenies)
+        #ind_male = np.random.randint(low=0, high=n_gametes, size=n_progenies)
+        #ind_female = np.random.randint(low=0, high=n_gametes, size=n_progenies)
+        rng = default_rng()
+        ind_male = rng.choice(n_gametes, size=n_progenies, replace=False)
+        ind_female = rng.choice(n_gametes, size=n_progenies, replace=False)
+
 
         male_init_states, male_init_pts, male_params \
             = male_init_states[ind_male, :], male_init_pts[ind_male, :], male_params[ind_male, :]
@@ -451,7 +456,7 @@ class RandomTwoComponentDiploidReproducer(object):
                 # end of for k in range(n_progenies_per_cross)
             # end of for j in range(n_cross)
 
-            # pop_size = n_cross * n_progenies_per_cross
+            # [!] pop_size = n_cross * n_progenies_per_cross
 
             t_end = time.time()
             if verbose > 0:
