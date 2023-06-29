@@ -6,10 +6,7 @@ class TwoComponentCrosstalkDiploidModel(TwoComponentDiploidModel):
     def initialize(self):
         pa_model = self._paternal_model
         ma_model = self._maternal_model
-        
-        alpha = self._alpha
-        beta = self._beta
-        
+
         pa_model.initialize()
         ma_model.initialize()
         

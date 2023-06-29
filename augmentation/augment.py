@@ -53,7 +53,7 @@ if __name__ == "__main__":
     dt = float(config["DT"])
     width = int(config["WIDTH"])
     height = int(config["HEIGHT"])
-    thr = float(config["THR"])
+    thr = float(config["THR_COLOR"])
     n_iters = int(config["N_ITERS"])
     rtol = float(config["RTOL_EARLY_STOP"])
     shape = (height, width)

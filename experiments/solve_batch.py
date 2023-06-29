@@ -43,6 +43,7 @@ if __name__ == "__main__":
     batch_size = 1
     model_dicts = []
 
+    # We can directly define the parameter values in dict.
     # n2v = {"u0": 2.26149602133276, "v0": 1.6635557745335625,
     #        "Du": 0.00027545326069340044, "Dv": 0.07983333454476473,
     #        "ru": 0.17999999999999997, "rv": 0.09116599746769462,
@@ -55,7 +56,6 @@ if __name__ == "__main__":
 
     # To test the batch processing, add model JSON files.
     model_dicts = load_model_dicts("../population/init_pop_axyridis/")
-    #model_dicts = load_model_dicts("../population/test_pop_01/")
 
     # Update the initializer.
     initializer.update(model_dicts)
@@ -64,10 +64,10 @@ if __name__ == "__main__":
     params = LiawModel.parse_params(model_dicts)
     model = LiawModel(
         initializer=initializer,
-        params=params,  # model
-        width=width,  # space
-        height=height,  # space
-        dx=dx,  # space
+        params=params,
+        width=width,
+        height=height,
+        dx=dx,
         #color_u=[161, 102, 0],  # model
         #color_v=[59, 161, 90],  # model
         device=device  # solver and model
@@ -85,6 +85,7 @@ if __name__ == "__main__":
         dpath_model=dpath_output,
         dpath_ladybird=dpath_output,
         dpath_pattern=dpath_output,
+        dpath_states=dpath_output,
         verbose=1
     )
 

@@ -259,9 +259,7 @@ class TwoComponentModel(ReactionDiffusionModel):
             pattern.save(fpath_pattern)
     
     def save_states(self, index=0, fpath=None):
-        with open(fpath, "wt") as fout:
-            self.u
-            self.v
+        np.savez(fpath, u=self.u[index, ...], v =self.v[index, ...])
             
     def to_dict(self,
                 index=0,

@@ -33,7 +33,6 @@ class TwoComponentDiploidModel(Diploidy, TwoComponentModel):
             self._v = alpha * pa_model._v + beta * ma_model._v
         
     def has_initializer(self):
-        #return super(Diploidy, self).has_initializer()
         return Diploidy.has_initializer(self)
 
     def pdefunc(self, t, y_mesh=None, y_linear=None):

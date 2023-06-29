@@ -134,7 +134,7 @@ class Solver:
             # end of for
 
             fstr_fname_states \
-                = "states_%0{}d.pickle".format(int(np.floor(np.log10(n_iters))) + 1)
+                = "states_%0{}d".format(int(np.floor(np.log10(n_iters))) + 1)
 
         t = 0.0
         t_beg = time.time()
