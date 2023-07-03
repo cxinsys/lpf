@@ -49,7 +49,9 @@ class ReactionDiffusionModel(ABC):
 
     @params.setter
     def params(self, obj):
-        self._params = obj
+        with self.am:
+            self._params = self.am.array(obj, dtype=obj.dtype)
+
         if self._params is not None:
             self._batch_size = self._params.shape[0]
         

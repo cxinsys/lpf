@@ -81,7 +81,7 @@ if __name__ == "__main__":
 
     model = ModelFactory.create(
         name=config["MODEL"],
-        n_init_pts=int(n_init_pts),
+        n_init_pts=n_init_pts,
         width=width,
         height=height,                 
         dx=dx,

@@ -128,7 +128,7 @@ if __name__ == "__main__":
         # Create the output directory.
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
         dpath_output = pjoin(dpath_augdataset,
-                             "experiment_batch_%s" % (str_now))
+                             "augment_batch_%s" % (str_now))
         os.makedirs(dpath_output, exist_ok=True)
      
         # Copy this source file to the output directory for recording purpose.
