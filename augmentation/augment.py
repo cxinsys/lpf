@@ -208,8 +208,6 @@ if __name__ == "__main__":
             with open(fpath_model, "rt") as fin:
                 n2v = json.load(fin)
                 
-            # Append the data twice.
-            model_dicts.append(n2v)
             model_dicts.append(n2v)
         # end of for   
 
@@ -237,7 +235,7 @@ if __name__ == "__main__":
             device=device
         )
         
-        params = model.__class__.parse_params(model_dicts)
+        params_ori = model.__class__.parse_params(model_dicts)
                 
 
         # Randomly generate the half of parameter sets.        
@@ -246,7 +244,7 @@ if __name__ == "__main__":
                                        std_params,
                                        size=shape)        
         
-        params[len(half_batch):, :] = params_rand
+        params = np.vstack([params_ori, params_rand])
         
 
         print("[Batch #%d] %d models"%(ix_batch, params.shape[0]), end="\n\n")        
