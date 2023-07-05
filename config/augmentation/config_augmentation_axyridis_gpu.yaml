@@ -5,8 +5,8 @@ DEVICE: "cuda:0"
 VERBOSE: 1
 
 BATCH_SIZE: 64
-DPATH_DATASET: "F:/datasets/lpf/dataset_axyridis"
-DPATH_AUGDATASET: "D:/repos/lpf/search/output"
+DPATH_DATASET: "/data/lpf/dataset_axyridis"
+DPATH_AUGDATASET: "/home/dwlee/repos/lpf/search/output"
 
 INITIALIZER: "Liaw"
 MODEL: "Liaw"
