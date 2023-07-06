@@ -6,7 +6,7 @@ VERBOSE: 1
 
 BATCH_SIZE: 64
 DPATH_DATASET: "/data/lpf/dataset_succinea"
-DPATH_AUGDATASET: "/home/dwlee/repos/lpf/search/output"
+DPATH_AUGDATASET: "/home/dwlee/repos/lpf/augmentation/output"
 
 INITIALIZER: "Liaw"
 MODEL: "Liaw"

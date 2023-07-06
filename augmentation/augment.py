@@ -34,7 +34,7 @@ if __name__ == "__main__":
                         action='store',
                         type=str,
                         help='Designate the device.',
-                        default="cpu")
+                        default=None)
 
                 
     args = parser.parse_args()
@@ -43,14 +43,17 @@ if __name__ == "__main__":
             
     with open(fpath_config, "rt") as fin:
         config = yaml.safe_load(fin)
-    
+   
+
     device = None
-    if "DEVICE" in config:
-        device = str(config["DEVICE"]).lower()
-        
-    if not device:
+    if not args.device:
+        device = "cpu"
+    elif args.device:
         device = args.device
-     
+    elif "DEVICE" in config:
+        device = str(config["DEVICE"]).lower()
+    else:
+        raise RuntimeError("Device should be defined.")
       
     verbose = int(config["VERBOSE"])
     # period_output = int(config["PERIOD_OUTPUT"])
