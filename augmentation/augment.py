@@ -209,9 +209,10 @@ if __name__ == "__main__":
                 n2v = json.load(fin)
                 
             model_dicts.append(n2v)
-        # end of for   
+        # end of for  
 
-                
+        model_dicts = 2 * model_dicts
+           
                 
         # Create initializer       
         initializer = InitializerFactory.create(
@@ -235,7 +236,7 @@ if __name__ == "__main__":
             device=device
         )
         
-        params_ori = model.__class__.parse_params(model_dicts)
+        params = model.__class__.parse_params(model_dicts)
                 
 
         # Randomly generate the half of parameter sets.        
@@ -244,7 +245,7 @@ if __name__ == "__main__":
                                        std_params,
                                        size=shape)        
         
-        params = np.vstack([params_ori, params_rand])
+        params[len(half_batch):, :] = params_rand
         
 
         print("[Batch #%d] %d models"%(ix_batch, params.shape[0]), end="\n\n")        
