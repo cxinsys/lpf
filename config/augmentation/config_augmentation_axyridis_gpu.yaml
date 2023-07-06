@@ -1,6 +1,6 @@
 ---
 
-DEVICE: "cuda:0"
+#DEVICE: "cuda:0"
 
 VERBOSE: 1
 
