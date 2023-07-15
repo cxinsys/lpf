@@ -20,7 +20,7 @@ from lpf.solvers import SolverFactory
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-        description='Parse configruation for augmentation.'
+        description='Parse configuration for augmentation.'
     )
 
     parser.add_argument('--config',

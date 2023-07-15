@@ -18,7 +18,7 @@ from lpf.reproducers import RandomTwoComponentDiploidReproducer
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-        description='Configruations for simulation experiment.'
+        description='Configurations for simulation experiment.'
     )
 
     parser.add_argument('--gpu',

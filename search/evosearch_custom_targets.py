@@ -23,7 +23,7 @@ np.seterr(all='raise')
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='Parse configruations for searching.')
+    parser = argparse.ArgumentParser(description='Parse configurations for searching.')
     parser.add_argument('--config',
                         dest='config',
                         action='store',
