@@ -57,8 +57,8 @@ class GrayScottModel(TwoComponentModel):
                    
         return n2v
    
-    @staticmethod
-    def parse_params(model_dicts):
+    @classmethod
+    def parse_params(self, model_dicts):
         """Parse the parameters from the model dictionaries.
            A model knows how to parse its parameters.
         """

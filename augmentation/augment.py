@@ -178,7 +178,7 @@ if __name__ == "__main__":
             initializer=initializer,
         )
         
-        params = model.__class__.parse_params(model_dicts)
+        params = model.parse_params(model_dicts)
         
         n_total += len(batch)
         arr_params[i:i+batch_size] = params
@@ -236,7 +236,7 @@ if __name__ == "__main__":
             device=device
         )
         
-        params = model.__class__.parse_params(model_dicts)
+        params = model.parse_params(model_dicts)
                 
 
         # Randomly generate the half of parameter sets.        
@@ -257,11 +257,6 @@ if __name__ == "__main__":
             model=model,
             dt=dt,
             n_iters=n_iters,
-            # period_output=period_output,
-            # dpath_model=dpath_output,
-            # dpath_ladybird=dpath_output,
-            # dpath_pattern=dpath_output,
-            # dpath_states=dpath_output,
             verbose=verbose
         )       
      

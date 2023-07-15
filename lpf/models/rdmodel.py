@@ -62,11 +62,6 @@ class ReactionDiffusionModel(ABC):
     @property
     def n_states(self):
         return self._n_states
-
-    # @property
-    # def y_linear(self):
-    #     return self._y_linear
-
     @property
     def y_mesh(self):
         return self._y_mesh
