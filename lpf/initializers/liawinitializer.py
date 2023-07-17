@@ -27,7 +27,7 @@ class LiawInitializer(TwoComponentInitializer):
             n_init_pts = 0
             dict_init_pts = {}
             for name, val in n2v.items():
-                if "init_pts" in name:
+                if name.startswith("init_pts"):
                     dict_init_pts[name] = (int(val[0]), int(val[1]))
                     n_init_pts += 1
             # end of for
