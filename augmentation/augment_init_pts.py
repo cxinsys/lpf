@@ -18,7 +18,7 @@ from lpf.solvers import EulerSolver
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-        description='Parse configruations for augmentation.'
+        description='Parse configurations for augmentation.'
     )
 
     parser.add_argument('--config',

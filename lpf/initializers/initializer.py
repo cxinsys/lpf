@@ -32,7 +32,15 @@ class Initializer(ABC):
     @property
     def init_pts(self):
         return self._init_pts
-    
+
+    @init_pts.setter
+    def init_pts(self, obj):
+        self._init_pts = obj
+
     @property
     def init_states(self):
         return self._init_states
+
+    @init_states.setter
+    def init_states(self, obj):
+        self._init_states = obj
