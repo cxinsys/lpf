@@ -1,5 +1,6 @@
 import json
 from collections.abc import Sequence
+from collections.abc import Mapping
 
 import numpy as np
 import PIL
@@ -356,27 +357,70 @@ class TwoComponentModel(ReactionDiffusionModel):
     
         return model_dict
 
-    @staticmethod
-    def parse_params(model_dicts):
-        raise NotImplementedError()
-
-    @staticmethod
-    def parse_init_states(self, model_dicts):
-        """Parse the initial states from the model dictionaries.
-           A model knows how to parse its initial states.
+    @classmethod
+    def parse_params(self, model_dicts):
+        """Parse the parameters from the model dictionaries.
+           A model knows how to parse its parameters.
         """
-        if not isinstance(model_dicts, Sequence):
-            raise TypeError("model_dicts should be a sequence of model dictionary.")
+        
+        if not isinstance(model_dicts, Sequence) and isinstance(model_dicts, Mapping):
+            model_dicts = [model_dicts]
+        elif isinstance(model_dicts, Sequence):
+            pass
+        else:
+            raise TypeError("model_dicts should be a sequence of model dictionary or a mappable type like dict.")
+
+        return model_dicts
+
+    @classmethod
+    def parse_init_conds(self, model_dicts):
+        """Parse the initial conditions (initial points and states) from the model dictionaries.
+           A model knows how to parse its initial points and states.
+        """
+        if not isinstance(model_dicts, Sequence) and isinstance(model_dicts, Mapping):
+            model_dicts = [model_dicts]
+        elif isinstance(model_dicts, Sequence):
+            pass
+        else:
+            raise TypeError("model_dicts should be a sequence of model dictionary or a mappable type like dict.")
+
+        # batch_size = len(model_dicts)
+        # init_states = np.zeros((batch_size, 2), dtype=np.float64)
+        #
+        # for index, n2v in enumerate(model_dicts):
+        #     init_states[index, 0] = n2v["u0"]
+        #     init_states[index, 1] = n2v["v0"]
+        # # end of for
+        #
+        # return init_states
 
         batch_size = len(model_dicts)
         init_states = np.zeros((batch_size, 2), dtype=np.float64)
+        init_pts = []
 
-        for index, n2v in enumerate(model_dicts):
-            init_states[index, 0] = n2v["u0"]
-            init_states[index, 1] = n2v["v0"]
+        for i, n2v in enumerate(model_dicts):
+            init_states[i, 0] = n2v["u0"]
+            init_states[i, 1] = n2v["v0"]
+
+            n_init_pts = 0
+            dict_init_pts = {}
+            for name, val in n2v.items():
+                if name.startswith("init_pts"):
+                    # val = list(val)
+                    dict_init_pts[name] = (int(val[0]), int(val[1]))
+                    n_init_pts += 1
+            # end of for
+
+            coords = []
+            for j, (name, coord) in enumerate(dict_init_pts.items()):
+                coords.append((coord[0], coord[1]))
+            # end of for
+            init_pts.append(coords)
         # end of for
 
-        return init_states
+        init_pts = np.array(init_pts, dtype=np.uint32)
+
+        return init_pts, init_states
 
     def get_param_bounds(self):
         raise NotImplementedError()

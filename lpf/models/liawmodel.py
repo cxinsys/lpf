@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 
 import numpy as np
+import xxhash
 
 from lpf.models import TwoComponentModel
 
@@ -66,14 +67,9 @@ class LiawModel(TwoComponentModel):
                    
         return n2v
    
-    @staticmethod
-    def parse_params(model_dicts):
-        """Parse the parameters from the model dictionaries.
-           A model knows how to parse its parameters.
-        """
-        if not isinstance(model_dicts, Sequence):
-            raise TypeError("model_dicts should be a sequence of model dictionary.")
-
+    @classmethod
+    def parse_params(self, model_dicts):
+        model_dicts = super().parse_params(model_dicts)
         batch_size = len(model_dicts)
         params = np.zeros((batch_size, 8), dtype=np.float64)
 

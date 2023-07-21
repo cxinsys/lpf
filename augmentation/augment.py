@@ -49,7 +49,7 @@ def get_data(config, batch):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-        description='Parse configruation for augmentation.'
+        description='Parse configuration for augmentation.'
     )
 
     parser.add_argument('--config',
@@ -193,7 +193,6 @@ if __name__ == "__main__":
         list_params.append(params)
         
         n_total += len(batch)
-        # arr_params[i:i+batch_size] = params
     # end of for
         
     arr_init_pts = np.concatenate(list_init_pts, axis=0)
@@ -210,8 +209,8 @@ if __name__ == "__main__":
     mean_params = arr_params.mean(axis=0)
     std_params = arr_params.std(axis=0) 
     
-    # min_params = arr_params.min(axis=0)
-    # max_params = arr_params.max(axis=0)
+    min_params = arr_params.min(axis=0)
+    max_params = arr_params.max(axis=0)
     
     print("Mean. states:", mean_init_states)
     print("Std. states:", std_init_states)
@@ -238,8 +237,7 @@ if __name__ == "__main__":
                 
             model_dicts.append(n2v)
         # end of for
-        
-        
+                
         model_dicts = 2 * model_dicts
 
         # Create an initializer
@@ -255,7 +253,11 @@ if __name__ == "__main__":
         shape = (half_batch_size, *initializer.init_pts.shape[1:])
         init_pts_rand = np.random.normal(mean_init_pts,
                                          std_init_pts,
-                                         size=shape)        
+                                         size=shape)     
+               
+        init_pts_rand = np.clip(init_pts_rand,
+                                a_min=(0, 0),
+                                a_max=(height-1, width-1))
         
         initializer.init_pts[half_batch_size:, :] = \
                     np.asarray(init_pts_rand, dtype=initializer.init_pts.dtype)
@@ -267,7 +269,9 @@ if __name__ == "__main__":
                                             std_init_states,
                                             size=shape)      
         
-        init_states_rand = np.clip(init_states_rand, a_min=1e-3, a_max=None)
+        init_states_rand = np.clip(init_states_rand,
+                                   a_min=min_init_states,
+                                   a_max=None)
         
         initializer.init_states[half_batch_size:, :] = init_states_rand
         
@@ -284,8 +288,8 @@ if __name__ == "__main__":
             thr_color=thr_color,
             device=device
         )
-        
-        params = model.__class__.parse_params(model_dicts)
+
+        params = model.parse_params(model_dicts)
 
         # Randomly generate the half of parameter sets.
         shape = (half_batch_size, params.shape[1])
@@ -293,8 +297,10 @@ if __name__ == "__main__":
                                        std_params,
                                        size=shape)        
         
-        params[half_batch_size:, :] = params_rand
-        
+        params[half_batch_size:, :] = np.clip(params_rand,
+                                              a_min=min_params,
+                                              a_max=None)
+               
 
         print("[Batch #%d] %d models"%(ix_batch, params.shape[0]), end="\n\n")        
         ix_batch += 1
