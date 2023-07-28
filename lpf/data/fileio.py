@@ -102,11 +102,6 @@ def load_as_array(dpath: Union[str, os.PathLike],
              continue
          
         fpath_model = osp.join(dpath, entity)
-         
-        # # Get the model ID
-        # fname, ext = osp.splitext(entity)
-        # items = fname.split('_')        
-        # model_id = items[1]
  
         if not osp.isfile(fpath_model):
             raise FileNotFoundError(fpath_model)

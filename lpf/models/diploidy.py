@@ -146,7 +146,7 @@ class Diploidy(ABC):
                                      generation=generation,
                                      fitness=fitness)
 
-        model_dict["model_name"] = self._name
+        model_dict["model"] = self._name
 
         pa_model_dict = self.paternal_model.to_dict(
             index=index,
