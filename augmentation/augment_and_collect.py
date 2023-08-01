@@ -59,8 +59,14 @@ def get_data(config, batch):
             initializer.init_pts,
             initializer.init_states,
             params)
-    
-    
+
+
+def is_numerically_invalid(arr_u, arr_v):
+    u = arr_u.astype(np.float16)
+    v = arr_v.astype(np.float16)
+    return np.isnan(np.min(u)) or np.isnan(np.min(v)) \
+           or np.isinf(np.max(u)) or np.isinf(np.max(v))
+
 
 if __name__ == "__main__":
 
@@ -265,7 +271,6 @@ if __name__ == "__main__":
 
 
     # Perform numerical simulation
-
     for epoch in range(n_epochs):
         ix_batch = 1
         for i in range(0, len(list_dict_fpaths), batch_size):
@@ -291,8 +296,7 @@ if __name__ == "__main__":
             
             # Update the initializer.
             initializer.update(model_dicts)
-            
-            
+
             # Randomly generate the half of initial points.
             shape = (batch_size, *initializer.init_pts.shape[1:])
             init_pts_rand = np.random.normal(mean_init_pts,
@@ -305,8 +309,7 @@ if __name__ == "__main__":
             
             initializer.init_pts = \
                         np.asarray(init_pts_rand, dtype=initializer.init_pts.dtype)
-            
-            
+
             # Randomly generate the half of initial states.
             shape = (batch_size, initializer.init_states.shape[1])
             init_states_rand = np.random.normal(mean_init_states,
@@ -318,8 +321,7 @@ if __name__ == "__main__":
                                        a_max=None)
             
             initializer.init_states = init_states_rand
-            
-    
+
             # Create a model.
             model = ModelFactory.create(
                 name=config["MODEL"],
@@ -357,7 +359,17 @@ if __name__ == "__main__":
                 verbose=verbose
             )       
     
-            for j in range(len(batch)):                
+            for j in range(len(batch)):
+
+                # Check numerical errors.
+                # Ignore this model if numerical errors has occurred.
+                u = model.u[j, ...]
+                v = model.v[j, ...]
+                # if np.isnan(u).any() or np.isnan(v).any():
+                if is_numerically_invalid(u, v):
+                    print("[Numerical error] Ignore model #%d in the batch #%d..."%(j+1, i+1))
+                    continue
+
                 img_ladybird, pattern = model.create_image(index=j)
                 img_ladybird = img_ladybird.convert('RGB')            
                 arr_ladybird = np.asarray(img_ladybird)
@@ -419,6 +431,6 @@ if __name__ == "__main__":
             # end of for
             t_end = time.time()
         
-            print("- [Batch Duration] %f sec." % (t_end - t_beg), end="\n\n")
+            print("- [Batch duration] %f sec." % (t_end - t_beg), end="\n\n")
         # end of for i
     # end of for epoch
