@@ -89,9 +89,17 @@ class TwoComponentModel(ReactionDiffusionModel):
     def u(self):
         return self._u
 
+    @u.setter
+    def u(self, arr):
+        self._u = arr
+
     @property
     def v(self):
         return self._v
+
+    @v.setter
+    def v(self, arr):
+        self._v = arr
 
     def initialize(self):
         with self.am:
