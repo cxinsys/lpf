@@ -62,11 +62,11 @@ def get_data(config, batch):
 
 
 def is_numerically_invalid(arr_u, arr_v):
-    u = np.abs(arr_u.astype(np.float16))
-    v = np.abs(arr_v.astype(np.float16))
-    return np.isnan(np.min(u)) or np.isnan(np.min(v)) \
-           or np.isinf(np.max(u)) or np.isinf(np.max(v))
-
+    abs_u = np.abs(arr_u.astype(np.float16))
+    abs_v = np.abs(arr_v.astype(np.float16))
+    return (arr_u < 0).any() or (arr_v < 0).any() \
+           or np.isnan(np.min(abs_u)) or np.isnan(np.min(abs_v)) \
+           or np.isinf(np.max(abs_u)) or np.isinf(np.max(abs_v))
 
 if __name__ == "__main__":
 
