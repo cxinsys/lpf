@@ -357,9 +357,6 @@ if __name__ == "__main__":
 
                 # Check numerical errors.
                 # Ignore this model if numerical errors has occurred.
-                # u = model.u[j, ...]
-                # v = model.v[j, ...]
-                # if np.isnan(u).any() or np.isnan(v).any():
                 if model.is_numerically_invalid(index=j):
                     print("[Numerical error] Ignore model #%d in the batch #%d..."%(j+1, i+1))
                     continue
@@ -412,6 +409,7 @@ if __name__ == "__main__":
                 model.save_model(index=j,
                                  fpath=fpath_model_new,
                                  initializer=initializer,
+                                 solver=solver,
                                  params=params)
                 
                 model.save_image(index=j,
