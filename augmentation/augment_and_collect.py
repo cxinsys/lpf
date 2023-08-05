@@ -94,7 +94,6 @@ if __name__ == "__main__":
     if not device:
         device = args.device
 
-    print("[DEVICE]", device)
 
       
     verbose = int(config["VERBOSE"])
@@ -263,6 +262,7 @@ if __name__ == "__main__":
     print("Mean. params:", mean_params)    
     print("Std. params:", std_params)
 
+    print("[DEVICE]", device, end='\n\n')
 
     # Perform numerical simulation
     for epoch in range(n_epochs):
