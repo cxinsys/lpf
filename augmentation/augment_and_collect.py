@@ -93,7 +93,9 @@ if __name__ == "__main__":
         
     if not device:
         device = args.device
-     
+
+    print("[DEVICE]", device)
+
       
     verbose = int(config["VERBOSE"])
     # period_output = int(config["PERIOD_OUTPUT"])
