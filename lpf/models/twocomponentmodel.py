@@ -203,15 +203,17 @@ class TwoComponentModel(ReactionDiffusionModel):
         
         return color
     
-    def create_image(self, index=0, arr_color=None):
-        if arr_color is None:
+    def create_image(self, index=0, arr_color=None, pattern=None):
+        if arr_color is None and pattern is None:
             arr_color = self.colorize()
 
         # Load template images.
         template = Image.open(self._fpath_template)
         mask = Image.open(self._fpath_mask).convert('L')
 
-        pattern = Image.fromarray(arr_color[index, :, :])
+        if pattern is None:
+            pattern = Image.fromarray(arr_color[index, :, :])
+
         pattern = pattern.resize((128, 128))
 
         # crop(left, upper, right, lower)
