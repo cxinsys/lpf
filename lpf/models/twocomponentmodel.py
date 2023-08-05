@@ -181,12 +181,13 @@ class TwoComponentModel(ReactionDiffusionModel):
         if arr_v is None:
             arr_v = self.v
 
-        abs_u = self.am.abs(arr_u[index, ...].astype(np.float16))
-        abs_v = self.am.abs(arr_v[index, ...].astype(np.float16))
+        with self.am:
+            abs_u = self.am.abs(arr_u[index, ...].astype(np.float16))
+            abs_v = self.am.abs(arr_v[index, ...].astype(np.float16))
 
-        return (arr_u < 0).any() or (arr_v < 0).any() \
-               or self.am.isnan(self.am.min(abs_u)) or self.am.isnan(self.am.min(abs_v)) \
-               or self.am.isinf(self.am.max(abs_u)) or self.am.isinf(self.am.max(abs_v))
+            return (arr_u < 0).any() or (arr_v < 0).any() \
+                   or self.am.isnan(self.am.min(abs_u)) or self.am.isnan(self.am.min(abs_v)) \
+                   or self.am.isinf(self.am.max(abs_u)) or self.am.isinf(self.am.max(abs_v))
 
     def is_early_stopping(self, rtol):
                 
