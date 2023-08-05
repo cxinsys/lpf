@@ -174,6 +174,20 @@ class TwoComponentModel(ReactionDiffusionModel):
 
         return self._dydt_mesh
 
+    def is_numerically_invalid(self, index, arr_u=None, arr_v=None):
+        if arr_u is None:
+            arr_u = self.u
+
+        if arr_v is None:
+            arr_v = self.v
+
+        abs_u = self.am.abs(arr_u[index, ...].astype(np.float16))
+        abs_v = self.am.abs(arr_v[index, ...].astype(np.float16))
+
+        return (arr_u < 0).any() or (arr_v < 0).any() \
+               or self.am.isnan(self.am.min(abs_u)) or self.am.isnan(self.am.min(abs_v)) \
+               or self.am.isinf(self.am.max(abs_u)) or self.am.isinf(self.am.max(abs_v))
+
     def is_early_stopping(self, rtol):
                 
         adu = self.am.abs(self._f)

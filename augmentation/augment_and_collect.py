@@ -60,14 +60,6 @@ def get_data(config, batch):
             initializer.init_states,
             params)
 
-
-def is_numerically_invalid(arr_u, arr_v):
-    abs_u = np.abs(arr_u.astype(np.float16))
-    abs_v = np.abs(arr_v.astype(np.float16))
-    return (arr_u < 0).any() or (arr_v < 0).any() \
-           or np.isnan(np.min(abs_u)) or np.isnan(np.min(abs_v)) \
-           or np.isinf(np.max(abs_u)) or np.isinf(np.max(abs_v))
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -363,10 +355,10 @@ if __name__ == "__main__":
 
                 # Check numerical errors.
                 # Ignore this model if numerical errors has occurred.
-                u = model.u[j, ...]
-                v = model.v[j, ...]
+                # u = model.u[j, ...]
+                # v = model.v[j, ...]
                 # if np.isnan(u).any() or np.isnan(v).any():
-                if is_numerically_invalid(u, v):
+                if model.is_numerically_invalid(index=j):
                     print("[Numerical error] Ignore model #%d in the batch #%d..."%(j+1, i+1))
                     continue
 

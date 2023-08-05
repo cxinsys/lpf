@@ -83,6 +83,11 @@ class NumpyModule(ArrayModule):
     def is_array(self, obj):
         return isinstance(obj, (np.ndarray, np.generic))
 
+    def isnan(self, *args, **kwargs):
+        return np.isnan(*args, **kwargs)
+
+    def isinf(self, *args, **kwargs):
+        return np.isinf(*args, **kwargs)
 
 class CupyModule(NumpyModule):
 
@@ -128,3 +133,11 @@ class CupyModule(NumpyModule):
 
     def is_array(self, obj):
         return isinstance(obj, (cp.ndarray, cp.generic))
+
+    def isnan(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.isnan(*args, **kwargs)
+
+    def isinf(self, *args, **kwargs):
+        with cp.cuda.Device(self.device_id):
+            return cp.isinf(*args, **kwargs)
