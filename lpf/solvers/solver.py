@@ -199,6 +199,8 @@ class Solver:
         n2v["solver"] = self.name
         n2v["dt"] = self._dt
         n2v["n_iters"] = self._n_iters
-        n2v["rtol"] = self._rtol
+
+        if self._rtol:
+            n2v["rtol"] = self._rtol
 
         return n2v
