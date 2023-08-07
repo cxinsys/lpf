@@ -103,8 +103,9 @@ if __name__ == "__main__":
     batch_size = int(config["BATCH_SIZE"])
     
     # Get the input and output directories.
-    dpath_dataset = config["DPATH_DATASET"]  # Input dataset
-        
+    dpath_input_dataset = config["DPATH_INPUT_DATASET"]
+    dpath_output_dataset = config["DPATH_OUTPUT_DATASET"]
+
     # Create the model.
     dx = float(config["DX"])
     dt = float(config["DT"])
@@ -112,7 +113,6 @@ if __name__ == "__main__":
     height = int(config["HEIGHT"])
     thr = float(config["THR_COLOR"])
     n_iters = int(config["N_ITERS"])
-    rtol = float(config["RTOL_EARLY_STOP"])
     n_init_pts = int(config["N_INIT_PTS"])
 
     color_u = None
@@ -146,8 +146,8 @@ if __name__ == "__main__":
     h = xxhash.xxh64()
 
     n_models = 0
-    for dname in os.listdir(dpath_dataset):
-        dpath_morph = pjoin(dpath_dataset, dname)
+    for dname in os.listdir(dpath_input_dataset):
+        dpath_morph = pjoin(dpath_input_dataset, dname)
         
         if not osp.isdir(dpath_morph):
             continue            
@@ -203,7 +203,7 @@ if __name__ == "__main__":
             list_params.append(params)
                                
             h.update(list_morphs[0])
-            digest = h.intdigest()
+            hash_morph = h.intdigest()
             h.reset()  
 
             h.update(init_pts[0, ...])
@@ -211,8 +211,8 @@ if __name__ == "__main__":
             h.update(params[0, ...])
             hash_model = h.intdigest()  # It plays a role as genotype.
             
-            if hash_model not in dict_morphs[digest]:
-                dict_morphs[digest].add(hash_model)
+            if hash_model not in dict_morphs[hash_morph]:
+                dict_morphs[hash_morph].add(hash_model)
                 dict_model_id[hash_model] = dict_fpaths
                 list_dict_fpaths.append(dict_fpaths)
             
@@ -330,7 +330,7 @@ if __name__ == "__main__":
                                   a_min=1e-8,
                                   a_max=None)
     
-            print("[Batch #%d] %d models"%(ix_batch, params.shape[0]), end="\n\n")        
+            print("[Batch #%d] %d models"%(ix_batch, current_batch_size), end="\n\n")        
             ix_batch += 1
             
             model.params = params_rand
@@ -356,24 +356,24 @@ if __name__ == "__main__":
                       
                 # Hashing ladybird image.
                 h.update(arr_ladybird)
-                digest = h.intdigest()
+                hash_morph = h.intdigest()
                 h.reset()                  
                 
                 # Hashing model data.
-                h.update(init_pts[0, ...])
-                h.update(init_states[0, ...]) 
-                h.update(params[0, ...])
+                h.update(init_pts_rand[j, ...])
+                h.update(init_states_rand[j, ...])
+                h.update(params_rand[j, ...])
                 hash_model = h.intdigest()  # It plays a role as genotype.   
                     
-                if hash_model in dict_morphs[digest]:
+                if hash_model in dict_morphs[hash_morph]:
                     continue
                 
-                dict_morphs[digest].add(hash_model)
+                dict_morphs[hash_morph].add(hash_model)
                 dict_model_id[hash_model] = dict_fpaths
                 list_dict_fpaths.append(dict_fpaths)
                 h.reset()     
                 
-                dpath_morph = pjoin(dpath_dataset, str(digest))
+                dpath_morph = pjoin(dpath_output_dataset, str(hash_morph))
                 
                 dpath_models = pjoin(dpath_morph, "models")
                 dpath_ladybirds = pjoin(dpath_morph, "ladybirds")                
