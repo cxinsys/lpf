@@ -104,16 +104,6 @@ if __name__ == "__main__":
     
     # Get the input and output directories.
     dpath_dataset = config["DPATH_DATASET"]  # Input dataset
-    # dpath_augdataset = config["DPATH_AUGDATASET"]  # Output dataset
-    
-    # os.makedirs(dpath_augdataset, exist_ok=True)
-
-    # str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
-    # dpath_output = pjoin(osp.abspath(dpath_augdataset),
-    #                      "augment_batch_%s" % (str_now))
-    # os.makedirs(dpath_output, exist_ok=True)
-    
-
         
     # Create the model.
     dx = float(config["DX"])
@@ -338,7 +328,7 @@ if __name__ == "__main__":
                                            size=shape)        
             
             params_rand = np.clip(params_rand,
-                                  a_min=min_params,
+                                  a_min=1e-8,
                                   a_max=None)
     
             print("[Batch #%d] %d models"%(ix_batch, params.shape[0]), end="\n\n")        
