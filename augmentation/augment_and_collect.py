@@ -261,8 +261,7 @@ if __name__ == "__main__":
             t_beg = time.time()
     
             batch = list_dict_fpaths[i:i+batch_size]
-            if len(batch) != batch_size:  # The last batch
-                batch_size = len(batch)
+            current_batch_size = len(batch)
                         
             model_dicts = []
             for dict_fpaths in batch:
@@ -282,7 +281,7 @@ if __name__ == "__main__":
             initializer.update(model_dicts)
 
             # Randomly generate the half of initial points.
-            shape = (batch_size, *initializer.init_pts.shape[1:])
+            shape = (current_batch_size, *initializer.init_pts.shape[1:])
             init_pts_rand = np.random.normal(mean_init_pts,
                                              std_init_pts,
                                              size=shape)     
@@ -295,7 +294,7 @@ if __name__ == "__main__":
                         np.asarray(init_pts_rand, dtype=initializer.init_pts.dtype)
 
             # Randomly generate the half of initial states.
-            shape = (batch_size, initializer.init_states.shape[1])
+            shape = (current_batch_size, initializer.init_states.shape[1])
             init_states_rand = np.random.normal(mean_init_states,
                                                 std_init_states,
                                                 size=shape)      
@@ -322,7 +321,7 @@ if __name__ == "__main__":
             params = model.parse_params(model_dicts)
     
             # Randomly generate the half of parameter sets.
-            shape = (batch_size, params.shape[1])
+            shape = (current_batch_size, params.shape[1])
             params_rand = np.random.normal(mean_params,
                                            std_params,
                                            size=shape)        
@@ -343,7 +342,7 @@ if __name__ == "__main__":
                 verbose=verbose
             )       
     
-            for j in range(len(batch)):
+            for j in range(current_batch_size):
 
                 # Check numerical errors.
                 # Ignore this model if numerical errors has occurred.

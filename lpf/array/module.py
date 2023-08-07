@@ -62,9 +62,6 @@ class NumpyModule(ArrayModule):
     def any(self, *args, **kwargs):
         return np.any(*args, **kwargs)
 
-    def isnan(self, *args, **kwargs):
-        return np.isnan(*args, **kwargs)
-
     def zeros(self, *args, **kwargs):
         return np.zeros(*args, **kwargs)
 
@@ -89,6 +86,7 @@ class NumpyModule(ArrayModule):
     def isinf(self, *args, **kwargs):
         return np.isinf(*args, **kwargs)
 
+
 class CupyModule(NumpyModule):
 
     def __init__(self, device=None, device_id=None):
@@ -107,10 +105,6 @@ class CupyModule(NumpyModule):
     def any(self, *args, **kwargs):
         with cp.cuda.Device(self.device_id):
             return cp.any(*args, **kwargs)
-
-    def isnan(self, *args, **kwargs):
-        with cp.cuda.Device(self.device_id):
-            return cp.isnan(*args, **kwargs)
 
     def zeros(self, *args, **kwargs):
         with cp.cuda.Device(self.device_id):

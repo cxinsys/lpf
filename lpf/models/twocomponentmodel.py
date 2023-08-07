@@ -186,8 +186,8 @@ class TwoComponentModel(ReactionDiffusionModel):
             abs_v = self.am.abs(arr_v[index, ...].astype(np.float16))
 
             return (arr_u < 0).any() or (arr_v < 0).any() \
-                   or self.am.isnan(self.am.min(abs_u)) or self.am.isnan(self.am.min(abs_v)) \
-                   or self.am.isinf(self.am.max(abs_u)) or self.am.isinf(self.am.max(abs_v))
+                   or self.am.isnan(abs_u.min()) or self.am.isnan(abs_v.min()) \
+                   or self.am.isinf(abs_u.max()) or self.am.isinf(abs_v.max())
 
     def is_early_stopping(self, rtol):
                 
@@ -285,7 +285,7 @@ class TwoComponentModel(ReactionDiffusionModel):
             pattern.save(fpath_pattern)
     
     def save_states(self, index=0, fpath=None):
-        np.savez(fpath, u=self.u[index, ...], v =self.v[index, ...])
+        np.savez(fpath, u=self.u[index, ...], v=self.v[index, ...])
             
     def to_dict(self,
                 index=0,
