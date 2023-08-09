@@ -97,9 +97,7 @@ if __name__ == "__main__":
 
       
     verbose = int(config["VERBOSE"])
-    # period_output = int(config["PERIOD_OUTPUT"])
     
-    n_epochs = int(config["N_EPOCHS"])
     batch_size = int(config["BATCH_SIZE"])
     
     # Get the input and output directories.
@@ -255,162 +253,124 @@ if __name__ == "__main__":
     print("[DEVICE]", device, end='\n\n')
 
     # Perform numerical simulation
-    for epoch in range(n_epochs):
-        ix_batch = 1
-        for i in range(0, len(list_dict_fpaths), batch_size):
-            t_beg = time.time()
-    
-            batch = list_dict_fpaths[i:i+batch_size]
-            current_batch_size = len(batch)
-                        
-            model_dicts = []
-            for dict_fpaths in batch:
-                fpath_model = dict_fpaths["model"]
-                with open(fpath_model, "rt") as fin:
-                    n2v = json.load(fin)
+    ix_batch = 1
+    for i in range(0, len(list_dict_fpaths), batch_size):
+        t_beg = time.time()
+
+        batch = list_dict_fpaths[i:i+batch_size]
+        current_batch_size = len(batch)
                     
-                model_dicts.append(n2v)
-            # end of for
+        model_dicts = []
+        for dict_fpaths in batch:
+            fpath_model = dict_fpaths["model"]
+            with open(fpath_model, "rt") as fin:
+                n2v = json.load(fin)
                 
-            # Create an initializer
-            initializer = InitializerFactory.create(
-                name=config["INITIALIZER"],
-            )
+            model_dicts.append(n2v)
+        # end of for
             
-            # Update the initializer.
-            initializer.update(model_dicts)
-
-            # Randomly generate the half of initial points.
-            shape = (current_batch_size, *initializer.init_pts.shape[1:])
-            init_pts_rand = np.random.normal(mean_init_pts,
-                                             std_init_pts,
-                                             size=shape)     
-                   
-            init_pts_rand = np.clip(init_pts_rand,
-                                    a_min=(0, 0),
-                                    a_max=(height-1, width-1))
-            
-            initializer.init_pts = \
-                        np.asarray(init_pts_rand, dtype=initializer.init_pts.dtype)
-
-            # Randomly generate the half of initial states.
-            shape = (current_batch_size, initializer.init_states.shape[1])
-            init_states_rand = np.random.normal(mean_init_states,
-                                                std_init_states,
-                                                size=shape)      
-            
-            init_states_rand = np.clip(init_states_rand,
-                                       a_min=min_init_states,
-                                       a_max=None)
-            
-            initializer.init_states = init_states_rand
-
-            # Create a model.
-            model = ModelFactory.create(
-                name=config["MODEL"],
-                initializer=initializer,
-                width=width,
-                height=height,                 
-                dx=dx,
-                color_u=color_u,
-                color_v=color_v,
-                thr_color=thr_color,
-                device=device
-            )
-    
-            params = model.parse_params(model_dicts)
-    
-            # Randomly generate the half of parameter sets.
-            shape = (current_batch_size, params.shape[1])
-            params_rand = np.random.normal(mean_params,
-                                           std_params,
-                                           size=shape)        
-            
-            params_rand = np.clip(params_rand,
-                                  a_min=1e-8,
-                                  a_max=None)
-    
-            print("[Batch #%d] %d models"%(ix_batch, current_batch_size), end="\n\n")        
-            ix_batch += 1
-            
-            model.params = params_rand
-            
-            solver.solve(
-                model=model,
-                dt=dt,
-                n_iters=n_iters,
-                verbose=verbose
-            )       
-    
-            for j in range(current_batch_size):
-
-                # Check numerical errors.
-                # Ignore this model if numerical errors has occurred.
-                if model.is_numerically_invalid(index=j):
-                    print("[Numerical error] Ignore model #%d in the batch #%d..."%(j+1, i+1))
-                    continue
-
-                img_ladybird, pattern = model.create_image(index=j)
-                img_ladybird = img_ladybird.convert('RGB')            
-                arr_ladybird = np.asarray(img_ladybird)
-                      
-                # Hashing ladybird image.
-                h.update(arr_ladybird)
-                hash_morph = h.intdigest()
-                h.reset()                  
-                
-                # Hashing model data.
-                h.update(init_pts_rand[j, ...])
-                h.update(init_states_rand[j, ...])
-                h.update(params_rand[j, ...])
-                hash_model = h.intdigest()  # It plays a role as genotype.   
-                h.reset()     
-    
-                if hash_model in dict_morphs[hash_morph]:
-                    continue
-                
-                dict_morphs[hash_morph].add(hash_model)
-                dict_model_id[hash_model] = dict_fpaths
-                list_dict_fpaths.append(dict_fpaths)
-                
-                dpath_morph = pjoin(dpath_output_dataset, str(hash_morph))
-                
-                dpath_models = pjoin(dpath_morph, "models")
-                dpath_ladybirds = pjoin(dpath_morph, "ladybirds")                
-                dpath_patterns = pjoin(dpath_morph, "patterns")
-                dpath_states = pjoin(dpath_morph, "states")                
-
-                os.makedirs(dpath_models, exist_ok=True)
-                os.makedirs(dpath_ladybirds, exist_ok=True)
-                os.makedirs(dpath_patterns, exist_ok=True)
-                os.makedirs(dpath_states, exist_ok=True)
-                
-                str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
-                fpath_model_new = pjoin(dpath_models,
-                                        "model_%s_%d.json"%(str_now, j))            
-                fpath_ladybird_new = pjoin(dpath_ladybirds,
-                                           "ladybird_%s_%d.png"%(str_now, j))
-                fpath_pattern_new = pjoin(dpath_patterns,
-                                          "pattern_%s_%d.png"%(str_now, j))            
-                fpath_states_new = pjoin(dpath_states,
-                                         "states_%s_%d.npz"%(str_now, j))
-                                
-                model.save_model(index=j,
-                                 fpath=fpath_model_new,
-                                 initializer=initializer,
-                                 solver=solver)
-                
-                model.save_image(index=j,
-                                 fpath_ladybird=fpath_ladybird_new,
-                                 fpath_pattern=fpath_pattern_new)
-                
-                model.save_states(index=j, fpath=fpath_states_new)
-
-                print("[New model]", fpath_model_new, end='\n')
-
-            # end of for
-            t_end = time.time()
+        # Create an initializer
+        initializer = InitializerFactory.create(
+            name=config["INITIALIZER"],
+        )
         
-            print("- [Batch duration] %f sec." % (t_end - t_beg), end="\n\n")
-        # end of for i
-    # end of for epoch
+        # Update the initializer.
+        initializer.update(model_dicts)
+
+        # Create a model.
+        model = ModelFactory.create(
+            name=config["MODEL"],
+            initializer=initializer,
+            width=width,
+            height=height,                 
+            dx=dx,
+            color_u=color_u,
+            color_v=color_v,
+            thr_color=thr_color,
+            device=device
+        )
+
+        model.params = model.parse_params(model_dicts)    
+       
+        print("[Batch #%d] %d models"%(ix_batch, current_batch_size), end="\n\n")        
+        ix_batch += 1
+                    
+        solver.solve(
+            model=model,
+            dt=dt,
+            n_iters=n_iters,
+            verbose=verbose
+        )       
+
+        for j in range(current_batch_size):
+
+            # Check numerical errors.
+            # Ignore this model if numerical errors has occurred.
+            if model.is_numerically_invalid(index=j):
+                print("[Numerical error] Ignore model #%d in the batch #%d..."%(j+1, i+1))
+                continue
+
+            img_ladybird, pattern = model.create_image(index=j)
+            img_ladybird = img_ladybird.convert('RGB')            
+            arr_ladybird = np.asarray(img_ladybird)
+                  
+            # Hashing ladybird image.
+            h.update(arr_ladybird)
+            hash_morph = h.intdigest()
+            h.reset()                  
+            
+            # Hashing model data.
+            init_pts = np.array_like(initializer.init_pts)
+            init_states = np.array_like(initializer.init_states)                
+            params = np.array_like(model.params)
+            
+            h.update(init_pts[j, ...])
+            h.update(init_states[j, ...])
+            h.update(params[j, ...])
+            hash_model = h.intdigest()  
+            h.reset()     
+            
+            dict_morphs[hash_morph].add(hash_model)
+            dict_model_id[hash_model] = dict_fpaths
+            list_dict_fpaths.append(dict_fpaths)
+            
+            dpath_morph = pjoin(dpath_output_dataset, str(hash_morph))
+            
+            dpath_models = pjoin(dpath_morph, "models")
+            dpath_ladybirds = pjoin(dpath_morph, "ladybirds")                
+            dpath_patterns = pjoin(dpath_morph, "patterns")
+            dpath_states = pjoin(dpath_morph, "states")                
+
+            os.makedirs(dpath_models, exist_ok=True)
+            os.makedirs(dpath_ladybirds, exist_ok=True)
+            os.makedirs(dpath_patterns, exist_ok=True)
+            os.makedirs(dpath_states, exist_ok=True)
+            
+            str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
+            fpath_model_new = pjoin(dpath_models,
+                                    "model_%s_%d.json"%(str_now, j))            
+            fpath_ladybird_new = pjoin(dpath_ladybirds,
+                                       "ladybird_%s_%d.png"%(str_now, j))
+            fpath_pattern_new = pjoin(dpath_patterns,
+                                      "pattern_%s_%d.png"%(str_now, j))            
+            fpath_states_new = pjoin(dpath_states,
+                                     "states_%s_%d.npz"%(str_now, j))
+                            
+            model.save_model(index=j,
+                             fpath=fpath_model_new,
+                             initializer=initializer,
+                             solver=solver)
+            
+            model.save_image(index=j,
+                             fpath_ladybird=fpath_ladybird_new,
+                             fpath_pattern=fpath_pattern_new)
+            
+            model.save_states(index=j, fpath=fpath_states_new)
+
+            print("[Confirmed model]", fpath_model_new, end='\n')
+
+        # end of for
+        t_end = time.time()
+    
+        print("- [Batch duration] %f sec." % (t_end - t_beg), end="\n\n")
+    # end of for i
