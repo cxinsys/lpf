@@ -32,16 +32,16 @@ def parse_device(device):
         if len(options) == 2:
             if str.isnumeric(options[-1]):
                 _device, _device_id = options
-                
+
                 if _device in ["cuda", "cupy"]:
                     _backend = "cupy"
                     _device = "gpu"
-                    
-                
+
+
             elif isinstance(options[-1], str):
                 _backend, _device = options
                 _device_id = 0
-                
+
         elif len(options) == 3:
             _backend, _device, _device_id = options
 
@@ -52,7 +52,7 @@ def parse_device(device):
             raise RuntimeError("Illegal device:", device)
 
         _device_id = int(_device_id)
-    
+
     else:
         if device == "cupy":
             _backend = "cupy"
@@ -200,12 +200,6 @@ class CupyModule(NumpyModule):
 class JaxModule(NumpyModule):
     def __init__(self, device=None, device_id=None):
         super().__init__(device, device_id)
-
-    def __enter__(self):
-        return self._device.__enter__()
-
-    def __exit__(self, *args, **kwargs):
-        return self._device.__exit__(*args, **kwargs)
 
     def any(self, *args, **kwargs):
         return jnp.any(*args, **kwargs)
