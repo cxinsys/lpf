@@ -19,7 +19,7 @@ def parse_device(device):
     # jax:cuda:
     # cupy:cuda:0
     if device is None:
-        return "cpu", None
+        return "numpy", "cpu", 0
 
     device = device.lower()
 

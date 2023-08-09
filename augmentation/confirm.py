@@ -76,7 +76,7 @@ def get_data(config, batch):
             params)
 
 
-def solve_batches(list_dict_fpaths, device):
+def solve_batches(device, list_dict_fpaths, batch_size):
     print("[DEVICE]", device, end='\n\n')
     
     ix_batch = 1
@@ -239,6 +239,8 @@ if __name__ == "__main__":
         devices = parse_devices(args.device)
 
       
+    print("[DEVICES]", devices)
+
     verbose = int(config["VERBOSE"])
     
     batch_size = int(config["BATCH_SIZE"])
