@@ -364,14 +364,14 @@ if __name__ == "__main__":
                 h.update(init_states_rand[j, ...])
                 h.update(params_rand[j, ...])
                 hash_model = h.intdigest()  # It plays a role as genotype.   
-                    
+                h.reset()     
+    
                 if hash_model in dict_morphs[hash_morph]:
                     continue
                 
                 dict_morphs[hash_morph].add(hash_model)
                 dict_model_id[hash_model] = dict_fpaths
                 list_dict_fpaths.append(dict_fpaths)
-                h.reset()     
                 
                 dpath_morph = pjoin(dpath_output_dataset, str(hash_morph))
                 
@@ -398,8 +398,7 @@ if __name__ == "__main__":
                 model.save_model(index=j,
                                  fpath=fpath_model_new,
                                  initializer=initializer,
-                                 solver=solver,
-                                 params=params)
+                                 solver=solver)
                 
                 model.save_image(index=j,
                                  fpath_ladybird=fpath_ladybird_new,
