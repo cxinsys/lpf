@@ -24,29 +24,58 @@ def parse_device(device):
     device = device.lower()
 
     _backend = None
-    _device = device
+    _device = None
     _device_id = 0
 
     if ":" in device:
         options = device.split(":")
         if len(options) == 2:
-            _device, _device_id = device
+            if str.isnumeric(options[-1]):
+                _device, _device_id = options
+                
+                if _device in ["cuda", "cupy"]:
+                    _backend = "cupy"
+                    _device = "gpu"
+                    
+                
+            elif isinstance(options[-1], str):
+                _backend, _device = options
+                _device_id = 0
+                
         elif len(options) == 3:
-            _backend, _device, _device_id = device
+            _backend, _device, _device_id = options
 
             if _backend not in ["numpy", "cupy", "jax"]:
                 raise ValueError("backend should be one of 'numpy', 'cupy', or "\
                                  "'jax', not %s" % (_backend))
+        else:
+            raise RuntimeError("Illegal device:", device)
 
         _device_id = int(_device_id)
+    
+    else:
+        if device == "cupy":
+            _backend = "cupy"
+            _device = "gpu"
+            _device_id = 0
+        elif device == "jax":
+            _backend = "jax"
+            _device = "gpu"
+            _device_id = 0
+        elif device == "numpy":
+            _backend = "numpy"
+            _device = "cpu"
+            _device_id = 0
+        else:
+            raise ValueError("Illegal device:", device)
 
     if _device not in ["cpu", "gpu", "tpu", "cuda"]:
         raise ValueError("device should be one of 'cpu', " \
                          "'gpu', or 'cuda', not %s" % (_device))
 
-    if _backend is None and _device in ["gpu", "cuda"]:
+    if _backend == None and _device in ["gpu", "cuda"]:
         _backend = "cupy"  # The default backend for gpu is cupy.
-    elif _backend is None and _device is "cpu":
+    elif _backend == None and _device == "cpu":
         _backend = "numpy"
 
     return _backend, _device, _device_id
@@ -55,8 +84,10 @@ def parse_device(device):
 def get_array_module(device):
     _backend, _device, _device_id = parse_device(device)
 
-    if _backend is "jax" and _device in ["gpu", "cuda"]:
+    if _backend == "cupy" and _device in ["gpu", "cuda"]:
         return CupyModule(_device, _device_id)
+    elif _backend == "jax" and _device in ["gpu", "cuda"]:
+        return JaxModule(_device, _device_id)
     else:
         return NumpyModule(_device, _device_id)
 
@@ -180,16 +211,13 @@ class JaxModule(NumpyModule):
         return jnp.any(*args, **kwargs)
 
     def zeros(self, *args, **kwargs):
-        return jnp.zeros(*args, **kwargs)
+        return device_put(jnp.zeros(*args, **kwargs), jax.devices()[self.device_id])
 
     def ones(self, *args, **kwargs):
-        return jnp.ones(*args, **kwargs)
+        return device_put(jnp.ones(*args, **kwargs), jax.devices()[self.device_id])
 
     def array(self, *args, **kwargs):
         return device_put(jnp.array(*args, **kwargs), jax.devices()[self.device_id])
-
-    def arange(self, *args, **kwargs):
-        return device_put(jnp.arange(*args, **kwargs), jax.devices()[self.device_id])
 
     def abs(self, *args, **kwargs):
         return jnp.abs(*args, **kwargs)
