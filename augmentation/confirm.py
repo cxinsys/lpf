@@ -301,6 +301,11 @@ if __name__ == "__main__":
             n_iters=n_iters,
             verbose=verbose
         )       
+        
+        with model.am:
+            init_pts = model.am.get(initializer.init_pts)
+            init_states = model.am.get(initializer.init_states)
+            params = model.am.get(model.params)
 
         for j in range(current_batch_size):
 
@@ -320,10 +325,6 @@ if __name__ == "__main__":
             h.reset()                  
             
             # Hashing model data.
-            init_pts = np.array_like(initializer.init_pts)
-            init_states = np.array_like(initializer.init_states)                
-            params = np.array_like(model.params)
-            
             h.update(init_pts[j, ...])
             h.update(init_states[j, ...])
             h.update(params[j, ...])

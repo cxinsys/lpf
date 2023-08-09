@@ -6,30 +6,56 @@ try:
 except (ModuleNotFoundError, ImportError) as err:
     print("[WARNING] Cannot use GPU computing based on CuPy.")
 
+try:
+    import jax
+    from jax import device_put
+    import jax.numpy as jnp
+except (ModuleNotFoundError, ImportError) as err:
+    print("[WARNING] Cannot use GPU computing based on Jax")
+
 
 def parse_device(device):
+    # jax:gpu:0
+    # jax:cuda:
+    # cupy:cuda:0
     if device is None:
         return "cpu", None
 
     device = device.lower()
+
+    _backend = None
     _device = device
     _device_id = 0
 
     if ":" in device:
-        _device, _device_id = device.split(":")
+        options = device.split(":")
+        if len(options) == 2:
+            _device, _device_id = device
+        elif len(options) == 3:
+            _backend, _device, _device_id = device
+
+            if _backend not in ["numpy", "cupy", "jax"]:
+                raise ValueError("backend should be one of 'numpy', 'cupy', or "\
+                                 "'jax', not %s" % (_backend))
+
         _device_id = int(_device_id)
 
-    if _device not in ["cpu", "gpu", "cuda"]:
+    if _device not in ["cpu", "gpu", "tpu", "cuda"]:
         raise ValueError("device should be one of 'cpu', " \
-                         "'gpu', or 'cuda', not %s" % (device))
+                         "'gpu', or 'cuda', not %s" % (_device))
 
-    return _device, _device_id
+    if _backend is None and _device in ["gpu", "cuda"]:
+        _backend = "cupy"  # The default backend for gpu is cupy.
+    elif _backend is None and _device is "cpu":
+        _backend = "numpy"
+
+    return _backend, _device, _device_id
 
 
 def get_array_module(device):
-    _device, _device_id = parse_device(device)
+    _backend, _device, _device_id = parse_device(device)
 
-    if "gpu" in _device or "cuda" in _device:
+    if _backend is "jax" and _device in ["gpu", "cuda"]:
         return CupyModule(_device, _device_id)
     else:
         return NumpyModule(_device, _device_id)
@@ -123,7 +149,10 @@ class CupyModule(NumpyModule):
             return cp.abs(*args, **kwargs)
 
     def get(self, arr):
-        return arr.get()
+        if hasattr(arr, 'get'):
+            return arr.get()
+
+        return arr
 
     def is_array(self, obj):
         return isinstance(obj, (cp.ndarray, cp.generic))
@@ -135,3 +164,47 @@ class CupyModule(NumpyModule):
     def isinf(self, *args, **kwargs):
         with cp.cuda.Device(self.device_id):
             return cp.isinf(*args, **kwargs)
+
+
+class JaxModule(NumpyModule):
+    def __init__(self, device=None, device_id=None):
+        super().__init__(device, device_id)
+
+    def __enter__(self):
+        return self._device.__enter__()
+
+    def __exit__(self, *args, **kwargs):
+        return self._device.__exit__(*args, **kwargs)
+
+    def any(self, *args, **kwargs):
+        return jnp.any(*args, **kwargs)
+
+    def zeros(self, *args, **kwargs):
+        return jnp.zeros(*args, **kwargs)
+
+    def ones(self, *args, **kwargs):
+        return jnp.ones(*args, **kwargs)
+
+    def array(self, *args, **kwargs):
+        return device_put(jnp.array(*args, **kwargs), jax.devices()[self.device_id])
+
+    def arange(self, *args, **kwargs):
+        return device_put(jnp.arange(*args, **kwargs), jax.devices()[self.device_id])
+
+    def abs(self, *args, **kwargs):
+        return jnp.abs(*args, **kwargs)
+
+    def get(self, arr):
+        if hasattr(arr, 'get'):
+            return arr.get()
+
+        return arr
+
+    def is_array(self, obj):
+        return isinstance(obj, (jnp.ndarray, jnp.generic))
+
+    def isnan(self, *args, **kwargs):
+        return jnp.isnan(*args, **kwargs)
+
+    def isinf(self, *args, **kwargs):
+        return jnp.isinf(*args, **kwargs)
