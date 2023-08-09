@@ -46,8 +46,10 @@ class TwoComponentConstantInitializer(TwoComponentInitializer):
             u0 = u0.reshape(batch_size, 1, 1)
             v0 = v0.reshape(batch_size, 1, 1)
 
-            model._y_mesh[0, :, :, :] = u0
-            model._y_mesh[1, :, :, :] = v0
+            # model._y_mesh[0, :, :, :] = u0
+            # model._y_mesh[1, :, :, :] = v0
+            model.am.set(model._y_mesh, (0, ...), u0)
+            model.am.set(model._y_mesh, (1, ...), v0)
         # end of with
 
     def to_dict(self, index):

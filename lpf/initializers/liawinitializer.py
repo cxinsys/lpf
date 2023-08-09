@@ -70,9 +70,11 @@ class LiawInitializer(TwoComponentInitializer):
             v0 = v0.reshape(batch_size, 1, 1)
 
             for i in range(batch_size):
-                model._u[i, init_pts[i, :, 0], init_pts[i, :, 1]] = u0[i]
+                # model._u[i, init_pts[i, :, 0], init_pts[i, :, 1]] = u0[i]
+                model.am.set(model._u, (i, init_pts[i, :, 0], init_pts[i, :, 1]), u0[i])
 
-            model._y_mesh[1, :, :, :] = v0            
+            # model._y_mesh[1, :, :, :] = v0            
+            model.am.set(model._y_mesh, (1, ...), v0)
         # end of with
 
     def to_dict(self, index):

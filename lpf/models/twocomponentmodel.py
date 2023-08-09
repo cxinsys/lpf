@@ -138,9 +138,6 @@ class TwoComponentModel(ReactionDiffusionModel):
         """
 
         batch_size = self.params.shape[0]
-
-        # if y_mesh is None:
-        #     y_mesh = y_linear.reshape(self._shape_grid)
             
         dydt_mesh = self._dydt_mesh
 
@@ -163,14 +160,31 @@ class TwoComponentModel(ReactionDiffusionModel):
         f, g = self.reactions(t, u_c, v_c)
 
         # Diffusions + Reactions
-        dydt_mesh[0, :, 1:-1, 1:-1] = Du * self.laplacian2d(u, dx) + f
-        dydt_mesh[1, :, 1:-1, 1:-1] = Dv * self.laplacian2d(v, dx) + g
+        # dydt_mesh[0, :, 1:-1, 1:-1] = Du * self.laplacian2d(u, dx) + f
+        # dydt_mesh[1, :, 1:-1, 1:-1] = Dv * self.laplacian2d(v, dx) + g
+
+        self.am.set(
+            dydt_mesh,
+            (0, slice(None), slice(1, -1), slice(1, -1)),
+            Du * self.laplacian2d(u, dx) + f
+        )
+        
+        self.am.set(
+            dydt_mesh,
+            (1, slice(None), slice(1, -1), slice(1, -1)),
+            Dv * self.laplacian2d(v, dx) + g
+        )
 
         # Neumann boundary condition: dydt = 0
-        dydt_mesh[:, :, 0, :] = 0.0
-        dydt_mesh[:, :, -1, :] = 0.0
-        dydt_mesh[:, :, :, 0] = 0.0
-        dydt_mesh[:, :, :, -1] = 0.0
+        # dydt_mesh[:, :, 0, :] = 0.0
+        # dydt_mesh[:, :, -1, :] = 0.0
+        # dydt_mesh[:, :, :, 0] = 0.0
+        # dydt_mesh[:, :, :, -1] = 0.0
+
+        self.am.set(dydt_mesh, (slice(None), slice(None), 0, slice(None)),  0.0)
+        self.am.set(dydt_mesh, (slice(None), slice(None), -1, slice(None)),  0.0)
+        self.am.set(dydt_mesh, (slice(None), slice(None), slice(None), 0),  0.0)
+        self.am.set(dydt_mesh, (slice(None), slice(None), slice(None), -1),  0.0)
 
         return self._dydt_mesh
 

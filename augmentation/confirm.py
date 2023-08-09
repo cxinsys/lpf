@@ -24,6 +24,7 @@ from lpf.initializers import InitializerFactory
 from lpf.models import ModelFactory
 from lpf.solvers import SolverFactory
 
+
 def parse_devices(device):
     if isinstance(device, str):
         devices = device.split(',')            
@@ -37,6 +38,7 @@ def parse_devices(device):
         
         
     return devices
+
 
 def get_data(config, batch):
     model_dicts = []
@@ -76,9 +78,43 @@ def get_data(config, batch):
             params)
 
 
-def solve_batches(device, list_dict_fpaths, batch_size):
+def solve_batches(config, device, list_dict_fpaths):
     print("[DEVICE]", device, end='\n\n')
+
+    dpath_output_dataset = config["DPATH_OUTPUT_DATASET"]
+
+    batch_size = int(config["BATCH_SIZE"])
     
+    dx = float(config["DX"])
+    dt = float(config["DT"])
+    width = int(config["WIDTH"])
+    height = int(config["HEIGHT"])
+    thr = float(config["THR_COLOR"])
+    n_iters = int(config["N_ITERS"])
+    n_init_pts = int(config["N_INIT_PTS"])
+
+    color_u = None
+    color_v = None
+    thr_color = None
+
+    if "COLOR_U" in config:
+        color_u = ImageColor.getcolor(config["COLOR_U"], "RGB")
+
+    if "COLOR_V" in config:
+        color_v = ImageColor.getcolor(config["COLOR_V"], "RGB")
+
+    if "THR_COLOR" in config:
+        thr_color = float(config["THR_COLOR"])
+
+    verbose = int(config["VERBOSE"])
+
+    # Create a solver.
+    solver = SolverFactory.create(name=config["SOLVER"],
+                                  dt=float(config["DT"]),
+                                  n_iters=int(config["N_ITERS"]))
+    
+    h = xxhash.xxh64()
+   
     ix_batch = 1
     for i in range(0, len(list_dict_fpaths), batch_size):
         t_beg = time.time()
@@ -118,7 +154,7 @@ def solve_batches(device, list_dict_fpaths, batch_size):
 
         model.params = model.parse_params(model_dicts)    
        
-        print("[Batch #%d] %d models"%(ix_batch, current_batch_size), end="\n\n")        
+        print("[DEVICE-%s][Batch #%d] %d models"%(device, ix_batch, current_batch_size), end="\n\n")        
         ix_batch += 1
                     
         solver.solve(
@@ -138,7 +174,7 @@ def solve_batches(device, list_dict_fpaths, batch_size):
             # Check numerical errors.
             # Ignore this model if numerical errors has occurred.
             if model.is_numerically_invalid(index=j):
-                print("[Numerical error] Ignore model #%d in the batch #%d..."%(j+1, i+1))
+                print("- [DEVICE-%s][Numerical error] Ignore model #%d in the batch #%d..."%(device, j+1, i+1))
                 continue
 
             img_ladybird, pattern = model.create_image(index=j)
@@ -157,8 +193,8 @@ def solve_batches(device, list_dict_fpaths, batch_size):
             hash_model = h.intdigest()  
             h.reset()     
             
-            dict_morphs[hash_morph].add(hash_model)
-            dict_model_id[hash_model] = dict_fpaths
+            # dict_morphs[hash_morph].add(hash_model)
+            # dict_model_id[hash_model] = dict_fpaths
             list_dict_fpaths.append(dict_fpaths)
             
             dpath_morph = pjoin(dpath_output_dataset, str(hash_morph))
@@ -194,12 +230,12 @@ def solve_batches(device, list_dict_fpaths, batch_size):
             
             model.save_states(index=j, fpath=fpath_states_new)
 
-            print("[Confirmed model]", fpath_model_new, end='\n')
+            print("- [Confirmed model]", fpath_model_new, end='\n')
 
         # end of for
         t_end = time.time()
     
-        print("- [Batch #] %f sec." % (t_end - t_beg), end="\n\n")
+        print("[DEVICE-%s][Batch #%d duration] %f sec." % (device, ix_batch, t_end - t_beg), end="\n\n")
     # end of for i
 # end of def solve_batches
 
@@ -241,40 +277,10 @@ if __name__ == "__main__":
       
     print("[DEVICES]", devices)
 
-    verbose = int(config["VERBOSE"])
-    
-    batch_size = int(config["BATCH_SIZE"])
     
     # Get the input and output directories.
     dpath_input_dataset = config["DPATH_INPUT_DATASET"]
-    dpath_output_dataset = config["DPATH_OUTPUT_DATASET"]
 
-    # Create the model.
-    dx = float(config["DX"])
-    dt = float(config["DT"])
-    width = int(config["WIDTH"])
-    height = int(config["HEIGHT"])
-    thr = float(config["THR_COLOR"])
-    n_iters = int(config["N_ITERS"])
-    n_init_pts = int(config["N_INIT_PTS"])
-
-    color_u = None
-    color_v = None
-    thr_color = None
-
-    if "COLOR_U" in config:
-        color_u = ImageColor.getcolor(config["COLOR_U"], "RGB")
-
-    if "COLOR_V" in config:
-        color_v = ImageColor.getcolor(config["COLOR_V"], "RGB")
-
-    if "THR_COLOR" in config:
-        thr_color = float(config["THR_COLOR"])
-
-    # Create a solver.
-    solver = SolverFactory.create(name=config["SOLVER"],
-                                  dt=float(config["DT"]),
-                                  n_iters=int(config["N_ITERS"]))
 
     # Collect model files within dpath_dataset.
     list_dict_fpaths = []
@@ -283,10 +289,9 @@ if __name__ == "__main__":
     list_init_states = []
     list_params = []    
     
-    dict_morphs = defaultdict(set)
-    dict_model_id = {}
+    # dict_morphs = defaultdict(set)
+    # dict_model_id = {}
     
-    h = xxhash.xxh64()
 
     n_models = 0
     for dname in os.listdir(dpath_input_dataset):
@@ -345,21 +350,7 @@ if __name__ == "__main__":
             list_init_states.append(init_states)
             list_params.append(params)
                                
-            h.update(list_morphs[0])
-            hash_morph = h.intdigest()
-            h.reset()  
-
-            h.update(init_pts[0, ...])
-            h.update(init_states[0, ...]) 
-            h.update(params[0, ...])
-            hash_model = h.intdigest()  # It plays a role as genotype.
-            
-            if hash_model not in dict_morphs[hash_morph]:
-                dict_morphs[hash_morph].add(hash_model)
-                dict_model_id[hash_model] = dict_fpaths
-                list_dict_fpaths.append(dict_fpaths)
-            
-            h.reset()
+            list_dict_fpaths.append(dict_fpaths)
 
             n_models += 1
             print("[Model #%d] %s"%(n_models, fpath_model))
@@ -398,7 +389,7 @@ if __name__ == "__main__":
 
     n_devices = len(devices)
     if n_devices == 1:
-        solve_batches(list_dict_fpaths, devices[0])
+        solve_batches(config, devices[0], list_dict_fpaths)
         
     elif n_devices > 1:
         
@@ -413,10 +404,10 @@ if __name__ == "__main__":
         # Start multiprocessing.
         multiprocessing.set_start_method('spawn', force=True)
         procs = []    
-        for i in range(0, len(list_dict_fpaths), batch_size):
+        for i in range(n_devices):
             device = devices[i]
             batches = list_proc_batches[i]
-            _proc = Process(target=solve_batches, args=(batches, device))
+            _proc = Process(target=solve_batches, args=(config, device, batches))
             procs.append(_proc)
             _proc.start()
 

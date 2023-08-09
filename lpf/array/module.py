@@ -134,6 +134,10 @@ class NumpyModule(ArrayModule):
     def get(self, arr):
         return arr
 
+    def set(self, arr, ind, val):
+        arr[ind] = val
+        return arr
+
     def is_array(self, obj):
         return isinstance(obj, (np.ndarray, np.generic))
 
@@ -200,18 +204,19 @@ class CupyModule(NumpyModule):
 class JaxModule(NumpyModule):
     def __init__(self, device=None, device_id=None):
         super().__init__(device, device_id)
+        self._device = jax.devices()[device_id]
 
     def any(self, *args, **kwargs):
         return jnp.any(*args, **kwargs)
 
     def zeros(self, *args, **kwargs):
-        return device_put(jnp.zeros(*args, **kwargs), jax.devices()[self.device_id])
+        return device_put(jnp.zeros(*args, **kwargs), self._device)
 
     def ones(self, *args, **kwargs):
-        return device_put(jnp.ones(*args, **kwargs), jax.devices()[self.device_id])
+        return device_put(jnp.ones(*args, **kwargs), self._device)
 
     def array(self, *args, **kwargs):
-        return device_put(jnp.array(*args, **kwargs), jax.devices()[self.device_id])
+        return device_put(jnp.array(*args, **kwargs), self._device)
 
     def abs(self, *args, **kwargs):
         return jnp.abs(*args, **kwargs)
@@ -221,6 +226,9 @@ class JaxModule(NumpyModule):
             return arr.get()
 
         return arr
+
+    def set(self, arr, ind, val):
+        return arr.at[ind].set(val)
 
     def is_array(self, obj):
         return isinstance(obj, (jnp.ndarray, jnp.generic))
