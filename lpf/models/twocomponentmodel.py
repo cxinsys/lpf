@@ -196,8 +196,11 @@ class TwoComponentModel(ReactionDiffusionModel):
             arr_v = self.v
 
         with self.am:
-            abs_u = self.am.abs(arr_u[index, ...].astype(np.float16))
-            abs_v = self.am.abs(arr_v[index, ...].astype(np.float16))
+            arr_u = arr_u[index, ...].astype(np.float16)
+            arr_v = arr_v[index, ...].astype(np.float16)
+            
+            abs_u = self.am.abs(arr_u)
+            abs_v = self.am.abs(arr_v)
 
             return (arr_u < 0).any() or (arr_v < 0).any() \
                    or self.am.isnan(abs_u.min()) or self.am.isnan(abs_v.min()) \
