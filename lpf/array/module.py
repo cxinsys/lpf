@@ -7,6 +7,12 @@ except (ModuleNotFoundError, ImportError) as err:
     print("[WARNING] Cannot use GPU computing based on CuPy.")
 
 try:
+    import os
+
+    os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"]="false"
+    os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"]=".95"
+    os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"]="platform"
+
     import jax
     from jax import device_put
     import jax.numpy as jnp
@@ -37,7 +43,7 @@ def parse_device(device):
                 if options[0] in ["cuda", "cupy"]:
                     _backend = "cupy"
                     _device = "gpu"
-                elif options[0] == ["jax"]:
+                elif options[0] == "jax":
                     _backend = "jax"
                     _device = "gpu"
 
@@ -89,8 +95,11 @@ def get_array_module(device):
 
     if _backend == "cupy" and _device in ["gpu", "cuda"]:
         return CupyModule(_device, _device_id)
-    elif _backend == "jax" and _device in ["gpu", "cuda"]:
-        return JaxModule(_device, _device_id)
+    elif _backend == "jax":
+        if _device in ["gpu", "cuda"]:
+            return JaxModule("gpu", _device_id)
+        else:
+            return JaxModule("cpu", 0)
     else:
         return NumpyModule(_device, _device_id)
 
@@ -207,7 +216,12 @@ class CupyModule(NumpyModule):
 class JaxModule(NumpyModule):
     def __init__(self, device=None, device_id=None):
         super().__init__(device, device_id)
-        self._device = jax.devices()[device_id]
+        
+        for jax_device in jax.devices(device):
+            if jax_device.id == device_id:
+                self._device = jax_device
+                break
+        # end of for
 
     def any(self, *args, **kwargs):
         return jnp.any(*args, **kwargs)
