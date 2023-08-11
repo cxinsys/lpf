@@ -1,11 +1,17 @@
 from abc import ABC
+import numpy as np
 from lpf.array import get_array_module
 
 
 class ReactionDiffusionModel(ABC):
 
-    def __init__(self, device=None):
+    def __init__(self, device=None, dtype=None):
         self._am = get_array_module(device)
+
+        if not dtype:
+            dtype = np.float32
+
+        self._dtype = dtype
 
     @property
     def am(self):  # ArrayModule object
@@ -50,7 +56,7 @@ class ReactionDiffusionModel(ABC):
     @params.setter
     def params(self, obj):
         with self.am:
-            self._params = self.am.array(obj, dtype=obj.dtype)
+            self._params = self.am.array(obj, dtype=self._dtype)
 
         if self._params is not None:
             self._batch_size = self._params.shape[0]

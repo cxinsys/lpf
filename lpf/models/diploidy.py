@@ -43,8 +43,8 @@ class Diploidy(ABC):
             raise ValueError("paternal_model and maternal_model " \
                              "must be different objects.")
 
-        pa_dtype = paternal_model.params.dtype
-        ma_dtype = maternal_model.params.dtype
+        pa_dtype = paternal_model.dtype
+        ma_dtype = maternal_model.dtype
 
         if pa_dtype != ma_dtype:
             raise TypeError("The dtype of paternal_model.params " \
@@ -108,7 +108,7 @@ class Diploidy(ABC):
                                 self.width)
 
             self._y_mesh = self.am.zeros(self._shape_grid,
-                                         dtype=pa_model.params.dtype)
+                                         dtype=pa_model.dtype)
 
             self._y_mesh[0, :] = pa_model._y_mesh[0, :]
             self._y_mesh[1, :] = pa_model._y_mesh[1, :]
@@ -123,7 +123,7 @@ class Diploidy(ABC):
             # self._y_linear = self._y_mesh.ravel()
 
             self._dydt_mesh = self.am.zeros(self._shape_grid,
-                                            dtype=pa_model.params.dtype)
+                                            dtype=pa_model.dtype)
 
     def has_initializer(self):
         return self._paternal_model.has_initializer() \

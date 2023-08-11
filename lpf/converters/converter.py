@@ -14,7 +14,8 @@ class Converter(ABC):
 
     def to_dv(self,
               model_dict,
-              n_init_pts=None):
+              n_init_pts=None,
+              dtype=None):
 
         if not isinstance(model_dict, dict):
             raise TypeError("model_dict should be a dictionary.")
@@ -23,6 +24,9 @@ class Converter(ABC):
             n_init_pts = -1
         elif n_init_pts and n_init_pts < 0:
             raise TypeError("n_init_pts should be greater than 0.")
+
+        if not dtype:
+            dtype = np.float32
 
         dv = []
         names = self.get_param_names()
@@ -47,7 +51,7 @@ class Converter(ABC):
                 dv.append(0)
                 dv.append(0)
 
-        return np.array(dv, dtype=np.float64)
+        return np.array(dv, dtype=dtype)
 
     def to_params(self, dv, params=None):
         raise NotImplementedError()

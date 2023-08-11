@@ -26,10 +26,11 @@ class TwoComponentModel(ReactionDiffusionModel):
                  color_u=None,
                  color_v=None,
                  device=None,
-                 ladybird=None):
+                 ladybird=None,
+                 dtype=None):
 
         # Set the device.
-        super().__init__(device)
+        super().__init__(device, dtype)
 
         # Set constant members.
         self._name = "TwoComponentModel"
@@ -44,7 +45,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         # Set kinetic parameters.
         if params is not None:
             with self.am:
-                self._params = self.am.array(params, dtype=params.dtype)                
+                self._params = self.am.array(params, dtype=self._dtype)
                 self._batch_size = self._params.shape[0]
 
         # Set the size of space (2D grid).
@@ -109,7 +110,7 @@ class TwoComponentModel(ReactionDiffusionModel):
                                 self._width)
 
             self._y_mesh = self.am.zeros(self._shape_grid,
-                                         dtype=self._params.dtype)
+                                         dtype=self._dtype)
 
             self._u = self._y_mesh[0, :, :, :]
             self._v = self._y_mesh[1, :, :, :]
@@ -117,7 +118,7 @@ class TwoComponentModel(ReactionDiffusionModel):
             # self._y_linear = self._y_mesh.ravel()
 
             self._dydt_mesh = self.am.zeros(self._shape_grid,
-                                            dtype=self._params.dtype)
+                                            dtype=self._dtype)
         # end of with
 
         self._initializer.initialize(self)
@@ -437,7 +438,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         # return init_states
 
         batch_size = len(model_dicts)
-        init_states = np.zeros((batch_size, 2), dtype=np.float64)
+        init_states = np.zeros((batch_size, 2), dtype=self._dtype)
         init_pts = []
 
         for i, n2v in enumerate(model_dicts):

@@ -17,7 +17,7 @@ class LiawInitializer(TwoComponentInitializer):
         """
 
         batch_size = len(model_dicts)
-        self._init_states = np.zeros((batch_size, 2), dtype=self.dtype)
+        self._init_states = np.zeros((batch_size, 2), dtype=self._dtype)
         init_pts = []
 
         for i, n2v in enumerate(model_dicts):

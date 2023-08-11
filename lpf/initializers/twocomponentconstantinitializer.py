@@ -16,7 +16,7 @@ class TwoComponentConstantInitializer(TwoComponentInitializer):
         """Parse the initial states from the model dictionaries.
         """
         batch_size = len(model_dicts)
-        self._init_states = np.zeros((batch_size, 2), dtype=np.float64)
+        self._init_states = np.zeros((batch_size, 2), dtype=self._dtype)
 
         for i, n2v in enumerate(model_dicts):
             self._init_states[i, 0] = n2v["u0"]

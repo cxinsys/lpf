@@ -17,7 +17,7 @@ class TwoComponentCrosstalkDiploidModel(TwoComponentDiploidModel):
                                 self.width)
             
             self._y_mesh = self.am.zeros(self._shape_grid,
-                                         dtype=pa_model.params.dtype)
+                                         dtype=pa_model.dtype)
 
             alpha = self._alpha
             beta = self._beta
@@ -32,7 +32,7 @@ class TwoComponentCrosstalkDiploidModel(TwoComponentDiploidModel):
             # self._y_linear = self._y_mesh.ravel()
              
             self._dydt_mesh = self.am.zeros(self._shape_grid,
-                                            dtype=pa_model.params.dtype)
+                                            dtype=pa_model.dtype)
 
     def pdefunc(self, t, y_mesh=None, y_linear=None):
         """Equation function for integration.
