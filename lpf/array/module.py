@@ -10,7 +10,7 @@ try:
     import os
 
     os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"]="false"
-    os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"]=".95"
+    #os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"]=".50"
     os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"]="platform"
 
     import jax
