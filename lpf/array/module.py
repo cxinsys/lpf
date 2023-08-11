@@ -30,13 +30,16 @@ def parse_device(device):
     if ":" in device:
         options = device.split(":")
         if len(options) == 2:
-            if str.isnumeric(options[-1]):
-                _device, _device_id = options
+            if str.isnumeric(options[1]):
+                _device_id = int(options[1])
 
-                if _device in ["cuda", "cupy"]:
+                # The default device is GPU if the device is not defined.
+                if options[0] in ["cuda", "cupy"]:
                     _backend = "cupy"
                     _device = "gpu"
-
+                elif options[0] == ["jax"]:
+                    _backend = "jax"
+                    _device = "gpu"
 
             elif isinstance(options[-1], str):
                 _backend, _device = options
