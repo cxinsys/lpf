@@ -57,17 +57,17 @@ def parse_device(device):
         _device_id = int(_device_id)
 
     else:
-        if device == "cupy":
+        if device in ["cpu", "numpy"]:
+            _backend = "numpy"
+            _device = "cpu"
+            _device_id = 0
+        elif device == "cupy":
             _backend = "cupy"
             _device = "gpu"
             _device_id = 0
         elif device == "jax":
             _backend = "jax"
             _device = "gpu"
-            _device_id = 0
-        elif device == "numpy":
-            _backend = "numpy"
-            _device = "cpu"
             _device_id = 0
         else:
             raise ValueError("Illegal device:", device)
