@@ -1,10 +1,11 @@
+import warnings
 import numpy as np
 
 
 try:
     import cupy as cp
 except (ModuleNotFoundError, ImportError) as err:
-    print("[WARNING] Cannot use GPU computing based on CuPy.")
+    warnings.warn("Cannot use GPU computing based on CuPy.")
 
 try:
     import os
@@ -17,7 +18,7 @@ try:
     from jax import device_put
     import jax.numpy as jnp
 except (ModuleNotFoundError, ImportError) as err:
-    print("[WARNING] Cannot use GPU computing based on Jax")
+    warnings.warn("Cannot use GPU computing based on Jax")
 
 
 def parse_device(device):
