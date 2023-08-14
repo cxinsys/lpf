@@ -401,7 +401,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         return model_dict
 
     @classmethod
-    def parse_params(self, model_dicts):
+    def parse_params(self, model_dicts, dtype=None):
         """Parse the parameters from the model dictionaries.
            A model knows how to parse its parameters.
         """

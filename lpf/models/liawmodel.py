@@ -68,10 +68,13 @@ class LiawModel(TwoComponentModel):
         return n2v
    
     @classmethod
-    def parse_params(self, model_dicts):
+    def parse_params(self, model_dicts, dtype=None):
+        if not dtype:
+            dtype = np.float64
+
         model_dicts = super().parse_params(model_dicts)
         batch_size = len(model_dicts)
-        params = np.zeros((batch_size, 8), dtype=np.float64)
+        params = np.zeros((batch_size, 8), dtype=dtype)
 
         for index, n2v in enumerate(model_dicts):
             params[index, 0] = n2v["Du"]
