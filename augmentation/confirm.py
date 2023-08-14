@@ -8,6 +8,7 @@ import json
 import argparse
 from collections import defaultdict
 
+import random
 import multiprocessing
 from multiprocessing import Process
 
@@ -25,6 +26,7 @@ from lpf.models import ModelFactory
 from lpf.solvers import SolverFactory
 
 
+
 def parse_devices(device):
     if isinstance(device, str):
         devices = device.split(',')            
@@ -38,6 +40,7 @@ def parse_devices(device):
         
         
     return devices
+
 
 
 def get_data(config, batch):
@@ -78,6 +81,7 @@ def get_data(config, batch):
             params)
 
 
+
 def solve_batches(config, device, list_dict_fpaths):
     print("[DEVICE]", device, end='\n\n')
 
@@ -106,13 +110,23 @@ def solve_batches(config, device, list_dict_fpaths):
     if "THR_COLOR" in config:
         thr_color = float(config["THR_COLOR"])
 
-    verbose = int(config["VERBOSE"])
-
     # Create a solver.
     solver = SolverFactory.create(name=config["SOLVER"],
                                   dt=float(config["DT"]),
                                   n_iters=int(config["N_ITERS"]))
     
+    # Create a model.
+    model = ModelFactory.create(
+        name=config["MODEL"],
+        width=width,
+        height=height,                 
+        dx=dx,
+        color_u=color_u,
+        color_v=color_v,
+        thr_color=thr_color,
+        device=device
+    )
+
     h = xxhash.xxh64()
    
     ix_batch = 1
@@ -139,20 +153,10 @@ def solve_batches(config, device, list_dict_fpaths):
         # Update the initializer.
         initializer.update(model_dicts)
 
-        # Create a model.
-        model = ModelFactory.create(
-            name=config["MODEL"],
-            initializer=initializer,
-            width=width,
-            height=height,                 
-            dx=dx,
-            color_u=color_u,
-            color_v=color_v,
-            thr_color=thr_color,
-            device=device
-        )
+        model.initializer = initializer
 
-        model.params = model.parse_params(model_dicts)    
+        model.params = model.parse_params(model_dicts)
+        model.initialize()
        
         print("[DEVICE-%s][Batch #%d] %d models"%(device, ix_batch, current_batch_size), end="\n\n")        
         ix_batch += 1
@@ -161,7 +165,7 @@ def solve_batches(config, device, list_dict_fpaths):
             model=model,
             dt=dt,
             n_iters=n_iters,
-            verbose=verbose
+            verbose=0
         )       
         
         with model.am:
@@ -170,7 +174,6 @@ def solve_batches(config, device, list_dict_fpaths):
             params = model.am.get(model.params)
 
         for j in range(current_batch_size):
-
             # Check numerical errors.
             # Ignore this model if numerical errors has occurred.
             if model.is_numerically_invalid(index=j):
@@ -193,12 +196,9 @@ def solve_batches(config, device, list_dict_fpaths):
             hash_model = h.intdigest()  
             h.reset()     
             
-            # dict_morphs[hash_morph].add(hash_model)
-            # dict_model_id[hash_model] = dict_fpaths
             list_dict_fpaths.append(dict_fpaths)
             
             dpath_morph = pjoin(dpath_output_dataset, str(hash_morph))
-            
             dpath_models = pjoin(dpath_morph, "models")
             dpath_ladybirds = pjoin(dpath_morph, "ladybirds")                
             dpath_patterns = pjoin(dpath_morph, "patterns")
@@ -241,6 +241,8 @@ def solve_batches(config, device, list_dict_fpaths):
 
 
 if __name__ == "__main__":
+
+
 
     parser = argparse.ArgumentParser(
         description='Parse configuration for augmentation.'
@@ -356,6 +358,8 @@ if __name__ == "__main__":
             print("[Model #%d] %s"%(n_models, fpath_model))
         # end of for
     # end of for
+
+    random.shuffle(list_dict_fpaths)
     
     # Get the statistics from all parameter sets.        
     n_total = len(list_dict_fpaths)
@@ -402,17 +406,30 @@ if __name__ == "__main__":
             list_proc_batches.append(batches)
         
         # Start multiprocessing.
+        """
         multiprocessing.set_start_method('spawn', force=True)
         procs = []    
         for i in range(n_devices):
             device = devices[i]
             batches = list_proc_batches[i]
             _proc = Process(target=solve_batches, args=(config, device, batches))
-            procs.append(_proc)
             _proc.start()
+            procs.append(_proc)
 
         for _proc in procs:
             _proc.join()
+        """
+        list_args = []
+        for i in range(n_devices):
+            list_args.append((config, devices[i], list_proc_batches[i]))
+
+        pool = multiprocessing.Pool(processes=n_devices)
+
+        pool.starmap(solve_batches, list_args)
+
+        pool.close()
+        pool.join()
+
     else:
         raise RuntimeError("The number of devices should be greater than 0.")
 
