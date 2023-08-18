@@ -19,10 +19,10 @@ class EachColorProportion(Objective):
         else:
             self._target_colpros = None            
                     
-        if not lower:
+        if lower is None:
             lower = np.array((200, 0, 0), dtype=np.uint8)
             
-        if not upper:
+        if upper is None:
             upper = np.array((255, 89, 40), dtype=np.uint8)
             
         self._lower = lower
