@@ -35,7 +35,7 @@ class TwoComponentDiploidModel(Diploidy, TwoComponentModel):
     def has_initializer(self):
         return Diploidy.has_initializer(self)
 
-    def pdefunc(self, t, y_mesh=None, y_linear=None):
+    def pdefunc(self, t=None, y_mesh=None, y_linear=None):
         """Equation function for integration.
         """
         

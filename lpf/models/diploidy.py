@@ -129,7 +129,7 @@ class Diploidy(ABC):
         return self._paternal_model.has_initializer() \
                and self._maternal_model.has_initializer()
 
-    def pdefunc(self, t, y_mesh=None, y_linear=None):
+    def pdefunc(self, t=None, y_mesh=None, y_linear=None):
         raise NotImplementedError()
 
     def to_dict(self,

@@ -88,7 +88,7 @@ class ReactionDiffusionModel(ABC):
     def reactions(self, t, u_c, v_c):
         raise NotImplementedError()
 
-    def pdefunc(self, t, y_mesh=None, y_linear=None):
+    def pdefunc(self, t=None, y_mesh=None, y_linear=None):
         raise NotImplementedError()
 
     def update(self):
