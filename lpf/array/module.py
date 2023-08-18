@@ -2,25 +2,6 @@ import warnings
 import numpy as np
 
 
-try:
-    import cupy as cp
-except (ModuleNotFoundError, ImportError) as err:
-    warnings.warn("Cannot use GPU computing based on CuPy.")
-
-try:
-    import os
-
-    os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"]="false"
-    #os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"]=".50"
-    os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"]="platform"
-
-    import jax
-    from jax import device_put
-    import jax.numpy as jnp
-except (ModuleNotFoundError, ImportError) as err:
-    warnings.warn("Cannot use GPU computing based on Jax")
-
-
 def parse_device(device):
     # jax:gpu:0
     # jax:cuda:
@@ -165,8 +146,10 @@ class CupyModule(NumpyModule):
 
     def __init__(self, device=None, device_id=None):
         super().__init__(device, device_id)
-
-        self._device = cp.cuda.Device()
+        
+        import cupy as cp        
+        self._module = cp
+        self._device = self._module.cuda.Device()
         self._device.id = self._device_id
         self._device.use()
 
@@ -177,24 +160,24 @@ class CupyModule(NumpyModule):
         return self._device.__exit__(*args, **kwargs)
 
     def any(self, *args, **kwargs):
-        with cp.cuda.Device(self.device_id):
-            return cp.any(*args, **kwargs)
+        with self._module.cuda.Device(self.device_id):
+            return self._module.any(*args, **kwargs)
 
     def zeros(self, *args, **kwargs):
-        with cp.cuda.Device(self.device_id):
-            return cp.zeros(*args, **kwargs)
+        with self._module.cuda.Device(self.device_id):
+            return self._module.zeros(*args, **kwargs)
 
     def ones(self, *args, **kwargs):
-        with cp.cuda.Device(self.device_id):
-            return cp.ones(*args, **kwargs)
+        with self._module.cuda.Device(self.device_id):
+            return self._module.ones(*args, **kwargs)
 
     def array(self, *args, **kwargs):
-        with cp.cuda.Device(self.device_id):
-            return cp.array(*args, **kwargs)
+        with self._module.cuda.Device(self.device_id):
+            return self._module.array(*args, **kwargs)
 
     def abs(self, *args, **kwargs):
-        with cp.cuda.Device(self.device_id):
-            return cp.abs(*args, **kwargs)
+        with self._module.cuda.Device(self.device_id):
+            return self._module.abs(*args, **kwargs)
 
     def get(self, arr):
         if hasattr(arr, 'get'):
@@ -203,21 +186,34 @@ class CupyModule(NumpyModule):
         return arr
 
     def is_array(self, obj):
-        return isinstance(obj, (cp.ndarray, cp.generic))
+        return isinstance(obj, (self._module.ndarray, self._module.generic))
 
     def isnan(self, *args, **kwargs):
-        with cp.cuda.Device(self.device_id):
-            return cp.isnan(*args, **kwargs)
+        with self._module.cuda.Device(self.device_id):
+            return self._module.isnan(*args, **kwargs)
 
     def isinf(self, *args, **kwargs):
-        with cp.cuda.Device(self.device_id):
-            return cp.isinf(*args, **kwargs)
+        with self._module.cuda.Device(self.device_id):
+            return self._module.isinf(*args, **kwargs)
 
 
 class JaxModule(NumpyModule):
     def __init__(self, device=None, device_id=None):
         super().__init__(device, device_id)
+
         
+        import os
+    
+        os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"]="false"
+        os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"]="platform"
+        
+        import jax
+        from jax import device_put
+        import jax.numpy as jnp
+                
+        self._module = jnp
+        self._device_put = device_put
+
         for jax_device in jax.devices(device):
             if jax_device.id == device_id:
                 self._device = jax_device
@@ -225,19 +221,22 @@ class JaxModule(NumpyModule):
         # end of for
 
     def any(self, *args, **kwargs):
-        return jnp.any(*args, **kwargs)
+        return self._module.any(*args, **kwargs)
 
     def zeros(self, *args, **kwargs):
-        return device_put(jnp.zeros(*args, **kwargs), self._device)
+        return self._device_put(self._module.zeros(*args, **kwargs),
+                                self._device)
 
     def ones(self, *args, **kwargs):
-        return device_put(jnp.ones(*args, **kwargs), self._device)
+        return self._device_put(self._module.ones(*args, **kwargs),
+                                self._device)
 
     def array(self, *args, **kwargs):
-        return device_put(jnp.array(*args, **kwargs), self._device)
+        return self._device_put(self._module.array(*args, **kwargs),
+                                self._device)
 
     def abs(self, *args, **kwargs):
-        return jnp.abs(*args, **kwargs)
+        return self._module.abs(*args, **kwargs)
 
     def get(self, arr):
         if hasattr(arr, 'get'):
@@ -249,10 +248,10 @@ class JaxModule(NumpyModule):
         return arr.at[ind].set(val)
 
     def is_array(self, obj):
-        return isinstance(obj, (jnp.ndarray, jnp.generic))
+        return isinstance(obj, (self._module.ndarray, self._module.generic))
 
     def isnan(self, *args, **kwargs):
-        return jnp.isnan(*args, **kwargs)
+        return self._module.isnan(*args, **kwargs)
 
     def isinf(self, *args, **kwargs):
-        return jnp.isinf(*args, **kwargs)
+        return self._module.isinf(*args, **kwargs)
