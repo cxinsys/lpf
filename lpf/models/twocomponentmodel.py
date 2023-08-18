@@ -91,17 +91,26 @@ class TwoComponentModel(ReactionDiffusionModel):
         return self._u
 
     @u.setter
-    def u(self, arr):
-        self._u = arr
+    def u(self, obj):
+        with self.am:
+            if hasattr(self, '_y_mesh'):
+                self._y_mesh[0, :, :, :] = self.am.array(obj, dtype=self._dtype)
+            else:
+                self._u = obj
+        
 
     @property
     def v(self):
         return self._v
 
     @v.setter
-    def v(self, arr):
-        self._v = arr
-
+    def v(self, obj):
+        with self.am:
+            if hasattr(self, '_y_mesh'):
+                self._y_mesh[0, :, :, :] = self.am.array(obj, dtype=self._dtype)
+            else:
+                self._u = obj
+                
     def initialize(self):
         with self.am:
             self._shape_grid = (self._n_states,
@@ -121,7 +130,8 @@ class TwoComponentModel(ReactionDiffusionModel):
                                             dtype=self._dtype)
         # end of with
 
-        self._initializer.initialize(self)
+        if self._initializer:
+            self._initializer.initialize(self)
 
     def laplacian2d(self, a, dx):
         a_top = a[:, 0:-2, 1:-1]
