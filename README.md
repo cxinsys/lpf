@@ -91,3 +91,7 @@ conda install pygmo -c conda-forge
 ```
 
 ## Getting Started
+- [Tutorials](https://github.com/cxinsys/lpf/tree/main/tutorials).
+  
+## Citation
+- Daewon Lee, "**LPF: a framework for exploring the wing color pattern formation of ladybird beetles in Python**", [_Bioinformatics_, 39(7), btad430, July 2023](https://academic.oup.com/bioinformatics/article/39/7/btad430/7221539).
