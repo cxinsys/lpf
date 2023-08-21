@@ -176,7 +176,7 @@ def solve_batches(config, device, list_dict_fpaths):
         for j in range(current_batch_size):
             # Check numerical errors.
             # Ignore this model if numerical errors has occurred.
-            if model.is_numerically_invalid(index=j):
+            if model.is_state_invalid(index=j):
                 print("- [DEVICE-%s][Numerical error] Ignore model #%d in the batch #%d..."%(device, j+1, i+1))
                 continue
 

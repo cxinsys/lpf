@@ -21,7 +21,8 @@ import xxhash
 from lpf.initializers import InitializerFactory
 from lpf.models import ModelFactory
 from lpf.solvers import SolverFactory
-
+from lpf.utils import is_param_invalid
+from lpf.utils import is_morph_invalid
 
 def get_data(config, batch):
     model_dicts = []
@@ -346,13 +347,17 @@ if __name__ == "__main__":
 
                 # Check numerical errors.
                 # Ignore this model if numerical errors has occurred.
-                if model.is_numerically_invalid(index=j):
+                if model.is_state_invalid(index=j):
                     print("[Numerical error] Ignore model #%d in the batch #%d..."%(j+1, i+1))
                     continue
 
                 img_ladybird, pattern = model.create_image(index=j)
                 img_ladybird = img_ladybird.convert('RGB')            
                 arr_ladybird = np.asarray(img_ladybird)
+                
+                if is_morph_invalid(img_ladybird):
+                    print("[Invalid morph] Ignore model #%d in the batch #%d..."%(j+1, i+1))
+                    continue
                       
                 # Hashing ladybird image.
                 h.update(arr_ladybird)

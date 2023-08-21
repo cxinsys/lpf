@@ -199,7 +199,7 @@ class TwoComponentModel(ReactionDiffusionModel):
 
         return self._dydt_mesh
 
-    def is_numerically_invalid(self, index, arr_u=None, arr_v=None):
+    def is_state_invalid(self, index, arr_u=None, arr_v=None):
         if arr_u is None:
             arr_u = self.u
 
