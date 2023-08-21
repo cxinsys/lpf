@@ -269,7 +269,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         
 
         """
-        <Understanding the compoiste function>
+        <Understanding the composite function>
         
         Image.paste(im, box=None, mask=None)
             - Where the mask is 255, the given image is copied as is.
