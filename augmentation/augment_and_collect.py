@@ -24,6 +24,7 @@ from lpf.solvers import SolverFactory
 from lpf.utils import is_param_invalid
 from lpf.utils import is_morph_invalid
 
+
 def get_data(config, batch):
     model_dicts = []
     list_morphs = []
