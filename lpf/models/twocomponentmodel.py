@@ -227,11 +227,14 @@ class TwoComponentModel(ReactionDiffusionModel):
 
         return (adu <= (rtol * au)).all() and (adv <= (rtol * av)).all()
 
-    def colorize(self, thr_color=None):
+    def colorize(self, thr_color=None, arr_u=None):
         if not thr_color:
             thr_color = self._thr_color
+
+        if arr_u is None:
+            arr_u = self.u
             
-        batch_size = self.u.shape[0]
+        batch_size = arr_u.shape[0]
         color = np.zeros((batch_size, self._height, self._width, 3),
                          dtype=np.uint8)
 
@@ -239,7 +242,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         color[:, :, :, 1] = self._color_v[1]
         color[:, :, :, 2] = self._color_v[2]
         
-        idx = self.am.get(self.u) > thr_color
+        idx = self.am.get(arr_u) > thr_color
         color[idx, 0] = self._color_u[0]
         color[idx, 1] = self._color_u[1]
         color[idx, 2] = self._color_u[2]
