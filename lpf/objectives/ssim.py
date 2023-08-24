@@ -5,7 +5,7 @@ try:
     import torch
     import torchvision
     import torchvision.transforms as transforms
-    from torchmetrics import StructuralSimilarityIndexMeasure
+    from torchmetrics.image import StructuralSimilarityIndexMeasure
 except (ImportError, ModuleNotFoundError) as err:
     err_msg = "Cannot use StructuralSimilarityIndexMeasure objectives, " \
               "since it fails to import torch, torchvision, or torchmetrics."
