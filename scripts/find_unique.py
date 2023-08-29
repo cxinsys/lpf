@@ -98,8 +98,8 @@ if __name__ == "__main__":
     
     h = xxhash.xxh64()
 
-    n_models = 0
-    n_rem_models = 0
+    n_unique = 0
+    n_redundant = 0
     
     for dname in os.listdir(dpath_dataset):
         dpath_morph = pjoin(dpath_dataset, dname)
@@ -172,6 +172,7 @@ if __name__ == "__main__":
                 dict_morphs[hash_morph].add(hash_model)
                 dict_model_id[hash_model] = dict_fpaths
                 list_dict_fpaths.append(dict_fpaths)
+                n_unique += 1
             else:
                 
                 os.remove(fpath_model)
@@ -183,14 +184,11 @@ if __name__ == "__main__":
                 if len(entities) == 0:                
                     dpaths_removed.append(dpath_morph)
                 
-                n_rem_models += 1
-                print("[REDUNDANT MODEL #%d] %s"%(n_rem_models, fpath_model))
+                n_redundant += 1
+                print("[REDUNDANT MODEL #%d] %s"%(n_redundant, fpath_model))
             
             
-            h.reset()
-
-            n_models += 1
-            # print("[Model #%d] %s"%(n_models, fpath_model))
+            h.reset()            
         # end of for
     # end of for
 
@@ -207,8 +205,8 @@ if __name__ == "__main__":
     n_total = len(list_dict_fpaths)
 
     print()
-    print("The total number of unique models:", n_models)
-    print("The number of removed models:", n_rem_models)
+    print("The total number of unique models:", n_unique)
+    print("The number of removed models:", n_redundant)
 
     # arr_init_pts = np.concatenate(list_init_pts, axis=0)
     # arr_init_states = np.concatenate(list_init_states, axis=0)
