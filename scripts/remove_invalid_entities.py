@@ -31,7 +31,7 @@ if __name__ == "__main__":
     if not os.path.isdir(dpath_dataset):
         raise FileNotFoundError("This is not a directory: %s"%(dpath_dataset))
     
-    n_models = 0
+    n_valid = 0
     n_invalid = 0
     n_updated = 0
     
@@ -65,30 +65,30 @@ if __name__ == "__main__":
             with open(fpath_model, "rt") as fin:
                 model_dict = json.load(fin)
                         
-            is_model_edited = False
+            is_model_updated = False
             
             if "model_name" in model_dict:            
                 model_name = model_dict["model_name"]
                 del model_dict["model_name"]
                 model_dict["model"] = model_name
-                is_model_edited = True                
+                is_model_updated = True                
                 print("[RENAME] model_name to model")
-                n_updated += 1
             # end of if
             
             if model_dict["solver"] == None:            
                 model_dict.update({'solver': 'EulerSolver',
                                    'dt': 0.01,
                                    'n_iters': 500000})
-                is_model_edited = True
+                is_model_updated = True
                 print("[UPDATE] solver information")
-                n_updated += 1
             # end of if
             
-            if is_model_edited:
+            if is_model_updated:
                 with open(fpath_model, "wt") as fout:                
                     json.dump(model_dict, fout)
                     
+                n_updated += 1
+
             params = LiawModel.parse_params([model_dict])
             
             # Get the model ID
@@ -125,7 +125,7 @@ if __name__ == "__main__":
             
             if is_not_found:
                 n_invalid += 1
-                print("[INVALID %d due to NOTFOUND] %s"%(n_invalid, fpath_not_found))
+                print("[INVALID #%d due to NOTFOUND] %s"%(n_invalid, fpath_not_found))
                 
                 entities = os.listdir(dpath_morph)
                 if len(entities) == 0:                
@@ -134,7 +134,7 @@ if __name__ == "__main__":
                     
             if is_param_invalid(params):
                 n_invalid += 1
-                print("[INVALID %d due to PARAMS] %s"%(n_invalid, fpath_model))
+                print("[INVALID #%d due to PARAMS] %s"%(n_invalid, fpath_model))
                 
                 os.remove(fpath_model)
                 os.remove(fpath_ladybird)
@@ -153,7 +153,7 @@ if __name__ == "__main__":
             
             if is_state_invalid(arr_u, arr_v):
                 n_invalid += 1
-                print("[INVALID %d due to STATES] %s"%(n_invalid, fpath_states))
+                print("[INVALID #%d due to STATES] %s"%(n_invalid, fpath_states))
                 
                 os.remove(fpath_model)
                 os.remove(fpath_ladybird)
@@ -170,7 +170,7 @@ if __name__ == "__main__":
             
             if is_morph_invalid(img_ladybird):
                 n_invalid += 1
-                print("[INVALID %d due to CP] %s"%(n_invalid, fpath_ladybird))
+                print("[INVALID #%d due to CP] %s"%(n_invalid, fpath_ladybird))
                 
                 os.remove(fpath_model)
                 os.remove(fpath_ladybird)
@@ -182,8 +182,8 @@ if __name__ == "__main__":
                     dpaths_removed.append(dpath_morph)
                 continue
     
-            n_models += 1
-            # print("[VALID #%d] %s"%(n_models, fpath_model))
+            n_valid += 1
+            # print("[VALID #%d] %s"%(n_valid, fpath_model))
         # end of for
     # end of for
             
@@ -194,6 +194,6 @@ if __name__ == "__main__":
         print("[REMOVE DIR]", dpath)
         shutil.rmtree(dpath)
         
-    print("[Num. Valid Models]", n_models)
+    print("[Num. Valid Models]", n_valid)
     print("[Num. Invalid Models]", n_invalid)
     print("[Num. Updated Models]", n_updated)
