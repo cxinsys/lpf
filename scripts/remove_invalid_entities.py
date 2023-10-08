@@ -183,7 +183,7 @@ if __name__ == "__main__":
                 continue
     
             n_valid += 1
-            # print("[VALID #%d] %s"%(n_valid, fpath_model))
+            print("[VALID #%d] %s"%(n_valid, fpath_model))
         # end of for
     # end of for
             
