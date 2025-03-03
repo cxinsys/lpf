@@ -25,10 +25,10 @@ from lpf.objectives.ssim import MeanStructuralSimilarityIndexMeasure
 from lpf.objectives.ssim import MinStructuralSimilarityIndexMeasure
 from lpf.objectives.ssim import MaxStructuralSimilarityIndexMeasure
 
-from lpf.objectives.lpips import SumLearnedPerceptualImagePatchSimilarity
-from lpf.objectives.lpips import MeanLearnedPerceptualImagePatchSimilarity
-from lpf.objectives.lpips import MinLearnedPerceptualImagePatchSimilarity
-from lpf.objectives.lpips import MaxLearnedPerceptualImagePatchSimilarity
+from lpf.objectives.perceptualsimilarity import SumLearnedPerceptualImagePatchSimilarity
+from lpf.objectives.perceptualsimilarity import MeanLearnedPerceptualImagePatchSimilarity
+from lpf.objectives.perceptualsimilarity import MinLearnedPerceptualImagePatchSimilarity
+from lpf.objectives.perceptualsimilarity import MaxLearnedPerceptualImagePatchSimilarity
 
 from lpf.objectives.objectivefactory import ObjectiveFactory
 

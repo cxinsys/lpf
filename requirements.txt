@@ -4,3 +4,6 @@ pillow
 tqdm
 pyyaml
 xxhash
+lpips
+opencv-python
+torchmetrics

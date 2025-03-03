@@ -5,7 +5,7 @@ try:
     import torch
     import torchvision
     import torchvision.transforms as transforms
-    from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
+    import lpips
 except (ImportError, ModuleNotFoundError) as err:
     err_msg = "Cannot use FrechetInceptionDistance objectives, " \
               "since it fails to import torch, torchvision, or torchmetrics."
@@ -29,27 +29,40 @@ class EachLearnedPerceptualImagePatchSimilarity(Objective):
         if not net_type:
             net_type = 'vgg'
 
-        self.model = LearnedPerceptualImagePatchSimilarity(net_type=net_type).to(self.device)
-        self.to_tensor = transforms.ToTensor()
+        self.model = lpips.LPIPS(net=net_type).to(self.device)
+        self.to_tensor = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+        ])
 
     def compute(self, x, targets, coeff=None):
 
         if not coeff:
             coeff = self._coeff
 
-        x = self.to_tensor(x).to(self.device)
+        arr_img = []
+        for img in x:
+            tmp = self.to_tensor(img).to(self.device)
+            arr_img.append(tmp)
 
-        arr_loss = np.zeros((len(targets),), dtype=np.float64)
+        x = torch.stack(arr_img)
+
+        arr_loss = []
         with torch.no_grad():
             for i, target in enumerate(targets):
                 target = self.to_tensor(target).to(self.device)
-                arr_loss[i] = self.model(x[None, ...], target[None, ...]).item()
+                arr_loss.append(self.model.forward(x, target).reshape(-1).detach().cpu())
+
+            arr_loss = np.array(arr_loss)
 
         if "cuda" in self.device:  # [!] self.device is not torch.device
             torch.cuda.empty_cache()
 
         del target
         del x
+        del arr_img
+        del tmp
+
         gc.collect()
         return coeff * arr_loss
 
@@ -57,28 +70,26 @@ class EachLearnedPerceptualImagePatchSimilarity(Objective):
 class SumLearnedPerceptualImagePatchSimilarity(EachLearnedPerceptualImagePatchSimilarity):
 
     def compute(self, x, targets):
-        each_loss = super().compute(x, targets)
-        return each_loss.sum()
+        arr_loss = super().compute(x, targets)
+        return arr_loss.sum(axis=0)
 
 
 class MeanLearnedPerceptualImagePatchSimilarity(EachLearnedPerceptualImagePatchSimilarity):
 
     def compute(self, x, targets):
         arr_loss = super().compute(x, targets)
-        return np.mean(arr_loss)
+        return arr_loss.mean(axis=0)
 
 
 class MinLearnedPerceptualImagePatchSimilarity(EachLearnedPerceptualImagePatchSimilarity):
 
     def compute(self, x, targets):
         arr_loss = super().compute(x, targets)
-        return np.min(arr_loss)
+        return np.min(arr_loss, axis=0)
 
 
 class MaxLearnedPerceptualImagePatchSimilarity(EachLearnedPerceptualImagePatchSimilarity):
 
     def compute(self, x, targets):
         arr_loss = super().compute(x, targets)
-        return np.max(arr_loss)
-
-
+        return np.max(arr_loss, axis=0)
