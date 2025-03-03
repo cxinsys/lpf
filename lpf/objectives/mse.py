@@ -15,9 +15,10 @@ class EachMeanSquareError(Objective):
         if not coeff:
             coeff = self._coeff
 
-        arr_mse = np.zeros((len(targets),), dtype=np.float64)
+        arr_mse = np.zeros((len(targets), len(x)), dtype=np.float64)
         for i, target in enumerate(targets):
-            arr_mse[i] = np.mean((np.array(x) - np.array(target))**2)
+            for j, img in enumerate(x):
+                arr_mse[i, j] = np.mean((np.array(img) - np.array(target))**2)
           
         return coeff * arr_mse
     
@@ -26,26 +27,26 @@ class SumMeanSquareError(EachMeanSquareError):
     
     def compute(self, x, targets):
         arr_mse = super().compute(x, targets)
-        return arr_mse.sum()
+        return arr_mse.sum(axis=0)
 
 
 class MeanMeanSquareError(EachMeanSquareError):
     
     def compute(self, x, targets):
         arr_mse = super().compute(x, targets)
-        return np.mean(arr_mse)
+        return np.mean(arr_mse, axis=0)
     
     
 class MinMeanSquareError(EachMeanSquareError):
 
     def compute(self, x, targets):
         arr_mse = super().compute(x, targets)
-        return arr_mse.min()
+        return arr_mse.min(axis=0)
 
 
-class MaxMeanSquareError(Objective):
+class MaxMeanSquareError(EachMeanSquareError):
     
     def compute(self, x, targets):
         arr_mse = super().compute(x, targets)
-        return arr_mse.max()
+        return arr_mse.max(axis=0)
 

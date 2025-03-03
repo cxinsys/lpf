@@ -65,13 +65,14 @@ class EachColorProportion(Objective):
             coeff = self._coeff
                     
         
-        arr_colpro = np.zeros((len(target_colpros),), dtype=np.float64)
+        arr_colpro = np.zeros((len(target_colpros), len(x)), dtype=np.float64)
         for i, colpro_trg in enumerate(target_colpros):
-            colpro_src = self.get_colpros(np.array(x))
-            
-            # loc is the mean and scale the standard deviation.
-            rv = sp.stats.norm(loc=colpro_trg, scale=0.1)
-            arr_colpro[i] = 1 / rv.pdf(colpro_src)
+            for j, img in enumerate(x):
+                colpro_src = self.get_colpros(np.array(img))
+                
+                # loc is the mean and scale the standard deviation.
+                rv = sp.stats.norm(loc=colpro_trg, scale=0.1)
+                arr_colpro[i][j] = 1 / rv.pdf(colpro_src)
             
             
         return coeff * arr_colpro
@@ -81,26 +82,25 @@ class SumColorProportion(EachColorProportion):
     
     def compute(self, *args, **kwargs):
         arr_colpro = super().compute(*args, **kwargs)
-        return arr_colpro.sum()
+        return arr_colpro.sum(axis=0)
 
 
 class MeanColorProportion(EachColorProportion):
     
     def compute(self, *args, **kwargs):
         arr_colpro = super().compute(*args, **kwargs)
-        return np.mean(arr_colpro)
+        return np.mean(arr_colpro, axis=0)
     
     
 class MinColorProportion(EachColorProportion):
 
     def compute(self, *args, **kwargs):
         arr_colpro = super().compute(*args, **kwargs)
-        return arr_colpro.min()
+        return arr_colpro.min(axis=0)
 
 
-class MaxColorProportion(Objective):
+class MaxColorProportion(EachColorProportion):
     
     def compute(self, *args, **kwargs):
         arr_colpro = super().compute(*args, **kwargs)
-        return arr_colpro.max()
-
+        return arr_colpro.max(axis=0)
