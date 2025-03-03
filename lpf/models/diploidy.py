@@ -38,7 +38,7 @@ class Diploidy(ABC):
         check_model(paternal_model, "paternal_model")
         check_model(maternal_model, "maternal_model")
 
-        # Check the compatibilty between paternal and maternal models.
+        # Check the compatibility between paternal and maternal models.
         if id(paternal_model) == id(maternal_model):
             raise ValueError("paternal_model and maternal_model " \
                              "must be different objects.")
@@ -178,4 +178,4 @@ class Diploidy(ABC):
 
         return model_dict
 
-# end of class TwoComponentDiploidModel
+# end of class Diploidy
