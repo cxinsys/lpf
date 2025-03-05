@@ -64,7 +64,6 @@ class LiawInitializer(TwoComponentInitializer):
 
             batch_size = model.batch_size  # init_states.shape[0]
 
-        
             u0 = model.am.array(init_states[:, 0], dtype=init_states.dtype)
             v0 = model.am.array(init_states[:, 1], dtype=init_states.dtype)
             v0 = v0.reshape(batch_size, 1, 1)

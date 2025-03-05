@@ -25,6 +25,9 @@ def parse_device(device):
                 if options[0] in ["cuda", "cupy"]:
                     _backend = "cupy"
                     _device = "gpu"
+                elif options[0] == "torch":
+                    _backend = "torch"
+                    _backend = "gpu"
                 elif options[0] == "jax":
                     _backend = "jax"
                     _device = "gpu"
@@ -36,8 +39,8 @@ def parse_device(device):
         elif len(options) == 3:
             _backend, _device, _device_id = options
 
-            if _backend not in ["numpy", "cupy", "jax"]:
-                raise ValueError("backend should be one of 'numpy', 'cupy', or "\
+            if _backend not in ["numpy", "cupy", "torch", "jax"]:
+                raise ValueError("backend should be one of 'numpy', 'cupy', 'torch', or "\
                                  "'jax', not %s" % (_backend))
         else:
             raise RuntimeError("Illegal device:", device)
@@ -51,6 +54,10 @@ def parse_device(device):
             _device_id = 0
         elif device == "cupy":
             _backend = "cupy"
+            _device = "gpu"
+            _device_id = 0
+        elif device == "torch":
+            _backend = "torch"
             _device = "gpu"
             _device_id = 0
         elif device == "jax":
@@ -77,6 +84,11 @@ def get_array_module(device):
 
     if _backend == "cupy" and _device in ["gpu", "cuda"]:
         return CupyModule(_device, _device_id)
+    elif _backend == "torch":
+        if _device in ["gpu", "cuda"]:
+            return TorchModule("cuda", _device_id)
+        else:
+            return TorchModule("cpu", 0)
     elif _backend == "jax":
         if _device in ["gpu", "cuda"]:
             return JaxModule("gpu", _device_id)
@@ -195,6 +207,117 @@ class CupyModule(NumpyModule):
     def isinf(self, *args, **kwargs):
         with self._module.cuda.Device(self.device_id):
             return self._module.isinf(*args, **kwargs)
+
+
+class TorchModule(ArrayModule):
+
+    def __init__(self, device=None, device_id=None):
+        super().__init__(device, device_id)
+
+        import torch
+        self._module = torch
+
+        if device is None:
+            self._device = torch.device('cpu')
+        elif device.startswith('cuda'):
+            if device_id is not None:
+                self._device = torch.device('cuda', device_id)
+            else:
+                self._device = torch.device('cuda')
+        else:
+            self._device = torch.device(device)
+
+        self._NP_TO_TORCH_DTYPE = {
+            np.dtype(bool):         torch.bool,
+            np.dtype(np.bool_):     torch.bool,
+
+            np.dtype(np.int8):     torch.int8,
+            np.dtype(np.int16):    torch.int16,
+            np.dtype(np.int32):    torch.int32,
+            np.dtype(np.int64):    torch.int64,
+
+            np.dtype(np.uint8):     torch.uint8,
+            np.dtype(np.uint16):    torch.int16,
+            np.dtype(np.uint32):    torch.int32,
+            np.dtype(np.uint64):    torch.int64,
+
+            np.dtype(np.float16):   torch.float16,
+            np.dtype(np.float32):   torch.float32,
+            np.dtype(np.float64):   torch.float64,
+            np.dtype(np.longdouble): torch.float64,
+
+            np.dtype(np.complex64):  torch.complex64,
+            np.dtype(np.complex128): torch.complex128
+        }
+
+    def _np_dtype_to_torch_dtype(self, dt):
+        if isinstance(dt, self._module.dtype):
+            return dt
+
+        try:
+            dt = np.dtype(dt)
+        except TypeError:
+            raise ValueError(f"Cannot convert {dt} to a NumPy dtype.")
+
+        torch_dtype = self._NP_TO_TORCH_DTYPE.get(dt, None)
+        if torch_dtype is None:
+            raise ValueError(f"No corresponding torch dtype for NumPy dtype {dt}.")
+        return torch_dtype
+
+    def any(self, *args, **kwargs):
+        if 'device' not in kwargs:
+            kwargs['device'] = self.device
+
+        if 'dtype' in kwargs:
+            kwargs['dtype'] = self._np_dtype_to_torch_dtype(kwargs['dtype'])
+
+        return self._module.any(*args, **kwargs)
+
+    def zeros(self, *args, **kwargs):
+        if 'device' not in kwargs:
+            kwargs['device'] = self.device
+
+        if 'dtype' in kwargs:
+            kwargs['dtype'] = self._np_dtype_to_torch_dtype(kwargs['dtype'])
+
+        return self._module.zeros(*args, **kwargs)
+
+    def ones(self, *args, **kwargs):
+        if 'device' not in kwargs:
+            kwargs['device'] = self.device
+
+        if 'dtype' in kwargs:
+            kwargs['dtype'] = self._np_dtype_to_torch_dtype(kwargs['dtype'])
+
+        return self._module.ones(*args, **kwargs)
+
+    def array(self, data, *args, **kwargs):
+        if 'device' not in kwargs:
+            kwargs['device'] = self.device
+
+        if 'dtype' in kwargs:
+            kwargs['dtype'] = self._np_dtype_to_torch_dtype(kwargs['dtype'])
+
+        return self._module.tensor(data, *args, **kwargs)
+
+    def abs(self, *args, **kwargs):
+        return self._module.abs(*args, **kwargs)
+
+    def get(self, arr):
+        return arr
+
+    def set(self, arr, ind, val):
+        arr[ind] = val
+        return arr
+
+    def is_array(self, obj):
+        return isinstance(obj, self._module.Tensor)
+
+    def isnan(self, *args, **kwargs):
+        return self._module.isnan(*args, **kwargs)
+
+    def isinf(self, *args, **kwargs):
+        return self._module.isinf(*args, **kwargs)
 
 
 class JaxModule(NumpyModule):
