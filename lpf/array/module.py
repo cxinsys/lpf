@@ -304,7 +304,7 @@ class TorchModule(ArrayModule):
         return self._module.abs(*args, **kwargs)
 
     def get(self, arr):
-        return arr
+        return arr.cpu().detach().numpy()
 
     def set(self, arr, ind, val):
         arr[ind] = val
