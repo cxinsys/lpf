@@ -12,6 +12,14 @@ from lpf.models import ReactionDiffusionModel
 from lpf.utils import get_module_dpath
 
 
+def load_single_model_dict(fpath):
+        
+    with open(fpath, "rt") as fin:
+        model_dict = json.load(fin)
+    
+    return model_dict
+
+
 def load_model_dicts(dpath):
     model_dicts = []
 

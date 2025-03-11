@@ -46,6 +46,9 @@ class Solver:
               dpath_ladybird=None,
               dpath_pattern=None,
               dpath_states=None,
+              init_model=True,
+              iter_begin=0,
+              iter_end=None,
               verbose=0):
 
         t_total_beg = time.time()
@@ -85,7 +88,9 @@ class Solver:
         if not model.has_initializer():
             raise ValueError("model should have an initializer.")
 
-        model.initialize()
+        if init_model:
+            model.initialize()
+
         batch_size = model.batch_size # model.params.shape[0]
         dname_model = "model_%0{}d".format(int(np.floor(np.log10(batch_size))) + 1)
 
@@ -136,13 +141,17 @@ class Solver:
             fstr_fname_states \
                 = "states_%0{}d".format(int(np.floor(np.log10(n_iters))) + 1)
 
+
+        if not iter_end:
+            iter_end = iter_begin + n_iters
+
         t = 0.0
         t_beg = time.time()
 
         with model.am:
             y_mesh = model.y_mesh
 
-        for i in range(n_iters):
+        for i in range(iter_begin, iter_end, 1):
             t += dt
 
             with model.am:

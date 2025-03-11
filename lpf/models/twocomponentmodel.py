@@ -65,8 +65,8 @@ class TwoComponentModel(ReactionDiffusionModel):
         self._dx = dx
 
         # Set the threshold and colors for coloring.
-        if not thr_color:
-            thr_color = 0.5
+        if thr_color is None:
+            thr_color = 0.5 * np.ones(self._batch_size, 1, 1)
 
         self._thr_color = thr_color
 
@@ -345,7 +345,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         n2v["width"] = self._width
         n2v["height"] =self._height
         n2v["dx"] = self._dx
-        n2v["thr_color"] = self._thr_color
+        n2v["thr_color"] = float(self._thr_color[index, ...])
         n2v["color_u"] = self._color_u.tolist()
         n2v["color_v"] = self._color_v.tolist()
        
@@ -431,7 +431,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         return model_dicts
 
     @classmethod
-    def parse_init_conds(self, model_dicts):
+    def parse_init_conds(cls, model_dicts, dtype=None):
         """Parse the initial conditions (initial points and states) from the model dictionaries.
            A model knows how to parse its initial points and states.
         """
@@ -452,8 +452,11 @@ class TwoComponentModel(ReactionDiffusionModel):
         #
         # return init_states
 
+        if not dtype:
+           dtype = np.float64
+
         batch_size = len(model_dicts)
-        init_states = np.zeros((batch_size, 2), dtype=self._dtype)
+        init_states = np.zeros((batch_size, 2), dtype=dtype)
         init_pts = []
 
         for i, n2v in enumerate(model_dicts):
@@ -479,6 +482,30 @@ class TwoComponentModel(ReactionDiffusionModel):
         init_pts = np.array(init_pts, dtype=np.uint32)
 
         return init_pts, init_states
+
+    @classmethod
+    def parse_thr_color(cls, model_dicts, dtype=None):
+
+        if not isinstance(model_dicts, Sequence) and isinstance(model_dicts, Mapping):
+            model_dicts = [model_dicts]
+        elif isinstance(model_dicts, Sequence):
+            pass
+        else:
+            raise TypeError("model_dicts should be a sequence of model dictionary or a mappable type like dict.")
+
+        if not dtype:
+           dtype = np.float64
+
+        batch_size = len(model_dicts)
+        thr_color = np.zeros((batch_size, 1, 1), dtype=dtype)
+
+        for i, n2v in enumerate(model_dicts):
+            if "thr_color" not in n2v:
+                thr_color[i, ...] = 0.5
+            else:
+                thr_color[i, ...] = float(n2v["thr_color"])
+
+        return thr_color
 
     def get_param_bounds(self):
         raise NotImplementedError()
