@@ -1,7 +1,4 @@
-from collections.abc import Sequence
-
 import numpy as np
-import xxhash
 
 from lpf.models import TwoComponentModel
 
