@@ -317,7 +317,7 @@ class TwoComponentModel(ReactionDiffusionModel):
             pattern.save(fpath_pattern)
     
     def save_states(self, index=0, fpath=None, u=None, v=None):
-        if u and v:
+        if u is not None and v is not None:
             if not isinstance(u, np.ndarray):
                 u = self.am.get(u)
             if not isinstance(v, np.ndarray):

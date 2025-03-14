@@ -175,7 +175,7 @@ class Solver:
                 if get_trj:
                     self._trj_y[ix_trj, ...] = y_mesh
                     ix_trj += 1
-                    
+
                 if dpath_ladybird:
                     for j in range(batch_size):
                         fpath_ladybird = pjoin(dpath_ladybird,
