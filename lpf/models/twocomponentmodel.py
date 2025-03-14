@@ -310,14 +310,22 @@ class TwoComponentModel(ReactionDiffusionModel):
                    fpath_ladybird=None,
                    fpath_pattern=None,
                    arr_color=None):
+
         ladybird, pattern = self.create_image(index, arr_color)
         ladybird.save(fpath_ladybird)
         if fpath_pattern:
             pattern.save(fpath_pattern)
     
-    def save_states(self, index=0, fpath=None):
-        u = self.am.get(self.u)
-        v = self.am.get(self.v)
+    def save_states(self, index=0, fpath=None, u=None, v=None):
+        if u and v:
+            if not isinstance(u, np.ndarray):
+                u = self.am.get(u)
+            if not isinstance(v, np.ndarray):
+                v = self.am.get(v)
+        else:
+            u = self.am.get(self.u)
+            v = self.am.get(self.v)
+
         np.savez(fpath, u=u[index, ...], v=v[index, ...])
             
     def to_dict(self,

@@ -36,6 +36,10 @@ class Solver:
     def name(self):
         return self._name
 
+    @property
+    def trj_y(self):
+        return self._model.trj_y
+
     def solve(self,
               model=None,
               dt=None,
@@ -149,7 +153,7 @@ class Solver:
         if get_trj:
             with model.am:
                 shape_trj = (iter_end - iter_begin, *model.shape_grid)
-                trj_y = model.am.zeros(shape_trj, dtype=model.y_mesh.dtype)
+                self._trj_y = model.am.zeros(shape_trj, dtype=model.y_mesh.dtype)
 
         t = 0.0
         t_beg = time.time()
@@ -167,7 +171,7 @@ class Solver:
                 pass
             elif i == 0 or (i + 1) % period_output == 0:
                 if get_trj:
-                    trj_y[i, ...] = y_mesh
+                    self._trj_y[i, ...] = y_mesh
 
                 if dpath_ladybird:
                     for j in range(batch_size):
@@ -208,7 +212,7 @@ class Solver:
             print("- [Duration] : %.5e sec." % (time.time() - t_total_beg))
 
         if get_trj:
-            return trj_y
+            return self._trj_y
 
     # end of solve
 
