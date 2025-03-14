@@ -49,6 +49,7 @@ class Solver:
               init_model=True,
               iter_begin=0,
               iter_end=None,
+              get_trj=False,
               verbose=0):
 
         t_total_beg = time.time()
@@ -145,6 +146,11 @@ class Solver:
         if not iter_end:
             iter_end = iter_begin + n_iters
 
+        if get_trj:
+            with model.am:
+                shape_trj = (iter_end - iter_begin, *model.shape_grid)
+                trj_y = model.am.zeros(shape_trj, dtype=model.y_mesh.dtype)
+
         t = 0.0
         t_beg = time.time()
 
@@ -160,6 +166,9 @@ class Solver:
             if not period_output:
                 pass
             elif i == 0 or (i + 1) % period_output == 0:
+                if get_trj:
+                    trj_y[i, ...] = y_mesh
+
                 if dpath_ladybird:
                     for j in range(batch_size):
                         fpath_ladybird = pjoin(dpath_ladybird,
@@ -197,6 +206,9 @@ class Solver:
 
         if verbose >= 1:
             print("- [Duration] : %.5e sec." % (time.time() - t_total_beg))
+
+        if get_trj:
+            return trj_y
 
     # end of solve
 
