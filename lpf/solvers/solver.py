@@ -162,6 +162,7 @@ class Solver:
         with model.am:
             y_mesh = model.y_mesh
 
+        ix_trj = 0
         for i in range(iter_begin, iter_end, 1):
             t += dt
 
@@ -172,8 +173,9 @@ class Solver:
                 pass
             elif i == 0 or (i + 1) % period_output == 0:
                 if get_trj:
-                    self._trj_y[i, ...] = y_mesh
-
+                    self._trj_y[ix_trj, ...] = y_mesh
+                    ix_trj += 1
+                    
                 if dpath_ladybird:
                     for j in range(batch_size):
                         fpath_ladybird = pjoin(dpath_ladybird,
