@@ -152,7 +152,8 @@ class Solver:
 
         if get_trj:
             with model.am:
-                shape_trj = (iter_end - iter_begin, *model.shape_grid)
+                n_time_points = int((iter_end - iter_begin) // period_output + 1)
+                shape_trj = (n_time_points, *model.shape_grid)
                 self._trj_y = model.am.zeros(shape_trj, dtype=model.y_mesh.dtype)
 
         t = 0.0
