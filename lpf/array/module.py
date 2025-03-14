@@ -208,6 +208,15 @@ class CupyModule(NumpyModule):
         with self._module.cuda.Device(self.device_id):
             return self._module.isinf(*args, **kwargs)
 
+    def clear_memory(self):
+        import gc
+        gc.collect()
+        with self._module.cuda.Device(self.device_id) as dev:
+            self._module.get_default_memory_pool().free_all_blocks()
+            self._module.get_default_pinned_memory_pool().free_all_blocks()
+            self._module.dev.synchronize()
+
+
 
 class TorchModule(ArrayModule):
 
@@ -319,6 +328,14 @@ class TorchModule(ArrayModule):
     def isinf(self, *args, **kwargs):
         return self._module.isinf(*args, **kwargs)
 
+    def clear_memory(self):
+        import gc
+        gc.collect()
+
+        self._module.cuda.set_device(self.device_id)
+        self._module.cuda.empty_cache()
+        self._module.cuda.synchronize()
+
 
 class JaxModule(NumpyModule):
     def __init__(self, device=None, device_id=None):
@@ -378,3 +395,12 @@ class JaxModule(NumpyModule):
 
     def isinf(self, *args, **kwargs):
         return self._module.isinf(*args, **kwargs)
+
+    def clear_memory(self):
+        jnp = self._module.numpy
+
+        self._module.clear_backends()
+        self._module.numpy.array([], dtype=jnp.float32).device_put(self.device)
+
+        import gc
+        gc.collect()
