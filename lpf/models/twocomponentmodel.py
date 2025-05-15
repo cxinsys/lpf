@@ -5,12 +5,15 @@ from collections.abc import Mapping
 import numpy as np
 import PIL
 from PIL import Image
- 
+
 from lpf.models import ReactionDiffusionModel
 from lpf.initializers import Initializer
 from lpf.solvers import Solver
 from lpf.utils import get_template_fpath
 from lpf.utils import get_mask_fpath
+from lpf.conditioners import Dirichlet2C
+from lpf.conditioners import Neumann2C
+
 
 
 class TwoComponentModel(ReactionDiffusionModel):
@@ -26,7 +29,7 @@ class TwoComponentModel(ReactionDiffusionModel):
                  color_u=None,
                  color_v=None,
                  device=None,
-                 ladybird=None,
+                 species=None,
                  dtype=None):
 
         # Set the device.
@@ -80,11 +83,11 @@ class TwoComponentModel(ReactionDiffusionModel):
         self._color_v = np.array(color_v, dtype=np.uint8)
 
         # Set the template and mask for visualization.
-        if ladybird is None:
-            ladybird = "haxyridis"
+        if species is None:
+            species = "haxyridis"
 
-        self._fpath_template = get_template_fpath(ladybird)
-        self._fpath_mask = get_mask_fpath(ladybird)
+        self._fpath_template = get_template_fpath(species)
+        self._fpath_mask = get_mask_fpath(species)
 
     @property
     def u(self):
@@ -187,15 +190,13 @@ class TwoComponentModel(ReactionDiffusionModel):
         )
 
         # Neumann boundary condition: dydt = 0
-        # dydt_mesh[:, :, 0, :] = 0.0
-        # dydt_mesh[:, :, -1, :] = 0.0
-        # dydt_mesh[:, :, :, 0] = 0.0
-        # dydt_mesh[:, :, :, -1] = 0.0
-
+        # -> Actually, it is a Dirichlet boundary condition, since reactions do not occur at the boundaries.
         self.am.set(dydt_mesh, (slice(None), slice(None), 0, slice(None)),  0.0)
         self.am.set(dydt_mesh, (slice(None), slice(None), -1, slice(None)),  0.0)
         self.am.set(dydt_mesh, (slice(None), slice(None), slice(None), 0),  0.0)
         self.am.set(dydt_mesh, (slice(None), slice(None), slice(None), -1),  0.0)
+
+        # self.apply_boundary_condition(dydt_mesh=dydt_mesh)  # e.g.) BC: dydt = 0 (Newmann)
 
         return self._dydt_mesh
 

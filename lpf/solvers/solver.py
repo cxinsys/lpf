@@ -152,28 +152,35 @@ class Solver:
 
         if get_trj:
             with model.am:
+                if hasattr(self, "_trj_y"):
+                    del self._trj_y
+                    
                 n_time_points = int((iter_end - iter_begin) // period_output + 1)
+                
                 shape_trj = (n_time_points, *model.shape_grid)
                 self._trj_y = model.am.zeros(shape_trj, dtype=model.y_mesh.dtype)
+                
+                
 
         t = 0.0
         t_beg = time.time()
 
-        with model.am:
-            y_mesh = model.y_mesh
+        # with model.am:
+        #     y_mesh = model.y_mesh
 
         ix_trj = 0
         for i in range(iter_begin, iter_end, 1):
             t += dt
 
             with model.am:
-                y_mesh += self.step(model, t, dt, y_mesh)
+                delta_y = self.step(model, t, dt, model.y_mesh)
+                model.y_mesh = model.y_mesh + delta_y
 
             if not period_output:
                 pass
-            elif i == 0 or (i + 1) % period_output == 0:
+            elif i == iter_begin or (i + 1) % period_output == 0:
                 if get_trj:
-                    self._trj_y[ix_trj, ...] = y_mesh
+                    self._trj_y[ix_trj, ...] = model.y_mesh
                     ix_trj += 1
 
                 if dpath_ladybird:
