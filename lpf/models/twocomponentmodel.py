@@ -69,7 +69,7 @@ class TwoComponentModel(ReactionDiffusionModel):
 
         # Set the threshold and colors for coloring.
         if thr_color is None:
-            thr_color = 0.5 * np.ones(self._batch_size, 1, 1)
+            thr_color = 0.5 * np.ones((self._batch_size, 1, 1))
 
         self._thr_color = thr_color
 
