@@ -68,14 +68,6 @@ class Solver:
                 self._dt = dt = 0.01
             dt = self._dt
 
-        if not n_iters:
-            if not self._n_iters:
-                raise ValueError("n_iters should be defined.")
-            n_iters = self._n_iters
-
-        if n_iters < 1:
-            raise ValueError("n_iters should be greater than or equal to 1.")
-
         if not rtol:
             if self._rtol:
                 rtol = self._rtol
@@ -148,7 +140,19 @@ class Solver:
 
 
         if not iter_end:
+            
+            if not n_iters:
+                if not self._n_iters:
+                    raise ValueError("n_iters should be defined.")
+                n_iters = self._n_iters
+                
+            if n_iters < 1:
+                raise ValueError("n_iters should be greater than or equal to 1.")
+
             iter_end = iter_begin + n_iters
+        elif iter_end < 1:
+            raise ValueError("iter_end should be greater than or equal to 1.")
+
 
         if get_trj:
             with model.am:
