@@ -236,78 +236,279 @@ class TorchModule(ArrayModule):
         else:
             self._device = torch.device(device)
 
+        # Platform dependent pointer sized int
+        _INTP_TARGET = self._module.int64 if np.dtype(np.intp).itemsize == 8 else self._module.int32
+
+        # NumPy dtype -> torch.dtype mapping
+        # Note: for unsupported unsigned integer types we map to a safe signed type
         self._NP_TO_TORCH_DTYPE = {
-            np.dtype(bool):         torch.bool,
-            np.dtype(np.bool_):     torch.bool,
+            np.dtype(bool):           self._module.bool,
+            np.dtype(np.bool_):       self._module.bool,
 
-            np.dtype(np.int8):     torch.int8,
-            np.dtype(np.int16):    torch.int16,
-            np.dtype(np.int32):    torch.int32,
-            np.dtype(np.int64):    torch.int64,
+            np.dtype(np.int8):        self._module.int8,
+            np.dtype(np.int16):       self._module.int16,
+            np.dtype(np.int32):       self._module.int32,
+            np.dtype(np.int64):       self._module.int64,
+            np.dtype(np.intp):        _INTP_TARGET,
 
-            np.dtype(np.uint8):     torch.uint8,
-            np.dtype(np.uint16):    torch.int16,
-            np.dtype(np.uint32):    torch.int32,
-            np.dtype(np.uint64):    torch.int64,
+            np.dtype(np.uint8):       self._module.uint8,
+            np.dtype(np.uint16):      self._module.int32,   # no uint16 in torch
+            np.dtype(np.uint32):      self._module.int64,   # no uint32 in torch
+            np.dtype(np.uint64):      self._module.int64,   # no uint64 in torch
 
-            np.dtype(np.float16):   torch.float16,
-            np.dtype(np.float32):   torch.float32,
-            np.dtype(np.float64):   torch.float64,
-            np.dtype(np.longdouble): torch.float64,
+            np.dtype(np.float16):     self._module.float16,
+            np.dtype(np.float32):     self._module.float32,
+            np.dtype(np.float64):     self._module.float64,
+            np.dtype(np.longdouble):  self._module.float64, # treat as float64 for compatibility
 
-            np.dtype(np.complex64):  torch.complex64,
-            np.dtype(np.complex128): torch.complex128
+            np.dtype(np.complex64):   getattr(self._module, "complex64"),
+            np.dtype(np.complex128):  getattr(self._module, "complex128"),
         }
 
-    def _np_dtype_to_torch_dtype(self, dt):
-        if isinstance(dt, self._module.dtype):
-            return dt
+        # torch.dtype -> NumPy dtype mapping
+        # Used when user asks for a torch dtype and we need a NumPy dtype for pre casting
+        self._TORCH_TO_NP_DTYPE = {
+            self._module.bool:        np.bool_,
+            self._module.uint8:       np.uint8,
+            self._module.int8:        np.int8,
+            self._module.int16:       np.int16,
+            self._module.int32:       np.int32,
+            self._module.int64:       np.int64,
+            self._module.float16:     np.float16,
+            self._module.float32:     np.float32,
+            self._module.float64:     np.float64,
+            getattr(self._module, "complex64"):   np.complex64,
+            getattr(self._module, "complex128"):  np.complex128,
+        }
 
-        try:
-            dt = np.dtype(dt)
-        except TypeError:
-            raise ValueError(f"Cannot convert {dt} to a NumPy dtype.")
+    def _convert_numpy_dtype_for_torch(self, npdt: np.dtype) -> np.dtype:
+        """
+        Convert a NumPy dtype into a dtype that is compatible with torch.tensor().
 
-        torch_dtype = self._NP_TO_TORCH_DTYPE.get(dt, None)
+        Rules:
+        - uint16 -> int32   (no uint16 in torch)
+        - uint32 -> int64   (no uint32 in torch)
+        - uint64 -> keep as uint64 for now, handle overflow separately
+        - float128 / longdouble -> float64
+        - others -> unchanged
+        """
+        if npdt == np.dtype(np.uint16):
+            return np.dtype(np.int32)
+        if npdt == np.dtype(np.uint32):
+            return np.dtype(np.int64)
+        if npdt == np.dtype(np.uint64):
+            # Keep uint64 for now and decide at array casting time
+            return npdt
+        if str(npdt) in ("float128", "longdouble"):
+            return np.dtype(np.float64)
+        return npdt
+
+    def _np_dtype_to_torch_dtype(self, data=None, dtype_hint=None):
+        """
+        Decide the appropriate torch.dtype for given data or dtype_hint, and cast
+        NumPy arrays only when necessary for torch compatibility.
+
+        Parameters
+        ----------
+        data : Any
+            Optionally a NumPy array to be cast if needed.
+        dtype_hint : Any
+            Optional dtype hint (torch.dtype, np.dtype, string, or None).
+
+        Returns
+        -------
+        data_out : Any
+            Possibly cast NumPy array (if `data` was an ndarray and casting was required),
+            otherwise unchanged.
+        torch_dtype : Optional[torch.dtype]
+            The resolved torch dtype, or None if left for torch to infer.
+        """
+        def _cast_ndarray_minimal(arr: np.ndarray, target_np_dtype: np.dtype) -> np.ndarray:
+            """Cast only if dtypes differ. Uses copy=False to avoid extra allocations."""
+            if arr.dtype == target_np_dtype:
+                return arr
+            return arr.astype(target_np_dtype, copy=False)
+
+        # Case 1: dtype_hint is a torch.dtype. Respect it and pre cast if necessary.
+        if isinstance(dtype_hint, self._module.dtype):
+            torch_dtype = dtype_hint
+            if isinstance(data, np.ndarray):
+                # If we do not know the NumPy partner for this torch dtype, leave as is
+                if torch_dtype not in self._TORCH_TO_NP_DTYPE:
+                    return data, torch_dtype
+
+                target_np = np.dtype(self._TORCH_TO_NP_DTYPE[torch_dtype])
+
+                # Special guard for uint64 -> int64. If overflow risk exists, fallback to float64.
+                if target_np == np.dtype(np.int64) and data.dtype == np.dtype(np.uint64):
+                    if data.size and data.max() > np.iinfo(np.int64).max:
+                        return _cast_ndarray_minimal(data, np.dtype(np.float64)), self._module.float64
+                    return _cast_ndarray_minimal(data, np.dtype(np.int64)), torch_dtype
+
+                return _cast_ndarray_minimal(data, target_np), torch_dtype
+
+            # No array given, just return dtype
+            return data, torch_dtype
+
+        # Case 2: resolve NumPy dtype from dtype_hint or from data
+        npdt = None
+        if dtype_hint is not None:
+            try:
+                npdt = np.dtype(dtype_hint)
+            except TypeError:
+                raise ValueError(f"Cannot convert {dtype_hint} to a NumPy dtype.")
+        elif isinstance(data, np.ndarray):
+            npdt = data.dtype
+
+        # If we cannot resolve anything and no array, let torch infer
+        if npdt is None and not isinstance(data, np.ndarray):
+            return data, None
+
+        # Convert unsupported NumPy dtype to a compatible one
+        npdt_conv = self._convert_numpy_dtype_for_torch(npdt)
+
+        # Map to torch dtype
+        torch_dtype = self._NP_TO_TORCH_DTYPE.get(npdt_conv)
         if torch_dtype is None:
-            raise ValueError(f"No corresponding torch dtype for NumPy dtype {dt}.")
+            # Known special cases
+            if npdt == np.dtype(np.uint64):
+                torch_dtype = self._module.int64
+            elif str(npdt) in ("float128", "longdouble"):
+                torch_dtype = self._module.float64
+            else:
+                raise ValueError(f"No corresponding torch dtype for NumPy dtype {npdt}.")
+
+        # Case 3: data is an array, cast only if needed
+        if isinstance(data, np.ndarray):
+            # If current array dtype differs from the converted NumPy dtype, cast
+            if data.dtype != npdt_conv:
+                # Special guard for uint64 -> int64
+                if data.dtype == np.dtype(np.uint64) and npdt_conv == np.dtype(np.int64):
+                    if data.size and data.max() > np.iinfo(np.int64).max:
+                        return _cast_ndarray_minimal(data, np.dtype(np.float64)), self._module.float64
+                    
+                    return _cast_ndarray_minimal(data, np.dtype(np.int64)), torch_dtype
+                
+                return _cast_ndarray_minimal(data, npdt_conv), torch_dtype
+
+            # If dtypes match but mapping wants int64 for uint64, guard overflow
+            if data.dtype == np.dtype(np.uint64) and torch_dtype == self._module.int64:
+                if data.size and data.max() > np.iinfo(np.int64).max:
+                    return _cast_ndarray_minimal(data, np.dtype(np.float64)), self._module.float64
+                
+                return _cast_ndarray_minimal(data, np.dtype(np.int64)), torch_dtype
+
+            # No cast needed
+            return data, torch_dtype
+
+        # Not an ndarray. Return resolved dtype only.
+        return data, torch_dtype
+
+        
+    def _ensure_torch_dtype(self, dtype_hint):
+        """
+        Normalize a user-provided dtype hint (NumPy dtype/class/torch.dtype/tuple)
+        into a valid torch.dtype. Returns None if it cannot be resolved.
+        """
+        # Unwrap single-element tuples like (torch.float32,)
+        if isinstance(dtype_hint, tuple) and len(dtype_hint) == 1:
+            dtype_hint = dtype_hint[0]
+    
+        # Already a torch.dtype
+        if isinstance(dtype_hint, self._module.dtype):
+            return dtype_hint
+    
+        # Try to interpret as NumPy dtype (np.dtype, np scalar class, or string)
+        try:
+            npdt = np.dtype(dtype_hint)
+        except Exception:
+            return None
+    
+        # Convert unsupported NumPy dtype to a torch-compatible NumPy dtype
+        npdt_conv = self._convert_numpy_dtype_for_torch(npdt)
+    
+        # Map to torch dtype
+        torch_dtype = self._NP_TO_TORCH_DTYPE.get(npdt_conv)
+        if torch_dtype is None:
+            # Known special case: uint64 maps to int64 (with potential overflow concerns elsewhere)
+            if npdt == np.dtype(np.uint64):
+                return self._module.int64
+            # Give up
+            return None
+    
         return torch_dtype
+    
+    def array(self, data, *args, **kwargs):
+        """
+        Wrapper around torch.tensor() with automatic dtype compatibility handling.
+        If dtype is provided as a NumPy dtype, it will be mapped to torch.dtype.
+        If data is a NumPy array with an unsupported dtype, it will be safely cast.
+        """
+        if 'device' not in kwargs:
+            kwargs['device'] = self.device
+    
+        
+        # Resolve dtype and cast data only when needed
+        data, resolved_torch_dtype = self._np_dtype_to_torch_dtype(
+            data=data,
+            dtype_hint=kwargs.get("dtype", None)
+        )
 
+        # If we found a torch dtype, set it. Otherwise remove dtype and let torch infer.
+        if resolved_torch_dtype is not None:
+            kwargs["dtype"] = resolved_torch_dtype
+        else:
+            kwargs.pop("dtype", None)
+
+        return self._module.tensor(data, *args, **kwargs)   
+    
     def any(self, *args, **kwargs):
+        """
+        Wrapper for torch.any(). Note: torch.any does not accept dtype; remove it if present.
+        """
         if 'device' not in kwargs:
             kwargs['device'] = self.device
-
-        if 'dtype' in kwargs:
-            kwargs['dtype'] = self._np_dtype_to_torch_dtype(kwargs['dtype'])
-
+    
+        # torch.any does not take dtype; ensure we don't pass it
+        kwargs.pop('dtype', None)
+    
         return self._module.any(*args, **kwargs)
-
+    
+    
     def zeros(self, *args, **kwargs):
+        """
+        Wrapper for torch.zeros() that safely coerces dtype to a torch.dtype if provided.
+        """
         if 'device' not in kwargs:
             kwargs['device'] = self.device
-
+    
         if 'dtype' in kwargs:
-            kwargs['dtype'] = self._np_dtype_to_torch_dtype(kwargs['dtype'])
-
+            resolved = self._ensure_torch_dtype(kwargs['dtype'])
+            if resolved is not None:
+                kwargs['dtype'] = resolved
+            else:
+                # If we cannot resolve to a torch.dtype, let torch infer by dropping dtype
+                kwargs.pop('dtype')
+    
         return self._module.zeros(*args, **kwargs)
-
+    
+    
     def ones(self, *args, **kwargs):
+        """
+        Wrapper for torch.ones() that safely coerces dtype to a torch.dtype if provided.
+        """
         if 'device' not in kwargs:
             kwargs['device'] = self.device
-
+    
         if 'dtype' in kwargs:
-            kwargs['dtype'] = self._np_dtype_to_torch_dtype(kwargs['dtype'])
-
+            resolved = self._ensure_torch_dtype(kwargs['dtype'])
+            if resolved is not None:
+                kwargs['dtype'] = resolved
+            else:
+                kwargs.pop('dtype')
+    
         return self._module.ones(*args, **kwargs)
 
-    def array(self, data, *args, **kwargs):
-        if 'device' not in kwargs:
-            kwargs['device'] = self.device
-
-        if 'dtype' in kwargs:
-            kwargs['dtype'] = self._np_dtype_to_torch_dtype(kwargs['dtype'])
-
-        return self._module.tensor(data, *args, **kwargs)
 
     def abs(self, *args, **kwargs):
         return self._module.abs(*args, **kwargs)

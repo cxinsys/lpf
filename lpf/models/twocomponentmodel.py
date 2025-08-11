@@ -48,7 +48,8 @@ class TwoComponentModel(ReactionDiffusionModel):
         # Set kinetic parameters.
         if params is not None:
             with self.am:
-                self._params = self.am.array(params, dtype=self._dtype)
+                self._params = self.am.array(params,
+                                             dtype=self._dtype)
                 self._batch_size = self._params.shape[0]
 
         # Set the size of space (2D grid).
