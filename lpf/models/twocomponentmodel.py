@@ -98,7 +98,8 @@ class TwoComponentModel(ReactionDiffusionModel):
     def u(self, obj):
         with self.am:
             if hasattr(self, '_y_mesh'):
-                self._y_mesh[0, :, :, :] = self.am.array(obj, dtype=self._dtype)
+                self._y_mesh[0, :, :, :] = self.am.array(obj, 
+                                                         dtype=self._dtype)
             else:
                 self._u = obj
         
@@ -111,7 +112,8 @@ class TwoComponentModel(ReactionDiffusionModel):
     def v(self, obj):
         with self.am:
             if hasattr(self, '_y_mesh'):
-                self._y_mesh[1, :, :, :] = self.am.array(obj, dtype=self._dtype)
+                self._y_mesh[1, :, :, :] = self.am.array(obj, 
+                                                         dtype=self._dtype)
             else:
                 self._v = obj
                 

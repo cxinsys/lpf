@@ -537,6 +537,11 @@ class TorchModule(ArrayModule):
         self._module.cuda.empty_cache()
         self._module.cuda.synchronize()
 
+    def mean(self, *args, **kwargs):
+        return self._module.mean(*args, **kwargs)
+    
+    def sqrt(self, *args, **kwargs):
+        return self._module.sqrt(*args, **kwargs)
 
 class JaxModule(NumpyModule):
     def __init__(self, device=None, device_id=None):
