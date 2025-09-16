@@ -176,11 +176,11 @@ class RandomTwoComponentDiploidReproducer(object):
         pa_model = model.paternal_model
         ma_model = model.maternal_model
 
-        pa_params = pa_model.params.copy()
-        ma_params = ma_model.params.copy()
+        pa_params = pa_model.am.copy(pa_model.params)
+        ma_params = ma_model.am.copy(ma_model.params)
 
-        pa_params = np.repeat(pa_params, repeats=n_haploid, axis=0)
-        ma_params = np.repeat(ma_params, repeats=n_haploid, axis=0)
+        pa_params = pa_model.am.repeat(pa_params, repeats=n_haploid, axis=0)
+        ma_params = ma_model.am.repeat(ma_params, repeats=n_haploid, axis=0)
 
         pa_init_states = pa_model.initializer.init_states.copy()
         ma_init_states = ma_model.initializer.init_states.copy()
@@ -224,7 +224,7 @@ class RandomTwoComponentDiploidReproducer(object):
 
         init_states = np.vstack([pa_init_states, ma_init_states])
         init_pts = np.vstack([pa_init_pts, ma_init_pts])
-        params = np.vstack([pa_params, ma_params])
+        params = pa_model.am.vstack([pa_params, ma_params])
         
         # Shuffle the values along the batch axis.
         np.random.shuffle(init_states)
@@ -338,6 +338,7 @@ class RandomTwoComponentDiploidReproducer(object):
         # end of for
 
         for i in range(1, n_generations):
+            
             t_beg = time.time()
 
             # Add a list that contains the organisms of this generation.
@@ -347,6 +348,9 @@ class RandomTwoComponentDiploidReproducer(object):
             # Create a directory that contains the files of this generation.
             str_gen = fstr_gen % (i)
 
+            # [DEBUG]
+            print(i, str_gen)
+            
             if self._dpath_output:
                 dpath_gen = pjoin(self._dpath_output, str_gen)
                 os.makedirs(dpath_gen, exist_ok=True)
@@ -382,7 +386,8 @@ class RandomTwoComponentDiploidReproducer(object):
                 )
 
                 # Perform a numerical simulation.
-                self._solver.solve(model=model)
+                # self._solver.solve(model=model)
+                self._solver.solve(model=model, verbose=1)  # [DEBUG]
 
                 # Colorize the morphs from the states.
                 arr_color = model.colorize()

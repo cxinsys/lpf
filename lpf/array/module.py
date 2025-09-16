@@ -153,6 +153,18 @@ class NumpyModule(ArrayModule):
     def isinf(self, *args, **kwargs):
         return np.isinf(*args, **kwargs)
 
+    def copy(self, arr):
+        """Create a copy of the array."""
+        return np.copy(arr)
+
+    def repeat(self, arr, repeats, axis=None):
+        """Repeat elements of an array."""
+        return np.repeat(arr, repeats, axis=axis)
+
+    def vstack(self, tup):
+        """Stack arrays in sequence vertically (row wise)."""
+        return np.vstack(tup)
+
 
 class CupyModule(NumpyModule):
 
@@ -207,6 +219,21 @@ class CupyModule(NumpyModule):
     def isinf(self, *args, **kwargs):
         with self._module.cuda.Device(self.device_id):
             return self._module.isinf(*args, **kwargs)
+
+    def copy(self, arr):
+        """Create a copy of the array."""
+        with self._module.cuda.Device(self.device_id):
+            return self._module.copy(arr)
+
+    def repeat(self, arr, repeats, axis=None):
+        """Repeat elements of an array."""
+        with self._module.cuda.Device(self.device_id):
+            return self._module.repeat(arr, repeats, axis=axis)
+
+    def vstack(self, tup):
+        """Stack arrays in sequence vertically (row wise)."""
+        with self._module.cuda.Device(self.device_id):
+            return self._module.vstack(tup)
 
     def clear_memory(self):
         import gc
@@ -543,6 +570,21 @@ class TorchModule(ArrayModule):
     def sqrt(self, *args, **kwargs):
         return self._module.sqrt(*args, **kwargs)
 
+    def copy(self, arr):
+        """Create a copy of the tensor."""
+        return arr.clone()
+
+    def repeat(self, arr, repeats, axis=None):
+        """Repeat elements of a tensor."""
+        if axis is None:
+            return arr.repeat(repeats)
+        else:
+            return arr.repeat_interleave(repeats, dim=axis)
+
+    def vstack(self, tup):
+        """Stack tensors in sequence vertically (row wise)."""
+        return self._module.vstack(tup)
+
 class JaxModule(NumpyModule):
     def __init__(self, device=None, device_id=None):
         super().__init__(device, device_id)
@@ -601,6 +643,18 @@ class JaxModule(NumpyModule):
 
     def isinf(self, *args, **kwargs):
         return self._module.isinf(*args, **kwargs)
+
+    def copy(self, arr):
+        """Create a copy of the array."""
+        return self._module.copy(arr)
+
+    def repeat(self, arr, repeats, axis=None):
+        """Repeat elements of an array."""
+        return self._module.repeat(arr, repeats, axis=axis)
+
+    def vstack(self, tup):
+        """Stack arrays in sequence vertically (row wise)."""
+        return self._module.vstack(tup)
 
     def clear_memory(self):
         jnp = self._module.numpy

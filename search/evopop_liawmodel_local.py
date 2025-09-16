@@ -32,9 +32,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    device = "cpu"
-    if args.gpu >= 0:
-        device = "cuda:%d"%(int(args.gpu))
+    device = "torch"
+    # device = "cpu"
+    # if args.gpu >= 0:
+    #     device = "cuda:%d"%(int(args.gpu))
 
     # Define spatiotemporal parameters.
     dx = 0.1
@@ -132,8 +133,8 @@ if __name__ == "__main__":
     solver = EulerSolver(
         dt=dt,
         n_iters=n_iters,
-        period_output=n_iters,
-        verbose=0
+        period_output=1000,
+        verbose=1
     )
     
     reproducer = RandomTwoComponentDiploidReproducer(

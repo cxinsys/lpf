@@ -12,11 +12,14 @@ class LiawInitializer(TwoComponentInitializer):
                          init_pts=init_pts,
                          dtype=dtype)
 
-    def update(self, model_dicts):
+    def update(self, model_dicts, array_module=None):
         """Parse the initial states and points from the model dictionaries.
         """
 
         batch_size = len(model_dicts)
+        
+        # Use NumPy for initial creation since we don't have ArrayModule context yet
+        # The arrays will be converted to appropriate backend arrays in initialize()
         self._init_states = np.zeros((batch_size, 2), dtype=self._dtype)
         init_pts = []
 
@@ -60,12 +63,14 @@ class LiawInitializer(TwoComponentInitializer):
                 raise ValueError("init_pts should be given!")
 
         with model.am:
+            # Convert NumPy arrays to appropriate backend arrays
             init_pts = model.am.array(init_pts, dtype=init_pts.dtype)
+            init_states = model.am.array(init_states, dtype=init_states.dtype)
 
             batch_size = model.batch_size  # init_states.shape[0]
 
-            u0 = model.am.array(init_states[:, 0], dtype=init_states.dtype)
-            v0 = model.am.array(init_states[:, 1], dtype=init_states.dtype)
+            u0 = init_states[:, 0]
+            v0 = init_states[:, 1]
             v0 = v0.reshape(batch_size, 1, 1)
 
             for i in range(batch_size):

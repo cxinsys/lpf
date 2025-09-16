@@ -69,8 +69,13 @@ class TwoComponentModel(ReactionDiffusionModel):
         self._dx = dx
 
         # Set the threshold and colors for coloring.
-        if thr_color is None:
-            thr_color = 0.5 * np.ones((self._batch_size, 1, 1))
+        if thr_color is None:  # [!TODO] when params and batch_size is None 
+            # Handle case where _batch_size might not be set yet (e.g., in diploid models)
+            if hasattr(self, '_batch_size') and self._batch_size is not None:
+                thr_color = 0.5 * np.ones((self._batch_size, 1, 1))
+            else:
+                # Default to batch size of 1 if not set
+                thr_color = 0.5 * np.ones((1, 1, 1))
 
         self._thr_color = thr_color
 
