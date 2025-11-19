@@ -316,12 +316,12 @@ class TwoComponentModel(ReactionDiffusionModel):
 
     def save_image(self,
                    index=0,
-                   fpath_ladybird=None,
+                   fpath_morph=None,
                    fpath_pattern=None,
                    arr_color=None):
 
         ladybird, pattern = self.create_image(index, arr_color)
-        ladybird.save(fpath_ladybird)
+        ladybird.save(fpath_morph)
         if fpath_pattern:
             pattern.save(fpath_pattern)
     

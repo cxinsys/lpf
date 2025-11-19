@@ -15,7 +15,7 @@ class Solver:
                  rtol=None,
                  period_output=None,
                  dpath_model=None,
-                 dpath_ladybird=None,
+                 dpath_morph=None,
                  dpath_pattern=None,
                  dpath_states=None,
                  verbose=None):
@@ -27,7 +27,7 @@ class Solver:
         self._rtol = rtol
         self._period_output = period_output
         self._dpath_model = dpath_model
-        self._dpath_ladybird = dpath_ladybird
+        self._dpath_morph = dpath_morph
         self._dpath_pattern = dpath_pattern
         self._dpath_states = dpath_states
         self._verbose = verbose
@@ -47,7 +47,7 @@ class Solver:
               rtol=None,
               period_output=None,
               dpath_model=None,
-              dpath_ladybird=None,
+              dpath_morph=None,
               dpath_pattern=None,
               dpath_states=None,
               init_model=True,
@@ -114,13 +114,13 @@ class Solver:
                                  solver=dict_solver)
             # end of for
 
-        if dpath_ladybird:
+        if dpath_morph:
             for i in range(batch_size):
-                os.makedirs(pjoin(dpath_ladybird, dname_model % (i + 1)), exist_ok=True)
+                os.makedirs(pjoin(dpath_morph, dname_model % (i + 1)), exist_ok=True)
             # end of for
 
-            fstr_fname_ladybird \
-                = "ladybird_%0{}d.png".format(int(np.floor(np.log10(n_iters))) + 1)
+            fstr_fname_morph \
+                = "morph_%0{}d.png".format(int(np.floor(np.log10(n_iters))) + 1)
 
         if dpath_pattern:
             for i in range(batch_size):
@@ -187,11 +187,11 @@ class Solver:
                     self._trj_y[ix_trj, ...] = model.y_mesh
                     ix_trj += 1
 
-                if dpath_ladybird:
+                if dpath_morph:
                     for j in range(batch_size):
-                        fpath_ladybird = pjoin(dpath_ladybird,
+                        fpath_morph = pjoin(dpath_morph,
                                                dname_model % (j + 1),
-                                               fstr_fname_ladybird % (i + 1))
+                                               fstr_fname_morph % (i + 1))
 
                         fpath_pattern = None
                         if dpath_pattern:
@@ -199,7 +199,7 @@ class Solver:
                                                   dname_model % (j + 1),
                                                   fstr_fname_pattern % (i + 1))
 
-                        model.save_image(j, fpath_ladybird, fpath_pattern)
+                        model.save_image(j, fpath_morph, fpath_pattern)
 
                 if dpath_states:
                     for j in range(batch_size):

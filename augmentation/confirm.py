@@ -53,8 +53,8 @@ def get_data(config, batch):
             n2v = json.load(fin)
         model_dicts.append(n2v)
         
-        fpath_ladybird = dict_fpaths["ladybird"]
-        with Image.open(fpath_ladybird) as img:                
+        fpath_img_morph = dict_fpaths["morph"]
+        with Image.open(fpath_img_morph) as img:                
             img_rgb = img.convert('RGB')            
             list_morphs.append(np.asarray(img_rgb))
     # end of for   
@@ -180,12 +180,12 @@ def solve_batches(config, device, list_dict_fpaths):
                 print("- [DEVICE-%s][Numerical error] Ignore model #%d in the batch #%d..."%(device, j+1, i+1))
                 continue
 
-            img_ladybird, pattern = model.create_image(index=j)
-            img_ladybird = img_ladybird.convert('RGB')            
-            arr_ladybird = np.asarray(img_ladybird)
+            img_morph, pattern = model.create_image(index=j)
+            img_morph = img_morph.convert('RGB')            
+            arr_morph = np.asarray(img_morph)
                   
-            # Hashing ladybird image.
-            h.update(arr_ladybird)
+            # Hashing morph image.
+            h.update(arr_morph)
             hash_morph = h.intdigest()
             h.reset()                  
             
@@ -199,25 +199,25 @@ def solve_batches(config, device, list_dict_fpaths):
             list_dict_fpaths.append(dict_fpaths)
             
             dpath_morph = pjoin(dpath_output_dataset, str(hash_morph))
-            dpath_models = pjoin(dpath_morph, "models")
-            dpath_ladybirds = pjoin(dpath_morph, "ladybirds")                
-            dpath_patterns = pjoin(dpath_morph, "patterns")
-            dpath_states = pjoin(dpath_morph, "states")                
+            dpath_model = pjoin(dpath_morph, "model")
+            dpath_img_morph = pjoin(dpath_morph, "morph")                
+            dpath_img_pattern = pjoin(dpath_morph, "pattern")
+            dpath_state = pjoin(dpath_morph, "state")                
 
-            os.makedirs(dpath_models, exist_ok=True)
-            os.makedirs(dpath_ladybirds, exist_ok=True)
-            os.makedirs(dpath_patterns, exist_ok=True)
-            os.makedirs(dpath_states, exist_ok=True)
+            os.makedirs(dpath_model, exist_ok=True)
+            os.makedirs(dpath_img_morph, exist_ok=True)
+            os.makedirs(dpath_img_pattern, exist_ok=True)
+            os.makedirs(dpath_state, exist_ok=True)
             
             str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
-            fpath_model_new = pjoin(dpath_models,
+            fpath_model_new = pjoin(dpath_model,
                                     "model_%s_%d.json"%(str_now, j))            
-            fpath_ladybird_new = pjoin(dpath_ladybirds,
-                                       "ladybird_%s_%d.png"%(str_now, j))
-            fpath_pattern_new = pjoin(dpath_patterns,
+            fpath_img_morph_new = pjoin(dpath_img_morph,
+                                    "morph_%s_%d.png"%(str_now, j))
+            fpath_img_pattern_new = pjoin(dpath_img_pattern,
                                       "pattern_%s_%d.png"%(str_now, j))            
-            fpath_states_new = pjoin(dpath_states,
-                                     "states_%s_%d.npz"%(str_now, j))
+            fpath_state_new = pjoin(dpath_state,
+                                     "state_%s_%d.npz"%(str_now, j))
                             
             model.save_model(index=j,
                              fpath=fpath_model_new,
@@ -225,10 +225,10 @@ def solve_batches(config, device, list_dict_fpaths):
                              solver=solver)
             
             model.save_image(index=j,
-                             fpath_ladybird=fpath_ladybird_new,
-                             fpath_pattern=fpath_pattern_new)
+                             fpath_morph=fpath_img_morph_new,
+                             fpath_pattern=fpath_img_pattern_new)
             
-            model.save_states(index=j, fpath=fpath_states_new)
+            model.save_states(index=j, fpath=fpath_state_new)
 
             print("- [Confirmed model]", fpath_model_new, end='\n')
 
@@ -302,14 +302,14 @@ if __name__ == "__main__":
         if not osp.isdir(dpath_morph):
             continue            
                 
-        dpath_models = pjoin(dpath_morph, "models")
-        dpath_ladybirds = pjoin(dpath_morph, "ladybirds")
-        dpath_patterns = pjoin(dpath_morph, "patterns")
-        dpath_states = pjoin(dpath_morph, "states")
+        dpath_model = pjoin(dpath_morph, "model")
+        dpath_img_morph = pjoin(dpath_morph, "morph")
+        dpath_img_pattern = pjoin(dpath_morph, "pattern")
+        dpath_state = pjoin(dpath_morph, "state")
             
-        for fname in os.listdir(dpath_models):
+        for fname in os.listdir(dpath_model):
             
-            fpath_model = osp.join(dpath_models, fname)
+            fpath_model = osp.join(dpath_model, fname)
             if not osp.isfile(fpath_model) \
                 or not fname.startswith("model_"):
                 continue
@@ -319,30 +319,30 @@ if __name__ == "__main__":
             items = fname.split('_')        
             model_id = '_'.join(items[1:])
             
-            fpath_ladybird = osp.join(dpath_ladybirds,
-                                      "ladybird_%s.png"%(model_id))
+            fpath_img_morph = osp.join(dpath_img_morph,
+                                       "morph_%s.png"%(model_id))
             
-            fpath_pattern = osp.join(dpath_patterns,
-                                     "pattern_%s.png"%(model_id))
+            fpath_img_pattern = osp.join(dpath_img_pattern,
+                                         "pattern_%s.png"%(model_id))
             
-            fpath_states = osp.join(dpath_states,
-                                    "states_%s.npz"%(model_id))
+            fpath_state = osp.join(dpath_state,
+                                   "state_%s.npz"%(model_id))
             
             
-            if not osp.isfile(fpath_ladybird):
-                raise FileNotFoundError(fpath_ladybird)
+            if not osp.isfile(fpath_img_morph):
+                raise FileNotFoundError(fpath_img_morph)
             
-            if not osp.isfile(fpath_pattern):
-                raise FileNotFoundError(fpath_pattern)
+            if not osp.isfile(fpath_img_pattern):
+                raise FileNotFoundError(fpath_img_pattern)
                 
-            if not osp.isfile(fpath_states):
-                raise FileNotFoundError(fpath_states)
+            if not osp.isfile(fpath_state):
+                raise FileNotFoundError(fpath_state)
                 
             
             dict_fpaths = {"model": fpath_model,
-                           "ladybird": fpath_ladybird,
-                           "pattern": fpath_pattern,
-                           "states": fpath_states}
+                           "morph": fpath_img_morph,
+                           "pattern": fpath_img_pattern,
+                           "state": fpath_state}
             
             # Hash this model.
             list_morphs, init_pts, init_states, params \

@@ -36,8 +36,8 @@ def get_data(batch, initializer, model):
             n2v = json.load(fin)
         model_dicts.append(n2v)
         
-        fpath_ladybird = dict_fpaths["ladybird"]
-        with Image.open(fpath_ladybird) as img:                
+        fpath_morph = dict_fpaths["ladybird"]
+        with Image.open(fpath_morph) as img:                
             img_rgb = img.convert('RGB')            
             list_morphs.append(np.asarray(img_rgb))
     # end of for   
@@ -119,7 +119,7 @@ if __name__ == "__main__":
             items = fname.split('_')        
             model_id = '_'.join(items[1:])
             
-            fpath_ladybird = osp.join(dpath_ladybirds,
+            fpath_morph = osp.join(dpath_ladybirds,
                                       "ladybird_%s.png"%(model_id))
             
             fpath_pattern = osp.join(dpath_patterns,
@@ -129,8 +129,8 @@ if __name__ == "__main__":
                                     "states_%s.npz"%(model_id))
             
             
-            if not osp.isfile(fpath_ladybird):
-                raise FileNotFoundError(fpath_ladybird)
+            if not osp.isfile(fpath_morph):
+                raise FileNotFoundError(fpath_morph)
             
             if not osp.isfile(fpath_pattern):
                 raise FileNotFoundError(fpath_pattern)
@@ -140,7 +140,7 @@ if __name__ == "__main__":
                 
             
             dict_fpaths = {"model": fpath_model,
-                           "ladybird": fpath_ladybird,
+                           "ladybird": fpath_morph,
                            "pattern": fpath_pattern,
                            "states": fpath_states}
             
@@ -168,7 +168,7 @@ if __name__ == "__main__":
                 print("[UNIQUE MODEL #%d] %s"%(n_unique, fpath_model))
             else:
                 os.remove(fpath_model)
-                os.remove(fpath_ladybird)
+                os.remove(fpath_morph)
                 os.remove(fpath_pattern)
                 fpaths_removed.append(fpath_states)
                 

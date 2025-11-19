@@ -1,0 +1,8 @@
+numpy
+scipy
+opencv-python
+pillow
+tqdm
+pyyaml
+xxhash
+torchmetrics[image]

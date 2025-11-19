@@ -12,7 +12,7 @@ class LiawInitializer(TwoComponentInitializer):
                          init_pts=init_pts,
                          dtype=dtype)
 
-    def update(self, model_dicts, array_module=None):
+    def update(self, model_dicts):
         """Parse the initial states and points from the model dictionaries.
         """
 
@@ -69,8 +69,8 @@ class LiawInitializer(TwoComponentInitializer):
 
             batch_size = model.batch_size  # init_states.shape[0]
 
-            u0 = init_states[:, 0]
-            v0 = init_states[:, 1]
+            u0 = model.am.array(init_states[:, 0], dtype=init_states.dtype)
+            v0 = model.am.array(init_states[:, 1], dtype=init_states.dtype)
             v0 = v0.reshape(batch_size, 1, 1)
 
             for i in range(batch_size):

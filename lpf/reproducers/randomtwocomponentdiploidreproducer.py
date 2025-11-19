@@ -450,11 +450,11 @@ class RandomTwoComponentDiploidReproducer(object):
 
                     if self._dpath_output:
                         fpath_model = pjoin(dpath_gen, "model_%s.json" % (str_id))
-                        fpath_ladybird = pjoin(dpath_gen, "ladybird_%s.png" % (str_id))
+                        fpath_morph = pjoin(dpath_gen, "ladybird_%s.png" % (str_id))
                         fpath_pattern = pjoin(dpath_gen, "pattern_%s.png" % (str_id))
 
                         progeny_model.save_model(index=0, fpath=fpath_model)
-                        img_ladybird.save(fpath_ladybird)
+                        img_ladybird.save(fpath_morph)
                         img_pattern.save(fpath_pattern)
                     # end of if
 

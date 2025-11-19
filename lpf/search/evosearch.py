@@ -84,7 +84,7 @@ class EvoSearch:
             # elif np.allclose(self.model.u[idx], self.model.u[idx].mean()):
             #     return [np.inf]
 
-            # Colorize the ladybird model.
+            # Colorize the morph model.
             arr_color = self.model.colorize()
 
             # Store the colorized object in the cache.
@@ -92,10 +92,10 @@ class EvoSearch:
         # end of if-else
 
         # Evaluate objectives.
-        ladybird, pattern = self.model.create_image(0, arr_color)
+        morph, pattern = self.model.create_image(0, arr_color)
         sum_obj = 0
         for obj in self.objectives:
-            val = obj.compute(ladybird.convert("RGB"), self.targets)
+            val = obj.compute(morph.convert("RGB"), self.targets)
             sum_obj += val
 
         return [sum_obj]
@@ -131,8 +131,8 @@ class EvoSearch:
             fpath_model = pjoin(self.dpath_population,
                                 "%smodel_%s.json"%(str_gen, str_now))    
 
-            fpath_ladybird = pjoin(self.dpath_population,
-                                   "%sladybird_%s.png"%(str_gen, str_now))
+            fpath_morph = pjoin(self.dpath_population,
+                                "%smorph_%s.png"%(str_gen, str_now))
 
             fpath_pattern = pjoin(self.dpath_population,
                                   "%spattern_%s.png"%(str_gen, str_now))
@@ -141,8 +141,8 @@ class EvoSearch:
             fpath_model = pjoin(self.dpath_best,
                                 "%smodel_%s.json"%(str_gen, str_now))
             
-            fpath_ladybird = pjoin(self.dpath_best,
-                                   "%sladybird_%s.png"%(str_gen, str_now))
+            fpath_morph = pjoin(self.dpath_best,
+                                "%smorph_%s.png"%(str_gen, str_now))
 
             fpath_pattern = pjoin(self.dpath_best,
                                   "%spattern_%s.png"%(str_gen, str_now))
@@ -173,7 +173,7 @@ class EvoSearch:
                               fitness=fitness)
         
         self.model.save_image(index=0,
-                              fpath_ladybird=fpath_ladybird,
+                              fpath_morph=fpath_morph,
                               fpath_pattern=fpath_pattern,
                               arr_color=arr_color)
             

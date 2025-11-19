@@ -75,16 +75,16 @@ if __name__ == "__main__":
         items = fname.split('_')        
         model_id = items[1]
         
-        fpath_ladybird = osp.join(dpath_dataset, "ladybird_%s.png"%(model_id))
+        fpath_img_morph = osp.join(dpath_dataset, "morph_%s.png"%(model_id))
         
         if not osp.isfile(fpath_model):
             raise FileNotFoundError(fpath_model)
         
-        if not osp.isfile(fpath_ladybird):
-            raise FileNotFoundError(fpath_ladybird)
+        if not osp.isfile(fpath_img_morph):
+            raise FileNotFoundError(fpath_img_morph)
         
 
-        dict_fpath[model_id] = (fpath_model, fpath_ladybird)
+        dict_fpath[model_id] = (fpath_model, fpath_img_morph)
         list_fpath.append(dict_fpath[model_id])
         
         
@@ -158,7 +158,7 @@ if __name__ == "__main__":
                      dt=dt,
                      n_iters=n_iters,
                      period_output=period_output,
-                     dpath_ladybird=dpath_output,
+                     dpath_morph=dpath_output,
                      dpath_pattern=dpath_output,
                      verbose=verbose)
         
@@ -167,9 +167,9 @@ if __name__ == "__main__":
             str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
             fpath_model_new = pjoin(dpath_augdataset,
                                     "model_%s_%d.json"%(str_now, j))            
-            fpath_ladybird_new = pjoin(dpath_augdataset,
-                                       "ladybird_%s_%d.png"%(str_now, j))
-            fpath_pattern_new = pjoin(dpath_augdataset,
+            fpath_img_morph_new = pjoin(dpath_augdataset,
+                                       "morph_%s_%d.png"%(str_now, j))
+            fpath_img_pattern_new = pjoin(dpath_augdataset,
                                       "pattern_%s_%d.png"%(str_now, j))
             
             model.save_model(index=j,
@@ -179,8 +179,8 @@ if __name__ == "__main__":
                              params=params)
             
             model.save_image(index=j,
-                             fpath_ladybird=fpath_ladybird_new,
-                             fpath_pattern=fpath_pattern_new)
+                             fpath_morph=fpath_img_morph_new,
+                             fpath_pattern=fpath_img_pattern_new)
         # end of for
         t_end = time.time()
     

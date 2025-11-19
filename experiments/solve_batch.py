@@ -83,7 +83,7 @@ if __name__ == "__main__":
         n_iters=n_iters,
         period_output=1000,
         dpath_model=dpath_output,
-        dpath_ladybird=dpath_output,
+        dpath_morph=dpath_output,
         dpath_pattern=dpath_output,
         dpath_states=dpath_output,
         verbose=1

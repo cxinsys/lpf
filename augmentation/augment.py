@@ -20,7 +20,7 @@ from lpf.solvers import SolverFactory
 def get_data(config, batch):
     model_dicts = []
 
-    for (fpath_model, fpath_ladybird) in batch:
+    for (fpath_model, fpath_morph) in batch:
         with open(fpath_model, "rt") as fin:
             n2v = json.load(fin)
         model_dicts.append(n2v)
@@ -101,15 +101,15 @@ if __name__ == "__main__":
     os.makedirs(dpath_output, exist_ok=True)
     
     # Create sub-directories.
-    dpath_model = pjoin(dpath_output, "models")
-    dpath_pattern = pjoin(dpath_output, "patterns")
-    dpath_ladybird = pjoin(dpath_output, "ladybirds")
-    dpath_states = pjoin(dpath_output, "states")
+    dpath_model = pjoin(dpath_output, "model")
+    dpath_img_pattern = pjoin(dpath_output, "pattern")
+    dpath_img_morph = pjoin(dpath_output, "morph")
+    dpath_state = pjoin(dpath_output, "state")
     
     os.makedirs(dpath_model, exist_ok=True)
-    os.makedirs(dpath_pattern, exist_ok=True)
-    os.makedirs(dpath_ladybird, exist_ok=True)
-    os.makedirs(dpath_states, exist_ok=True)
+    os.makedirs(dpath_img_pattern, exist_ok=True)
+    os.makedirs(dpath_img_morph, exist_ok=True)
+    os.makedirs(dpath_state, exist_ok=True)
     
     # Copy this source file to the output directory for recording purpose.
     fpath_src = pjoin(osp.dirname(__file__), osp.basename(__file__))
@@ -159,16 +159,16 @@ if __name__ == "__main__":
         items = fname.split('_')        
         model_id = items[1]
         
-        fpath_ladybird = osp.join(dpath_dataset, "ladybird_%s.png"%(model_id))
+        fpath_img_morph = osp.join(dpath_dataset, "morph_%s.png"%(model_id))
         
         if not osp.isfile(fpath_model):
             raise FileNotFoundError(fpath_model)
         
-        if not osp.isfile(fpath_ladybird):
-            raise FileNotFoundError(fpath_ladybird)
+        if not osp.isfile(fpath_img_morph):
+            raise FileNotFoundError(fpath_img_morph)
         
 
-        dict_fpath[model_id] = (fpath_model, fpath_ladybird)
+        dict_fpath[model_id] = (fpath_model, fpath_img_morph)
         list_fpath.append(dict_fpath[model_id])
     # end of for
 
@@ -234,7 +234,7 @@ if __name__ == "__main__":
             half_batch_size = len(half_batch)        
         
         model_dicts = []
-        for (fpath_model, fpath_ladybird) in half_batch:
+        for (fpath_model, fpath_morph) in half_batch:
             with open(fpath_model, "rt") as fin:
                 n2v = json.load(fin)
                 
@@ -321,12 +321,12 @@ if __name__ == "__main__":
             str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
             fpath_model_new = pjoin(dpath_model,
                                     "model_%s_%d.json"%(str_now, j))            
-            fpath_ladybird_new = pjoin(dpath_ladybird,
-                                       "ladybird_%s_%d.png"%(str_now, j))
-            fpath_pattern_new = pjoin(dpath_pattern,
-                                      "pattern_%s_%d.png"%(str_now, j))            
-            fpath_states_new = pjoin(dpath_states,
-                                     "states_%s_%d.npz"%(str_now, j))
+            fpath_img_morph_new = pjoin(dpath_img_morph,
+                                        "morph_%s_%d.png"%(str_now, j))
+            fpath_img_pattern_new = pjoin(dpath_img_pattern,
+                                          "pattern_%s_%d.png"%(str_now, j))            
+            fpath_state_new = pjoin(dpath_state,
+                                    "state_%s_%d.npz"%(str_now, j))
             
             model.save_model(index=j,
                              fpath=fpath_model_new,
@@ -334,10 +334,10 @@ if __name__ == "__main__":
                              params=params)
             
             model.save_image(index=j,
-                             fpath_ladybird=fpath_ladybird_new,
-                             fpath_pattern=fpath_pattern_new)
+                             fpath_morph=fpath_img_morph_new,
+                             fpath_pattern=fpath_img_pattern_new)
             
-            model.save_states(index=j, fpath=fpath_states_new)
+            model.save_states(index=j, fpath=fpath_state_new)
         # end of for
         t_end = time.time()
     

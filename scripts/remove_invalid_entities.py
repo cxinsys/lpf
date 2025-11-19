@@ -96,7 +96,7 @@ if __name__ == "__main__":
             items = fname.split('_')        
             model_id = '_'.join(items[1:])
             
-            fpath_ladybird = osp.join(dpath_ladybirds,
+            fpath_morph = osp.join(dpath_ladybirds,
                                       "ladybird_%s.png"%(model_id))
             
             fpath_pattern = osp.join(dpath_patterns,
@@ -108,10 +108,10 @@ if __name__ == "__main__":
             
             is_not_found = False
             fpath_not_found = None
-            if not osp.isfile(fpath_ladybird):
+            if not osp.isfile(fpath_morph):
                 is_not_found = True
-                fpath_not_found = fpath_ladybird
-                # raise FileNotFoundError(fpath_ladybird)
+                fpath_not_found = fpath_morph
+                # raise FileNotFoundError(fpath_morph)
             
             if not osp.isfile(fpath_pattern):
                 is_not_found = True
@@ -137,7 +137,7 @@ if __name__ == "__main__":
                 print("[INVALID #%d due to PARAMS] %s"%(n_invalid, fpath_model))
                 
                 os.remove(fpath_model)
-                os.remove(fpath_ladybird)
+                os.remove(fpath_morph)
                 os.remove(fpath_pattern)
                 fpaths_removed.append(fpath_states)
                 
@@ -156,7 +156,7 @@ if __name__ == "__main__":
                 print("[INVALID #%d due to STATES] %s"%(n_invalid, fpath_states))
                 
                 os.remove(fpath_model)
-                os.remove(fpath_ladybird)
+                os.remove(fpath_morph)
                 os.remove(fpath_pattern)
                 fpaths_removed.append(fpath_states)
                 
@@ -166,14 +166,14 @@ if __name__ == "__main__":
                 continue
             
             
-            img_ladybird = Image.open(fpath_ladybird)
+            img_ladybird = Image.open(fpath_morph)
             
             if is_morph_invalid(img_ladybird):
                 n_invalid += 1
-                print("[INVALID #%d due to CP] %s"%(n_invalid, fpath_ladybird))
+                print("[INVALID #%d due to CP] %s"%(n_invalid, fpath_morph))
                 
                 os.remove(fpath_model)
-                os.remove(fpath_ladybird)
+                os.remove(fpath_morph)
                 os.remove(fpath_pattern)
                 fpaths_removed.append(fpath_states)
                 
