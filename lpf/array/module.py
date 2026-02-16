@@ -161,6 +161,12 @@ class NumpyModule(ArrayModule):
         """Repeat elements of an array."""
         return np.repeat(arr, repeats, axis=axis)
 
+    def mean(self, *args, **kwargs):
+        return np.mean(*args, **kwargs)
+
+    def sqrt(self, *args, **kwargs):
+        return np.sqrt(*args, **kwargs)
+
     def vstack(self, tup):
         """Stack arrays in sequence vertically (row wise)."""
         return np.vstack(tup)
@@ -230,6 +236,14 @@ class CupyModule(NumpyModule):
         with self._module.cuda.Device(self.device_id):
             return self._module.repeat(arr, repeats, axis=axis)
 
+    def mean(self, *args, **kwargs):
+        with self._module.cuda.Device(self.device_id):
+            return self._module.mean(*args, **kwargs)
+
+    def sqrt(self, *args, **kwargs):
+        with self._module.cuda.Device(self.device_id):
+            return self._module.sqrt(*args, **kwargs)
+
     def vstack(self, tup):
         """Stack arrays in sequence vertically (row wise)."""
         with self._module.cuda.Device(self.device_id):
@@ -241,7 +255,7 @@ class CupyModule(NumpyModule):
         with self._module.cuda.Device(self.device_id) as dev:
             self._module.get_default_memory_pool().free_all_blocks()
             self._module.get_default_pinned_memory_pool().free_all_blocks()
-            self._module.dev.synchronize()
+            dev.synchronize()
 
 
 
@@ -589,16 +603,16 @@ class JaxModule(NumpyModule):
     def __init__(self, device=None, device_id=None):
         super().__init__(device, device_id)
 
-        
         import os
-    
+
         os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"]="false"
         os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"]="platform"
-        
+
         import jax
         from jax import device_put
         import jax.numpy as jnp
-                
+
+        self._jax = jax
         self._module = jnp
         self._device_put = device_put
 
@@ -630,13 +644,13 @@ class JaxModule(NumpyModule):
         if hasattr(arr, 'get'):
             return arr.get()
 
-        return arr
+        return np.asarray(arr)
 
     def set(self, arr, ind, val):
         return arr.at[ind].set(val)
 
     def is_array(self, obj):
-        return isinstance(obj, (self._module.ndarray, self._module.generic))
+        return isinstance(obj, self._module.ndarray)
 
     def isnan(self, *args, **kwargs):
         return self._module.isnan(*args, **kwargs)
@@ -652,15 +666,18 @@ class JaxModule(NumpyModule):
         """Repeat elements of an array."""
         return self._module.repeat(arr, repeats, axis=axis)
 
+    def mean(self, *args, **kwargs):
+        return self._module.mean(*args, **kwargs)
+
+    def sqrt(self, *args, **kwargs):
+        return self._module.sqrt(*args, **kwargs)
+
     def vstack(self, tup):
         """Stack arrays in sequence vertically (row wise)."""
         return self._module.vstack(tup)
 
     def clear_memory(self):
-        jnp = self._module.numpy
-
-        self._module.clear_backends()
-        self._module.numpy.array([], dtype=jnp.float32).device_put(self.device)
+        self._jax.clear_backends()
 
         import gc
         gc.collect()
