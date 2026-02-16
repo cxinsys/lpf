@@ -27,7 +27,7 @@ def parse_device(device):
                     _device = "gpu"
                 elif options[0] == "torch":
                     _backend = "torch"
-                    _backend = "gpu"
+                    _device = "gpu"
                 elif options[0] == "jax":
                     _backend = "jax"
                     _device = "gpu"
