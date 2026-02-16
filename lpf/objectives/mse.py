@@ -6,13 +6,13 @@ from lpf.objectives import Objective
 class EachMeanSquareError(Objective):
     
     def __init__(self, coeff=None):
-        if not coeff:
+        if coeff is None:
             coeff = 1e-1
-            
+
         self._coeff = coeff
-                        
-    def compute(self, x, targets, coeff=None):        
-        if not coeff:
+
+    def compute(self, x, targets, coeff=None):
+        if coeff is None:
             coeff = self._coeff
 
         arr_mse = np.zeros((len(targets), len(x)), dtype=np.float64)

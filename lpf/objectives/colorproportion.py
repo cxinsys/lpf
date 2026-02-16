@@ -9,12 +9,12 @@ from lpf.objectives import Objective
 class EachColorProportion(Objective):
         
     def __init__(self, targets=None, coeff=None, lower=None, upper=None):
-        if not coeff:
+        if coeff is None:
             coeff = 10.0
-            
+
         self._coeff = coeff
-        
-        if targets:
+
+        if targets is not None:
             self._target_colpros = self.get_target_colpros(targets)
         else:
             self._target_colpros = None            
@@ -50,18 +50,18 @@ class EachColorProportion(Objective):
     
     def compute(self, x, targets=None, coeff=None):
         
-        if not self._target_colpros:
-            if not targets:
+        if self._target_colpros is None:
+            if targets is None:
                 err_msg = "targets should be given for compute() " \
                           "if targets are not given for __init__()."
                 raise AttributeError(err_msg)
-                
+
             target_colpros = self.get_target_colpros(targets)
         else:
             target_colpros = self._target_colpros
-            
-                    
-        if not coeff:
+
+
+        if coeff is None:
             coeff = self._coeff
                     
         

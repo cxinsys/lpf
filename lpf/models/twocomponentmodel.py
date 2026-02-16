@@ -42,7 +42,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         # Set initializer.
         self._initializer = initializer
 
-        if n_init_pts:  # used for search
+        if n_init_pts is not None:  # used for search
             self._n_init_pts = n_init_pts
 
         # Set kinetic parameters.
@@ -53,17 +53,17 @@ class TwoComponentModel(ReactionDiffusionModel):
                 self._batch_size = self._params.shape[0]
 
         # Set the size of space (2D grid).
-        if not width:
+        if width is None:
             width = 128
 
-        if not height:
+        if height is None:
             height = 128
 
         self._width = width
         self._height = height
         self.shape = (height, width)
 
-        if not dx:
+        if dx is None:
             dx = 0.1
 
         self._dx = dx
@@ -79,11 +79,11 @@ class TwoComponentModel(ReactionDiffusionModel):
 
         self._thr_color = thr_color
 
-        if not color_u:
+        if color_u is None:
             color_u = (5, 5, 5)
 
-        if not color_v:
-            color_v = (231, 79, 3) 
+        if color_v is None:
+            color_v = (231, 79, 3)
 
         self._color_u = np.array(color_u, dtype=np.uint8)
         self._color_v = np.array(color_v, dtype=np.uint8)
@@ -141,7 +141,7 @@ class TwoComponentModel(ReactionDiffusionModel):
                                             dtype=self._dtype)
         # end of with
 
-        if self._initializer:
+        if self._initializer is not None:
             self._initializer.initialize(self)
 
     def laplacian2d(self, a, dx):
@@ -218,8 +218,8 @@ class TwoComponentModel(ReactionDiffusionModel):
             arr_v = self.v
 
         with self.am:
-            arr_u = arr_u[index, ...].astype(np.float16)
-            arr_v = arr_v[index, ...].astype(np.float16)
+            arr_u = arr_u[index, ...].astype(np.float32)
+            arr_v = arr_v[index, ...].astype(np.float32)
             
             abs_u = self.am.abs(arr_u)
             abs_v = self.am.abs(arr_v)
@@ -323,7 +323,8 @@ class TwoComponentModel(ReactionDiffusionModel):
                    arr_color=None):
 
         ladybird, pattern = self.create_image(index, arr_color)
-        ladybird.save(fpath_morph)
+        if fpath_morph:
+            ladybird.save(fpath_morph)
         if fpath_pattern:
             pattern.save(fpath_pattern)
     
@@ -351,13 +352,13 @@ class TwoComponentModel(ReactionDiffusionModel):
         
         n2v["model"] = self._name
 
-        if index:
+        if index is not None:
             n2v["index"] = index
-            
-        if generation:             
-            n2v["generation"] = generation    
-             
-        if fitness:
+
+        if generation is not None:
+            n2v["generation"] = generation
+
+        if fitness is not None:
             n2v["fitness"] = fitness
        
         # Save parameters for space and colorization.
@@ -369,7 +370,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         n2v["color_v"] = self._color_v.tolist()
        
         # Get the members of initializer: n_init_pts, init_pts, init_states
-        if not initializer and self._initializer:
+        if initializer is None and self._initializer is not None:
             initializer = self._initializer
 
         if initializer is None:
@@ -382,7 +383,7 @@ class TwoComponentModel(ReactionDiffusionModel):
              raise TypeError("initializer should be dict or a subclass of Initializer.")
        
         # Get the members of solver
-        if not solver:
+        if solver is None:
             n2v["solver"] = None
         elif isinstance(solver, dict):
             n2v.update(solver)
@@ -471,7 +472,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         #
         # return init_states
 
-        if not dtype:
+        if dtype is None:
            dtype = np.float64
 
         batch_size = len(model_dicts)
@@ -512,7 +513,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         else:
             raise TypeError("model_dicts should be a sequence of model dictionary or a mappable type like dict.")
 
-        if not dtype:
+        if dtype is None:
            dtype = np.float64
 
         batch_size = len(model_dicts)
