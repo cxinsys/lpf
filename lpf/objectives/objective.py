@@ -3,7 +3,7 @@
 class Objective:
     
     def __init__(self, device=None):
-        if not device:
+        if device is None:
             device = "cpu"
         
         self.device = device

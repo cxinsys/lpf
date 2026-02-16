@@ -50,11 +50,11 @@ class Vgg16PerceptualLoss(torch.nn.Module):
             input = self.transform(input, mode='bilinear', size=(224, 224), align_corners=False)
             target = self.transform(target, mode='bilinear', size=(224, 224), align_corners=False)
 
-        if not feature_layers:
+        if feature_layers is None:
             # feature_layers = [0, 1, 2, 3]
             feature_layers = [2]
 
-        if not style_layers:
+        if style_layers is None:
             style_layers = [0, 1, 2, 3]
 
         loss = torch.zeros((len(input))).to(device=input.device)
@@ -81,7 +81,7 @@ class EachVgg16PerceptualLoss(Objective):
 
     def __init__(self, coeff=None, device=None):
 
-        if not coeff:
+        if coeff is None:
             coeff = 1.0
 
         self._coeff = coeff
@@ -92,7 +92,7 @@ class EachVgg16PerceptualLoss(Objective):
 
     def compute(self, x, targets, coeff=None):
 
-        if not coeff:
+        if coeff is None:
             coeff = self._coeff
 
         arr_img = []

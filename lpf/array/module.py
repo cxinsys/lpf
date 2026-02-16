@@ -589,9 +589,9 @@ class TorchModule(ArrayModule):
         return arr.clone()
 
     def repeat(self, arr, repeats, axis=None):
-        """Repeat elements of a tensor."""
+        """Repeat elements of a tensor (matching NumPy semantics)."""
         if axis is None:
-            return arr.repeat(repeats)
+            return arr.flatten().repeat_interleave(repeats)
         else:
             return arr.repeat_interleave(repeats, dim=axis)
 

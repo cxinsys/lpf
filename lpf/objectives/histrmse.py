@@ -7,13 +7,13 @@ from lpf.objectives import Objective
 
 class EachHistogramRootMeanSquareError(Objective):
         
-    def __init__(self, targets=None, coeff=None):        
-        if not coeff:
+    def __init__(self, targets=None, coeff=None):
+        if coeff is None:
             coeff = 1e-02
-            
+
         self._coeff = coeff
-        
-        if targets:
+
+        if targets is not None:
             self._target_hists = self.get_target_histograms(targets)
         else:
             self._target_hists = None            
@@ -37,18 +37,18 @@ class EachHistogramRootMeanSquareError(Objective):
     
     def compute(self, x, targets=None, coeff=None):
         
-        if not self._target_hists:
-            if not targets:
+        if self._target_hists is None:
+            if targets is None:
                 err_msg = "targets should be given for compute() " \
                           "if targets are not given for __init__()."
                 raise AttributeError(err_msg)
-                
+
             target_hists = self.get_target_histograms(targets)
         else:
             target_hists = self._target_hists
-            
-                    
-        if not coeff:
+
+
+        if coeff is None:
             coeff = self._coeff
                     
         

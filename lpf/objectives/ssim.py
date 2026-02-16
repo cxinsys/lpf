@@ -19,7 +19,7 @@ class EachStructuralSimilarityIndexMeasure(Objective):
 
     def __init__(self, coeff=None, device=None):
 
-        if not coeff:
+        if coeff is None:
             coeff = 1.0
 
         self._coeff = coeff
@@ -30,7 +30,7 @@ class EachStructuralSimilarityIndexMeasure(Objective):
 
     def compute(self, x, targets, coeff=None):
 
-        if not coeff:
+        if coeff is None:
             coeff = self._coeff
 
         x = self.to_tensor(x).to(self.device)

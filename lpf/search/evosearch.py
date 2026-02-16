@@ -118,10 +118,10 @@ class EvoSearch:
 
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
         
-        if not generation:
+        if generation is None:
             str_gen = ""
         else:
-            if not max_generation:
+            if max_generation is None:
                 max_generation = 1000000
                 
             fstr_gen = "gen-%0{}d_".format(int(np.ceil(np.log10(max_generation)))+1)

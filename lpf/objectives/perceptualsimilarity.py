@@ -19,14 +19,14 @@ class EachLearnedPerceptualImagePatchSimilarity(Objective):
 
     def __init__(self, net_type=None, coeff=None, device=None):
 
-        if not coeff:
+        if coeff is None:
             coeff = 1.0
 
         self._coeff = coeff
 
         super().__init__(device=device)
 
-        if not net_type:
+        if net_type is None:
             net_type = 'vgg'
 
         self.model = lpips.LPIPS(net=net_type).to(self.device)
@@ -37,7 +37,7 @@ class EachLearnedPerceptualImagePatchSimilarity(Objective):
 
     def compute(self, x, targets, coeff=None):
 
-        if not coeff:
+        if coeff is None:
             coeff = self._coeff
 
         arr_img = []

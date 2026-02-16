@@ -38,7 +38,7 @@ class Solver:
 
     @property
     def trj_y(self):
-        return self._model.trj_y
+        return self._trj_y
 
     def solve(self,
               model=None,
@@ -58,25 +58,25 @@ class Solver:
 
         t_total_beg = time.time()
 
-        if not model:
-            if not self._model:
+        if model is None:
+            if self._model is None:
                 raise ValueError("model should be defined.")
             model = self._model
 
-        if not dt:
-            if not self._dt:
+        if dt is None:
+            if self._dt is None:
                 self._dt = dt = 0.01
             dt = self._dt
 
-        if not rtol:
-            if self._rtol:
+        if rtol is None:
+            if self._rtol is not None:
                 rtol = self._rtol
 
-        if rtol and rtol < 0:
+        if rtol is not None and rtol < 0:
             raise ValueError("rtol should be greater than 0.")
 
-        if not period_output:
-            if self._period_output:
+        if period_output is None:
+            if self._period_output is not None:
                 period_output = self._period_output
 
         if period_output is not None and period_output < 1:
@@ -100,7 +100,7 @@ class Solver:
             dict_solver["dt"] = dt
             dict_solver["n_iters"] = n_iters
 
-            if rtol:
+            if rtol is not None:
                 dict_solver["rtol"] = rtol
 
             for i in range(batch_size):
@@ -139,10 +139,10 @@ class Solver:
                 = "states_%0{}d".format(int(np.floor(np.log10(n_iters))) + 1)
 
 
-        if not iter_end:
-            
-            if not n_iters:
-                if not self._n_iters:
+        if iter_end is None:
+
+            if n_iters is None:
+                if self._n_iters is None:
                     raise ValueError("n_iters should be defined.")
                 n_iters = self._n_iters
                 
@@ -180,26 +180,28 @@ class Solver:
                 delta_y = self.step(model, t, dt, model.y_mesh)
                 model.y_mesh = model.y_mesh + delta_y
 
-            if not period_output:
+            if period_output is None:
                 pass
             elif i == iter_begin or (i + 1) % period_output == 0:
                 if get_trj:
                     self._trj_y[ix_trj, ...] = model.y_mesh
                     ix_trj += 1
 
-                if dpath_morph:
+                if dpath_morph or dpath_pattern:
                     for j in range(batch_size):
-                        fpath_morph = pjoin(dpath_morph,
-                                               dname_model % (j + 1),
-                                               fstr_fname_morph % (i + 1))
-
-                        fpath_pattern = None
-                        if dpath_pattern:
-                            fpath_pattern = pjoin(dpath_pattern,
+                        fpath_morph_j = None
+                        if dpath_morph:
+                            fpath_morph_j = pjoin(dpath_morph,
                                                   dname_model % (j + 1),
-                                                  fstr_fname_pattern % (i + 1))
+                                                  fstr_fname_morph % (i + 1))
 
-                        model.save_image(j, fpath_morph, fpath_pattern)
+                        fpath_pattern_j = None
+                        if dpath_pattern:
+                            fpath_pattern_j = pjoin(dpath_pattern,
+                                                    dname_model % (j + 1),
+                                                    fstr_fname_pattern % (i + 1))
+
+                        model.save_image(j, fpath_morph_j, fpath_pattern_j)
 
                 if dpath_states:
                     for j in range(batch_size):
@@ -214,7 +216,7 @@ class Solver:
                     t_beg = time.time()
             # end of if
 
-            if rtol and model.is_early_stopping(rtol):
+            if rtol is not None and model.is_early_stopping(rtol):
                 break
             # end of if
 
@@ -239,7 +241,7 @@ class Solver:
         n2v["dt"] = self._dt
         n2v["n_iters"] = self._n_iters
 
-        if self._rtol:
+        if self._rtol is not None:
             n2v["rtol"] = self._rtol
 
         return n2v
