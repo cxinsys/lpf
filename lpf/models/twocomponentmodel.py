@@ -180,6 +180,8 @@ class TwoComponentModel(ReactionDiffusionModel):
 
         # Reactions
         f, g = self.reactions(t, u_c, v_c)
+        self._f = f
+        self._g = g
 
         # Diffusions + Reactions
         # dydt_mesh[0, :, 1:-1, 1:-1] = Du * self.laplacian2d(u, dx) + f
@@ -237,7 +239,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         return (adu <= (rtol * au)).all() and (adv <= (rtol * av)).all()
 
     def colorize(self, thr_color=None, arr_u=None):
-        if not thr_color:
+        if thr_color is None:
             thr_color = self._thr_color
 
         if arr_u is None:

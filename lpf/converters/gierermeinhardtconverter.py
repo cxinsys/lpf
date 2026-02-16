@@ -13,7 +13,7 @@ class GiererMeinhardtModel(Converter):
             "ru",
             "rv",
             "mu",
-            "nu"
+            "nu",
             "u0",
             "v0"
         ]
