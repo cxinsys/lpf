@@ -1,4 +1,4 @@
-"""Test 1-6: colorize() must accept numpy arrays for thr_color without crashing.
+"""colorize() must accept numpy arrays for thr_color without crashing.
 
 Before fix: `if not thr_color:` on a multi-element numpy array raised
 ValueError: The truth value of an array with more than one element is ambiguous.
@@ -21,12 +21,17 @@ class TestColorizeTruthiness:
         color = liaw_model.colorize(thr_color=None)
         assert color.shape == (1, 32, 32, 3)
 
-    def test_colorize_with_zero_thr(self, liaw_model):
+    def test_colorize_with_zero_thr_differs_from_default(self, liaw_model):
         """thr_color=0.0 (a falsy value) should be used, not replaced by default."""
         thr_zero = np.zeros((1, 1, 1))
-        # All u values should be > 0 threshold → all color_u
-        color = liaw_model.colorize(thr_color=thr_zero)
-        assert color.shape == (1, 32, 32, 3)
+        color_zero = liaw_model.colorize(thr_color=thr_zero)
+        assert color_zero.shape == (1, 32, 32, 3)
+
+        color_default = liaw_model.colorize(thr_color=None)
+        # Zero threshold should produce different coloring than default (0.5)
+        # because more pixels will exceed zero than 0.5
+        assert not np.array_equal(color_zero, color_default), \
+            "thr_color=0 should produce different colors than default thr_color=0.5"
 
     def test_colorize_with_multi_batch_thr(self):
         """Multi-batch thr_color array should not raise."""

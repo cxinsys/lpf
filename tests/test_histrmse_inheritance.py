@@ -1,4 +1,4 @@
-"""Test 1-1: MaxHistogramRootMeanSquareError must inherit from
+"""MaxHistogramRootMeanSquareError must inherit from
 EachHistogramRootMeanSquareError, not Objective.
 
 Before fix: super().compute() called Objective.compute() which raises
@@ -38,9 +38,9 @@ class TestMaxHistogramRootMeanSquareErrorInheritance:
     def test_compute_does_not_raise(self):
         """MaxHistogramRootMeanSquareError.compute() should not raise
         NotImplementedError."""
-        # Create a simple 3-channel uint8 image and a target
-        img = np.random.randint(0, 256, (64, 64, 3), dtype=np.uint8)
-        target = np.random.randint(0, 256, (64, 64, 3), dtype=np.uint8)
+        rng = np.random.RandomState(42)
+        img = rng.randint(0, 256, (64, 64, 3)).astype(np.uint8)
+        target = rng.randint(0, 256, (64, 64, 3)).astype(np.uint8)
 
         obj = MaxHistogramRootMeanSquareError(targets=[target])
         result = obj.compute(img)
@@ -51,10 +51,11 @@ class TestMaxHistogramRootMeanSquareErrorInheritance:
 
     def test_max_ge_min(self):
         """Max aggregate should be >= Min aggregate for the same inputs."""
-        img = np.random.randint(0, 256, (64, 64, 3), dtype=np.uint8)
+        rng = np.random.RandomState(123)
+        img = rng.randint(0, 256, (64, 64, 3)).astype(np.uint8)
         targets = [
-            np.random.randint(0, 256, (64, 64, 3), dtype=np.uint8),
-            np.random.randint(0, 256, (64, 64, 3), dtype=np.uint8),
+            rng.randint(0, 256, (64, 64, 3)).astype(np.uint8),
+            rng.randint(0, 256, (64, 64, 3)).astype(np.uint8),
         ]
         max_obj = MaxHistogramRootMeanSquareError(targets=targets)
         min_obj = MinHistogramRootMeanSquareError(targets=targets)

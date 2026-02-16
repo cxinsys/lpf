@@ -1,4 +1,4 @@
-"""Test 1-5: SolverFactory must match "adaptive_rk45" to AdaptiveRKF45Solver,
+"""SolverFactory must match "adaptive_rk45" to AdaptiveRKF45Solver,
 not RungeKuttaSolver.
 
 Before fix: "rk45" in "adaptiverk45" was True, so the elif chain matched

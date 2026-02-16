@@ -1,16 +1,17 @@
-"""Test 1-10: GiererMeinhardtConverter.get_param_names() must return 8 names.
+"""GiererMeinhardtConverter.get_param_names() must return 8 names.
 
 Before fix: Missing comma between "nu" and "u0" caused Python to
 concatenate them into "nuu0", producing 7 names instead of 8.
 This caused index misalignment in to_dv() and to_params().
 """
 
+import numpy as np
 import pytest
 
 from lpf.converters.gierermeinhardtconverter import GiererMeinhardtModel as GiererMeinhardtConverter
 
 
-class TestGiererMeinhardtConverterComma:
+class TestGiererMeinhardtConverter:
 
     def test_param_names_count(self):
         """get_param_names() should return exactly 8 names."""
@@ -40,12 +41,17 @@ class TestGiererMeinhardtConverterComma:
         expected = ["Du", "Dv", "ru", "rv", "mu", "nu", "u0", "v0"]
         assert names == expected, f"Expected {expected}, got {names}"
 
-    def test_to_params_shape(self):
-        """to_params should produce (1, 8) array matching 8 parameters."""
-        import numpy as np
-
+    def test_to_params_values(self):
+        """to_params should map decision vector values to correct param indices."""
         converter = GiererMeinhardtConverter()
-        # Decision vector with 8 values (log10 scale for first 6, direct for last 2)
         dv = np.array([[-3, -2, 0.5, 0.5, -1, -1, 0.5, 0.5]]).reshape(1, -1)
         params = converter.to_params(dv)
+
         assert params.shape == (1, 8), f"Expected (1, 8), got {params.shape}"
+        # First 6 params are 10**dv[0, i]
+        np.testing.assert_allclose(params[0, 0], 10**(-3))   # Du
+        np.testing.assert_allclose(params[0, 1], 10**(-2))   # Dv
+        np.testing.assert_allclose(params[0, 2], 10**(0.5))  # ru
+        np.testing.assert_allclose(params[0, 3], 10**(0.5))  # rv
+        np.testing.assert_allclose(params[0, 4], 10**(-1))   # mu
+        np.testing.assert_allclose(params[0, 5], 10**(-1))   # nu

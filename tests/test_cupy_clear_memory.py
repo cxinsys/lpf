@@ -1,4 +1,4 @@
-"""Test 1-9: CupyModule.clear_memory() must use the context manager variable,
+"""CupyModule.clear_memory() must use the context manager variable,
 not self._module.dev which doesn't exist.
 
 Before fix: self._module.dev.synchronize() raised AttributeError because
@@ -34,19 +34,7 @@ class TestCupyModuleClearMemory:
 
     def test_clear_memory_does_not_crash(self):
         """clear_memory() should execute without AttributeError."""
-        # Allocate some GPU memory first
         arr = self.am.array(np.random.randn(100, 100).astype(np.float32))
         del arr
 
-        # This should not raise
         self.am.clear_memory()
-
-    def test_mean_exists(self):
-        arr = self.am.array(np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32))
-        result = float(self.am.get(self.am.mean(arr)))
-        assert np.isclose(result, 2.5)
-
-    def test_sqrt_exists(self):
-        arr = self.am.array(np.array([4.0, 9.0, 16.0], dtype=np.float32))
-        result = self.am.get(self.am.sqrt(arr))
-        np.testing.assert_allclose(result, [2.0, 3.0, 4.0])

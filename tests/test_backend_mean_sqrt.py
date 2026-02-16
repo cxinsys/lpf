@@ -1,4 +1,4 @@
-"""Test 1-2: All array module backends must provide mean() and sqrt().
+"""All array module backends must provide mean() and sqrt().
 
 Before fix: mean()/sqrt() only existed on TorchModule, so DOPRI5Solver
 crashed with AttributeError on NumPy/CuPy/JAX backends.
