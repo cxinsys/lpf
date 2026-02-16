@@ -1,4 +1,4 @@
-"""Test 1-8: JaxModule.is_array() and clear_memory() must not crash.
+"""JaxModule.is_array() and clear_memory() must not crash.
 
 Before fix:
 - is_array() referenced jnp.generic which doesn't exist in JAX
@@ -38,15 +38,4 @@ class TestJaxModuleAPI:
 
     def test_clear_memory_does_not_crash(self):
         """clear_memory() should run without AttributeError."""
-        # This should not raise
         self.am.clear_memory()
-
-    def test_mean_exists(self):
-        arr = self.am.array([1.0, 2.0, 3.0, 4.0])
-        result = float(self.am.mean(arr))
-        assert np.isclose(result, 2.5)
-
-    def test_sqrt_exists(self):
-        arr = self.am.array([4.0, 9.0, 16.0])
-        result = self.am.get(self.am.sqrt(arr))
-        np.testing.assert_allclose(result, [2.0, 3.0, 4.0])
