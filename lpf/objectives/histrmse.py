@@ -81,7 +81,7 @@ class MinHistogramRootMeanSquareError(EachHistogramRootMeanSquareError):
         return arr_rmse.min()
 
 
-class MaxHistogramRootMeanSquareError(Objective):
+class MaxHistogramRootMeanSquareError(EachHistogramRootMeanSquareError):
     
     def compute(self, *args, **kwargs):
         arr_rmse = super().compute(*args, **kwargs)

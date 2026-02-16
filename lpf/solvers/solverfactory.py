@@ -39,14 +39,16 @@ class SolverFactory:
             return EulerSolver(*args, **kwargs)
         elif "heun" in _name:
             return HeunSolver(*args, **kwargs)
-        elif "rk45" in _name or "rungekutta" in _name:
-            return RungeKuttaSolver(*args, **kwargs)
-        
-        # Advanced adaptive solvers (recommended for fast convergence)
+
+        # Advanced adaptive solvers (must be checked before "rk45" to avoid substring collision)
         elif "dopri5" in _name or "dormandprince" in _name:
             return DOPRI5Solver(*args, **kwargs)
         elif "adaptiverk45" in _name or "rkf45" in _name or "fehlberg" in _name:
             return AdaptiveRKF45Solver(*args, **kwargs)
+
+        # Classic RK4 (checked after adaptive variants)
+        elif "rk45" in _name or "rungekutta" in _name:
+            return RungeKuttaSolver(*args, **kwargs)
         
         # Multi-step solvers
         elif "adamsbashforth2" in _name or "ab2" in _name:
