@@ -35,7 +35,7 @@ class EachStructuralSimilarityIndexMeasure(Objective):
 
         x = self.to_tensor(x).to(self.device)
 
-        arr_loss = np.zeros((len(targets),), dtype=np.float64)
+        arr_loss = np.zeros((len(targets),), dtype=np.float32)
         with torch.no_grad():
             for i, target in enumerate(targets):
                 target = self.to_tensor(target).to(self.device)

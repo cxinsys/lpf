@@ -67,7 +67,7 @@ class LiawModel(TwoComponentModel):
     @classmethod
     def parse_params(self, model_dicts, dtype=None):
         if not dtype:
-            dtype = np.float64
+            dtype = np.float32
 
         model_dicts = super().parse_params(model_dicts)
         batch_size = len(model_dicts)
@@ -89,10 +89,10 @@ class LiawModel(TwoComponentModel):
         n_init_pts = self._n_init_pts
 
         if not hasattr(self, "bounds_min"):
-            self.bounds_min = self.am.zeros((10 + 2 * n_init_pts), dtype=np.float64)
-            
+            self.bounds_min = self.am.zeros((10 + 2 * n_init_pts), dtype=np.float32)
+
         if not hasattr(self, "bounds_max"):
-            self.bounds_max = self.am.zeros((10 + 2 * n_init_pts), dtype=np.float64)
+            self.bounds_max = self.am.zeros((10 + 2 * n_init_pts), dtype=np.float32)
         
         # Du
         self.bounds_min[0] = -4

@@ -473,7 +473,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         # return init_states
 
         if dtype is None:
-           dtype = np.float64
+           dtype = np.float32
 
         batch_size = len(model_dicts)
         init_states = np.zeros((batch_size, 2), dtype=dtype)
@@ -514,7 +514,7 @@ class TwoComponentModel(ReactionDiffusionModel):
             raise TypeError("model_dicts should be a sequence of model dictionary or a mappable type like dict.")
 
         if dtype is None:
-           dtype = np.float64
+           dtype = np.float32
 
         batch_size = len(model_dicts)
         thr_color = np.zeros((batch_size, 1, 1), dtype=dtype)

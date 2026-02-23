@@ -24,7 +24,7 @@ class LiawConverter(Converter):
 
     def to_params(self, dv, params=None):
         if params is None:
-            params = np.zeros((1, 8), dtype=np.float64)
+            params = np.zeros((1, 8), dtype=np.float32)
 
         params[0, 0] = 10 ** dv[0, 0]  # Du
         params[0, 1] = 10 ** dv[0, 1]  # Dv
@@ -39,7 +39,7 @@ class LiawConverter(Converter):
 
     def to_init_states(self, dv, init_states=None):
         if init_states is None:
-            init_states = np.zeros((1, 2), dtype=np.float64)
+            init_states = np.zeros((1, 2), dtype=np.float32)
 
         init_states[0, 0] = 10 ** dv[0, 8]  # u0
         init_states[0, 1] = 10 ** dv[0, 9]  # v0

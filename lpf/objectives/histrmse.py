@@ -52,7 +52,7 @@ class EachHistogramRootMeanSquareError(Objective):
             coeff = self._coeff
                     
         
-        arr_rmse = np.zeros((len(target_hists),), dtype=np.float64)
+        arr_rmse = np.zeros((len(target_hists),), dtype=np.float32)
         for i, hist_target in enumerate(target_hists):
             hist_source = self.get_histogram(np.array(x))
             arr_rmse[i] = np.sqrt(np.mean((hist_target - hist_source)**2))

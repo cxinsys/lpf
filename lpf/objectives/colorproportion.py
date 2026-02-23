@@ -65,7 +65,7 @@ class EachColorProportion(Objective):
             coeff = self._coeff
                     
         
-        arr_colpro = np.zeros((len(target_colpros), len(x)), dtype=np.float64)
+        arr_colpro = np.zeros((len(target_colpros), len(x)), dtype=np.float32)
         for i, colpro_trg in enumerate(target_colpros):
             for j, img in enumerate(x):
                 colpro_src = self.get_colpros(np.array(img))
