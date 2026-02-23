@@ -168,9 +168,9 @@ if __name__ == "__main__":
             fpath_model_new = pjoin(dpath_augdataset,
                                     "model_%s_%d.json"%(str_now, j))            
             fpath_img_morph_new = pjoin(dpath_augdataset,
-                                       "morph_%s_%d.png"%(str_now, j))
+                                        "morph_%s_%d.png"%(str_now, j))
             fpath_img_pattern_new = pjoin(dpath_augdataset,
-                                      "pattern_%s_%d.png"%(str_now, j))
+                                          "pattern_%s_%d.png"%(str_now, j))
             
             model.save_model(index=j,
                              fpath=fpath_model_new,
