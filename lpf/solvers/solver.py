@@ -54,6 +54,7 @@ class Solver:
               iter_begin=0,
               iter_end=None,
               get_trj=False,
+              trj_waypoints=None,
               verbose=0):
 
         t_total_beg = time.time()
@@ -154,16 +155,29 @@ class Solver:
             raise ValueError("iter_end should be greater than or equal to 1.")
 
 
+        # Normalize trj_waypoints to a set for O(1) lookup
+        if trj_waypoints is not None:
+            waypoints_set = set(trj_waypoints)
+            # When trj_waypoints is given, enable trajectory capture
+            get_trj = True
+        else:
+            waypoints_set = None
+
         if get_trj:
             with model.am:
                 if hasattr(self, "_trj_y"):
                     del self._trj_y
-                    
-                n_time_points = int((iter_end - iter_begin) // period_output + 1)
-                
+
+                if waypoints_set is not None:
+                    n_time_points = len(waypoints_set)
+                    self._trj_iters = sorted(waypoints_set)
+                else:
+                    n_time_points = int((iter_end - iter_begin) // period_output + 1)
+                    self._trj_iters = None
+
                 shape_trj = (n_time_points, *model.shape_grid)
                 self._trj_y = model.am.zeros(shape_trj, dtype=model.y_mesh.dtype)
-                
+
                 
 
         t = 0.0
@@ -180,9 +194,15 @@ class Solver:
                 delta_y = self.step(model, t, dt, model.y_mesh)
                 model.y_mesh = model.y_mesh + delta_y
 
-            if period_output is None:
-                pass
-            elif i == iter_begin or (i + 1) % period_output == 0:
+            # Determine whether to capture at this iteration
+            if waypoints_set is not None:
+                should_record = (i + 1) in waypoints_set
+            elif period_output is None:
+                should_record = False
+            else:
+                should_record = (i == iter_begin or (i + 1) % period_output == 0)
+
+            if should_record:
                 if get_trj:
                     self._trj_y[ix_trj, ...] = model.y_mesh
                     ix_trj += 1
@@ -228,6 +248,8 @@ class Solver:
             print("- [Duration] : %.5e sec." % (time.time() - t_total_beg))
 
         if get_trj:
+            if self._trj_iters is not None:
+                return {"iters": self._trj_iters, "trj": self._trj_y}
             return self._trj_y
 
     # end of solve
