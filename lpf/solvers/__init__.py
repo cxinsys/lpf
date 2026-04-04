@@ -13,24 +13,36 @@ from lpf.solvers.rk23solver import RK23Solver
 
 from lpf.solvers.solverfactory import SolverFactory
 
+# CUDA-accelerated solvers (require CuPy + NVIDIA GPU)
+from lpf.solvers.cueulersolver import CuEulerSolver
+from lpf.solvers.cuheunsolver import CuHeunSolver
+from lpf.solvers.curungekuttasolver import CuRungekuttaSolver
+from lpf.solvers.curk23solver import CuRK23Solver
+from lpf.solvers.cuadamsbashforth2solver import CuAdamsBashforth2Solver
+
 
 __all__ = [
     # Base class
     'Solver',
-    
+
     # Basic solvers
     'EulerSolver',
-    'HeunSolver', 
+    'HeunSolver',
     'RungeKuttaSolver',
-    
+
     # Advanced adaptive solvers (recommended)
     'AdaptiveRKF45Solver',
     'DOPRI5Solver',
-    
+
     # Multi-step and specialized solvers
     'AdamsBashforth2Solver',
     'RK23Solver',
-    
+
+    # CUDA-accelerated solvers
+    'CuEulerSolver',
+    'CuHeunSolver',
+    'CuRungekuttaSolver',
+
     # Factory
     'SolverFactory',
 ]
