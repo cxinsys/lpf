@@ -8,14 +8,14 @@ CUDA 13.2 example:
 pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl
 ```
 
-This installs `lpf`, CuPy, and all other dependencies automatically.
+This installs LPF, CuPy, and all other dependencies automatically.
 Replace `cu132` with your CUDA version from the table below.
 
 ### Available wheels
 
 Check your CUDA version with `nvidia-smi` and pick the matching wheel.
 
-| CUDA | lpf wheel | CuPy (auto-installed) |
+| CUDA | LPF wheel | CuPy (auto-installed) |
 |------|-----------|-----------------------|
 | 13.2 | `lpf-0.2.0+cu132` | `cupy-cuda13x` |
 | 13.0 | `lpf-0.2.0+cu130` | `cupy-cuda13x` |
@@ -26,14 +26,14 @@ All wheels: [GitHub Releases](https://github.com/cxinsys/lpf/releases/tag/v0.2.0
 
 ### PyTorch (optional)
 
-`lpf` uses CuPy as the default GPU backend, so PyTorch is not required for basic GPU usage.
+LPF uses CuPy as the default GPU backend, so PyTorch is not required for basic GPU usage.
 
-However, if you want to integrate `lpf` into a PyTorch-based workflow — for example,
-using `lpf` simulation results as inputs to a neural network, or running `lpf` alongside
+However, if you want to integrate LPF into a PyTorch-based workflow — for example,
+using LPF simulation results as inputs to a neural network, or running LPF alongside
 other PyTorch models on the same GPU — you can set `device="torch:gpu:0"` to keep all
 data as PyTorch tensors. This avoids unnecessary copies between frameworks.
 
-In this mode, `lpf` internally bridges PyTorch tensors to CuPy via DLPack (zero-copy)
+In this mode, LPF internally bridges PyTorch tensors to CuPy via DLPack (zero-copy)
 for CUDA kernel execution, and returns the results back as PyTorch tensors.
 
 ```bash
@@ -65,14 +65,14 @@ source .venv/bin/activate   # Linux / macOS
 # .venv\Scripts\activate    # Windows
 ```
 
-### 2. Install lpf
+### 2. Install LPF
 
 ```bash
 # From source (development):
 pip install -e .
 
 # From wheel (production):
-pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu130-py3-none-linux_x86_64.whl
+pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl
 ```
 
 ### 3. Install GPU packages
@@ -80,17 +80,18 @@ pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu
 ```bash
 # CuPy (required for GPU):
 pip install cupy-cuda13x    # CUDA 13.x
+
 pip install cupy-cuda12x    # CUDA 12.x
 
 # PyTorch (optional, for device="torch:gpu:0"):
-pip install torch --extra-index-url https://download.pytorch.org/whl/cu130
+pip install torch --extra-index-url https://download.pytorch.org/whl/cu132
 ```
 
 Check your CUDA version with `nvidia-smi`.
 
 > **Note:** CuPy is required for CUDA kernel acceleration regardless of whether
 > you use `device="cuda:0"` or `device="torch:gpu:0"`. When using PyTorch,
-> `lpf` internally bridges PyTorch tensors to CuPy via DLPack (zero-copy)
+> LPF internally bridges PyTorch tensors to CuPy via DLPack (zero-copy)
 > for kernel execution.
 
 ### Optional dependencies
@@ -118,7 +119,7 @@ solver.solve(model)  # CUDA kernels activate automatically
 
 ## CUDA Kernel Compilation Modes
 
-`lpf` provides two ways to compile CUDA kernels: **JIT** and **AOT**.
+LPF provides two ways to compile CUDA kernels: **JIT** and **AOT**.
 Both produce identical results. The system selects the best available option automatically.
 
 ### JIT (Just-In-Time) — Default, zero setup
@@ -216,8 +217,8 @@ print('GPU acceleration working!')
 
 | Setup level | Command | What you get |
 |-------------|---------|--------------|
-| **Quick (GPU)** | `python install.py` | lpf + CuPy + PyTorch, CUDA auto-detected |
-| **CPU only** | `python install.py --cpu` | NumPy solver (~100 it/s) |
-| **GPU (JIT)** | manual CuPy install | CUDA kernels, auto-compiled (~150K it/s) |
+| **Quick (GPU)** | `pip install lpf-0.2.0+cu132-....whl` | LPF + CuPy, CUDA auto-detected |
+| **CPU only** | `pip install -e .` | NumPy solver (~100 it/s) |
+| **GPU (JIT)** | wheel install or manual CuPy | CUDA kernels, auto-compiled (~150K it/s) |
 | **GPU (AOT)** | pre-built wheel or `python -m lpf.kernels.aot.build` | Pre-compiled kernels + native C loop |
-| **PyTorch GPU** | manual torch install | Same CUDA kernels via DLPack bridge |
+| **+ PyTorch** | `pip install torch --extra-index-url ...` | Same CUDA kernels via DLPack bridge |
