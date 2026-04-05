@@ -54,6 +54,22 @@ _version = f"{_BASE_VERSION}+{_variant}"
 
 
 # ---------------------------------------------------------------------------
+# CUDA-specific dependencies (baked into the wheel)
+# ---------------------------------------------------------------------------
+
+_CUDA_DEPS = {
+    'cu126': ['cupy-cuda12x', 'torch>=2.11'],
+    'cu128': ['cupy-cuda12x', 'torch>=2.11'],
+    'cu130': ['cupy-cuda13x', 'torch>=2.11'],
+    'cu132': ['cupy-cuda13x', 'torch>=2.11'],
+}
+
+
+def _cuda_deps():
+    return _CUDA_DEPS.get(_variant, [])
+
+
+# ---------------------------------------------------------------------------
 # Custom bdist_wheel: always platform-specific (contains CUDA kernels)
 # ---------------------------------------------------------------------------
 
@@ -109,7 +125,7 @@ setup(
         'tqdm',
         'pyyaml',
         'xxhash',
-    ],
+    ] + _cuda_deps(),
     extras_require={
         'viz': ['lpips', 'opencv-python', 'torchmetrics'],
         'test': ['pytest'],

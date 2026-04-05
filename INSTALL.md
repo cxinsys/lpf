@@ -2,21 +2,32 @@
 
 ## Quick Install
 
-```bash
-curl -sL https://raw.githubusercontent.com/cxinsys/lpf/main/install.py | python
-```
-
-Automatically detects your CUDA version and installs `lpf`, CuPy, and PyTorch.
+CUDA 13.x:
 
 ```bash
-# Specify CUDA version:
-curl -sL https://raw.githubusercontent.com/cxinsys/lpf/main/install.py | python - --cuda 130
-
-# CPU-only:
-curl -sL https://raw.githubusercontent.com/cxinsys/lpf/main/install.py | python - --cpu
+pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu130-py3-none-linux_x86_64.whl \
+    --extra-index-url https://download.pytorch.org/whl/cu130
 ```
 
-Available CUDA variants: `126`, `128`, `130`, `132` ([all wheels](https://github.com/cxinsys/lpf/releases/tag/v0.2.0))
+CUDA 12.x:
+
+```bash
+pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu126-py3-none-linux_x86_64.whl \
+    --extra-index-url https://download.pytorch.org/whl/cu126
+```
+
+This single `pip install` command installs `lpf`, CuPy, PyTorch, and all dependencies.
+
+| CUDA version | Wheel variant |
+|-------------|---------------|
+| 12.6 | `lpf-0.2.0+cu126` |
+| 12.8 | `lpf-0.2.0+cu128` |
+| 13.0 | `lpf-0.2.0+cu130` |
+| 13.2 | `lpf-0.2.0+cu132` |
+
+Check your CUDA version: `nvidia-smi`
+
+All wheels: [GitHub Releases](https://github.com/cxinsys/lpf/releases/tag/v0.2.0)
 
 ### Pre-built wheels
 
