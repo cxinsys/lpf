@@ -166,11 +166,35 @@ python -m lpf.kernels.aot.build --all-arch     # All common architectures (porta
 When you call `solver.solve(model)` with a CUDA device, LPF selects the fastest
 available path:
 
-1. If `libsolver.so` exists: C solve loop (zero Python overhead during iteration)
+1. If the native solver library exists (`libsolver.so` on Linux, `libsolver.dll` on Windows): C solve loop (zero Python overhead during iteration)
 2. If `kernels.fatbin` exists: AOT kernels with Python loop
 3. Otherwise: JIT compile via NVRTC with Python loop
 
 All three paths produce the same numerical results.
+
+### Why separate wheels for each CUDA version?
+
+LPF follows PyTorch's convention of publishing separate wheels for each CUDA minor version
+(cu126, cu128, cu130, cu132), but for a different reason.
+
+**PyTorch** must do this because:
+
+- CUDA minor versions can break ABI compatibility (e.g. 12.1 vs 12.4)
+- Bundled libraries (cuDNN, NCCL) are tied to specific CUDA minor versions
+- C extension modules are linked directly against the CUDA runtime
+- Each minor version requires a different minimum driver version
+
+**LPF** has none of these constraints:
+
+- No C extension modules (loads `.so` via ctypes)
+- No cuDNN/NCCL dependencies
+- `libsolver.so` and `kernels.fatbin` include PTX, which is forward-compatible across GPU architectures
+
+LPF uses per-minor-version wheels primarily to **pin the matching CuPy package automatically**.
+For example, `lpf-0.2.0+cu132` declares `cupy-cuda13x` as a dependency so that
+`pip install <wheel>` installs the correct CuPy without extra steps.
+If CuPy later splits into finer-grained packages, or if LPF adds tighter CUDA dependencies
+in the future, the per-version wheel structure is already in place.
 
 ---
 
