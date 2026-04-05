@@ -56,7 +56,7 @@ class GrayScottModel(TwoComponentModel):
         return n2v
    
     @classmethod
-    def parse_params(self, model_dicts, dtype=None):
+    def parse_params(cls, model_dicts, dtype=None):
         if not dtype:
             dtype = np.float32
             

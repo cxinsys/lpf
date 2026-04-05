@@ -59,7 +59,10 @@ class TestNotXPattern:
 
     def test_objective_coeff_zero_preserved(self):
         """coeff=0.0 should be stored as-is, not replaced by default."""
-        from lpf.objectives.mse import EachMeanSquareError
+        try:
+            from lpf.objectives.mse import EachMeanSquareError
+        except (ImportError, NameError):
+            pytest.skip("torch not available (required by objectives __init__)")
 
         obj = EachMeanSquareError(coeff=0.0)
         assert obj._coeff == 0.0, \
@@ -67,7 +70,10 @@ class TestNotXPattern:
 
     def test_objective_coeff_zero_used_in_compute(self):
         """When coeff=0.0 is passed to compute(), it should be respected."""
-        from lpf.objectives.mse import EachMeanSquareError
+        try:
+            from lpf.objectives.mse import EachMeanSquareError
+        except (ImportError, NameError):
+            pytest.skip("torch not available (required by objectives __init__)")
 
         obj = EachMeanSquareError(coeff=1.0)
         img1 = np.zeros((10, 10, 3), dtype=np.uint8)

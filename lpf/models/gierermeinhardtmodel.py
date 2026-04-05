@@ -65,7 +65,7 @@ class GiererMeinhardtModel(TwoComponentModel):
         return n2v
 
     @classmethod
-    def parse_params(self, model_dicts, dtype=None):
+    def parse_params(cls, model_dicts, dtype=None):
         if not dtype:
             dtype = np.float32
             
@@ -140,4 +140,4 @@ class GiererMeinhardtModel(TwoComponentModel):
     def len_decision_vector(self):  # The length of the decision vector in PyGMO
         return 8 + 2 * self._n_init_pts
 
-# end of class GrayScottModel
+# end of class GiererMeinhardtModel

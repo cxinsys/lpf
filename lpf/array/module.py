@@ -43,7 +43,7 @@ def parse_device(device):
                 raise ValueError("backend should be one of 'numpy', 'cupy', 'torch', or "\
                                  "'jax', not %s" % (_backend))
         else:
-            raise RuntimeError("Illegal device:", device)
+            raise RuntimeError(f"Illegal device: {device}")
 
         _device_id = int(_device_id)
 
@@ -65,15 +65,15 @@ def parse_device(device):
             _device = "gpu"
             _device_id = 0
         else:
-            raise ValueError("Illegal device:", device)
+            raise ValueError(f"Illegal device: {device}")
 
     if _device not in ["cpu", "gpu", "tpu", "cuda"]:
         raise ValueError("device should be one of 'cpu', " \
                          "'gpu', or 'cuda', not %s" % (_device))
 
-    if _backend == None and _device in ["gpu", "cuda"]:
+    if _backend is None and _device in ["gpu", "cuda"]:
         _backend = "cupy"  # The default backend for gpu is cupy.
-    elif _backend == None and _device == "cpu":
+    elif _backend is None and _device == "cpu":
         _backend = "numpy"
 
     return _backend, _device, _device_id

@@ -26,6 +26,7 @@ def liaw_model(liaw_params):
     model = LiawModel(
         initializer=initializer,
         params=liaw_params,
+        thr_color=0.5 * np.ones((1, 1, 1)),
         width=32,
         height=32,
         dx=0.1,

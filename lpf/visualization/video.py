@@ -1,6 +1,7 @@
 import os
 import os.path as osp
-import imghdr
+
+_IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.tif', '.webp'}
 
 
 def create_video(dpath_frames,
@@ -10,15 +11,15 @@ def create_video(dpath_frames,
                  verbose=0,
                  **kwargs):
     if not osp.isdir(dpath_frames):
-        raise NotADirectoryError("%s doest not exists."%(dpath_frames))
+        raise NotADirectoryError("%s does not exist."%(dpath_frames))
 
     import moviepy.editor as mpy
 
     fpaths = []
-    for entity in os.listdir(dpath_frames):
+    for entity in sorted(os.listdir(dpath_frames)):
         fpath = osp.join(dpath_frames, entity)
-        ext = imghdr.what(fpath)
-        if ext is None:
+        ext = osp.splitext(entity)[1].lower()
+        if ext not in _IMAGE_EXTENSIONS:
             continue
 
         if verbose > 0:

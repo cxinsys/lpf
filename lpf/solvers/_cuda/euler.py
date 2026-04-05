@@ -1,7 +1,7 @@
 """CUDA Euler solver — fused ping-pong kernel, one launch per step."""
 
 import numpy as np
-from lpf.solvers.cusolverbase import CuSolverBase
+from lpf.solvers._cuda.base import CuSolverBase
 
 
 class CuEulerSolver(CuSolverBase):

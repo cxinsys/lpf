@@ -8,7 +8,7 @@ DT: 0.01
 WIDTH: 128
 HEIGHT: 128
 THR_COLOR: 0.5
-NUM_INIT_PTS: 25
+N_INIT_PTS: 25
 N_ITERS: 500
 RTOL_EARLY_STOP: 1e-5
 
@@ -16,6 +16,8 @@ POP_SIZE: 32
 EVAL_INIT_FITNESS: True
 INIT_POP: "../population/init_pop_all" 
 INITIALIZER: "liaw"
+MODEL: "Liaw"
+SOLVER: "Euler"
 OBJECTIVES:
   - ["MeanMeanSquareError", 1e-1, "cpu"]
   - ["MeanColorProportion", 1e0, "cpu"]

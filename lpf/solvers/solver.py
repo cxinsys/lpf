@@ -64,6 +64,17 @@ class Solver:
                 raise ValueError("model should be defined.")
             model = self._model
 
+        # ---- CUDA auto-dispatch ----
+        cuda_solver = self._get_cuda_solver() if self._is_cuda(model) else None
+        if cuda_solver is not None:
+            return self._forward_to_cuda(
+                model, dt, n_iters, rtol, period_output,
+                dict(dpath_model=dpath_model, dpath_morph=dpath_morph,
+                     dpath_pattern=dpath_pattern, dpath_states=dpath_states,
+                     init_model=init_model, iter_begin=iter_begin,
+                     iter_end=iter_end, get_trj=get_trj,
+                     trj_waypoints=trj_waypoints, verbose=verbose))
+
         if dt is None:
             if self._dt is None:
                 self._dt = dt = 0.01
@@ -267,3 +278,40 @@ class Solver:
             n2v["rtol"] = self._rtol
 
         return n2v
+
+    # --- CUDA auto-dispatch (shared by all subclasses) ---
+
+    @staticmethod
+    def _is_cuda(model):
+        """True if model is on a CUDA device (CuPy or PyTorch CUDA)."""
+        from lpf.array.module import CupyModule, TorchModule
+        if model is None:
+            return False
+        if isinstance(model.am, CupyModule):
+            return True
+        if isinstance(model.am, TorchModule):
+            return hasattr(model.am, "_device") and "cuda" in str(model.am._device)
+        return False
+
+    def _make_cuda_solver(self):
+        """Override in subclass to return a Cu* solver instance."""
+        return None
+
+    def _get_cuda_solver(self):
+        """Lazy-create the CUDA solver implementation."""
+        if not hasattr(self, '_cuda_impl'):
+            self._cuda_impl = None
+        if self._cuda_impl is None:
+            self._cuda_impl = self._make_cuda_solver()
+        return self._cuda_impl
+
+    def _forward_to_cuda(self, model, dt, n_iters, rtol, period_output, kwargs):
+        """Forward stored params to the Cu* solver's solve()."""
+        return self._get_cuda_solver().solve(
+            model=model,
+            dt=dt if dt is not None else self._dt,
+            n_iters=n_iters if n_iters is not None else self._n_iters,
+            rtol=rtol if rtol is not None else self._rtol,
+            period_output=(period_output if period_output is not None
+                           else self._period_output),
+            **kwargs)

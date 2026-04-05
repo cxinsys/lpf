@@ -78,7 +78,7 @@ class CuKernelManager:
         self._aot = None
         self._use_aot = False
         try:
-            from lpf.csrc.loader import AOTKernelLoader
+            from lpf.kernels.aot.loader import AOTKernelLoader
             loader = AOTKernelLoader()
             if loader.is_available():
                 # Validate that the required kernels exist
@@ -244,7 +244,7 @@ class CuKernelManager:
             lines.append("#define REAL_CONST(x) x")
         else:
             raise ValueError(f"JIT compilation not supported for {self._dtype}. "
-                             "Use AOT build: python -m lpf.csrc.build")
+                             "Use AOT build: python -m lpf.kernels.aot.build")
         lines.append(f"#define N_PARAMS {self._reaction_info['n_params']}")
         return "\n".join(lines) + "\n"
 

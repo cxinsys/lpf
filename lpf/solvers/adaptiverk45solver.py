@@ -43,17 +43,6 @@ class AdaptiveRKF45Solver(Solver):
         self._fast_math = fast_math
         self._km = None
 
-    @staticmethod
-    def _is_cuda(model):
-        from lpf.array.module import CupyModule, TorchModule
-        if model is None:
-            return False
-        if isinstance(model.am, CupyModule):
-            return True
-        if isinstance(model.am, TorchModule):
-            return hasattr(model.am, "_device") and "cuda" in str(model.am._device)
-        return False
-
     def solve(self, model=None, **kwargs):
         self.reset_adaptation()
         if model is None:
@@ -106,7 +95,7 @@ class AdaptiveRKF45Solver(Solver):
                 error = model.am.abs(y5 - y4)
                 max_error = float(model.am.get(error).max())
 
-                # Optimal step size (p=4 → exponent 1/5)
+                # Optimal step size (p=4 -> exponent 1/5)
                 if max_error > 0:
                     dt_opt = h * self.safety_factor * (self.tolerance / max_error) ** 0.2
                     dt_opt = max(h * self.min_factor, min(h * self.max_factor, dt_opt))

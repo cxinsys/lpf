@@ -47,17 +47,6 @@ class DOPRI5Solver(Solver):
         self._fast_math = fast_math
         self._km = None
 
-    @staticmethod
-    def _is_cuda(model):
-        from lpf.array.module import CupyModule, TorchModule
-        if model is None:
-            return False
-        if isinstance(model.am, CupyModule):
-            return True
-        if isinstance(model.am, TorchModule):
-            return hasattr(model.am, "_device") and "cuda" in str(model.am._device)
-        return False
-
     def solve(self, model=None, **kwargs):
         self.reset_fsal()
         if model is None:

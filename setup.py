@@ -8,9 +8,9 @@ setup(
     author_email='daewon4you@gmail.com',
     packages=find_packages(),
     package_data={
-        # Include CUDA source files and pre-built binaries for AOT kernels
-        'lpf.csrc': ['*.cu', '*.fatbin', '*.so'],
-        'lpf.csrc.include': ['*.cuh'],
+        'lpf.kernels.aot': ['*.fatbin', '*.so'],
+        'lpf.kernels.csrc': ['*.cu'],
+        'lpf.kernels.csrc.include': ['*.cuh'],
     },
     install_requires=[
         'numpy',

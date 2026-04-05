@@ -39,7 +39,7 @@ class Diploidy(ABC):
         check_model(maternal_model, "maternal_model")
 
         # Check the compatibility between paternal and maternal models.
-        if id(paternal_model) == id(maternal_model):
+        if paternal_model is maternal_model:
             raise ValueError("paternal_model and maternal_model " \
                              "must be different objects.")
 
@@ -48,7 +48,7 @@ class Diploidy(ABC):
 
         if pa_dtype != ma_dtype:
             raise TypeError("The dtype of paternal_model.params " \
-                            "and maternal_model.parms must be the same.")
+                            "and maternal_model.params must be the same.")
 
         self._dtype = pa_dtype
 

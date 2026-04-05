@@ -7,9 +7,9 @@ Generates a fat binary containing cubins for detected (or specified)
 GPU architectures plus PTX for forward compatibility.
 
 Usage:
-    python -m lpf.csrc.build              # auto-detect GPU arch
-    python -m lpf.csrc.build --arch sm_90 # explicit arch
-    python -m lpf.csrc.build --all-arch   # common archs (80,86,89,90)
+    python -m lpf.kernels.aot.build              # auto-detect GPU arch
+    python -m lpf.kernels.aot.build --arch sm_90 # explicit arch
+    python -m lpf.kernels.aot.build --all-arch   # common archs (80,86,89,90)
 """
 
 import argparse
@@ -20,10 +20,11 @@ import sys
 
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-_INCLUDE_DIR = os.path.join(_THIS_DIR, "include")
-_SRC_FILE = os.path.join(_THIS_DIR, "kernels.cu")
+_CSRC_DIR = os.path.join(_THIS_DIR, "..", "csrc")
+_INCLUDE_DIR = os.path.join(_CSRC_DIR, "include")
+_SRC_FILE = os.path.join(_CSRC_DIR, "kernels.cu")
 _OUT_FILE = os.path.join(_THIS_DIR, "kernels.fatbin")
-_LOOP_SRC = os.path.join(_THIS_DIR, "solver_loop.cu")
+_LOOP_SRC = os.path.join(_CSRC_DIR, "solver_loop.cu")
 _LOOP_OUT = os.path.join(_THIS_DIR, "libsolver.so")
 
 # Common architectures: Ampere (80), Ada Lovelace (86, 89), Blackwell (90)

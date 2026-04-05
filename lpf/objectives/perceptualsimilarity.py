@@ -7,8 +7,8 @@ try:
     import torchvision.transforms as transforms
     import lpips
 except (ImportError, ModuleNotFoundError) as err:
-    err_msg = "Cannot use FrechetInceptionDistance objectives, " \
-              "since it fails to import torch, torchvision, or torchmetrics."
+    err_msg = "Cannot use LearnedPerceptualImagePatchSimilarity objectives, " \
+              "since it fails to import torch, torchvision, or lpips."
     print(err)
     print(err_msg)
 

@@ -365,7 +365,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         n2v["width"] = self._width
         n2v["height"] =self._height
         n2v["dx"] = self._dx
-        n2v["thr_color"] = float(self._thr_color[index, ...])
+        n2v["thr_color"] = float(np.asarray(self._thr_color[index]).flat[0])
         n2v["color_u"] = self._color_u.tolist()
         n2v["color_v"] = self._color_v.tolist()
        
@@ -436,7 +436,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         return model_dict
 
     @classmethod
-    def parse_params(self, model_dicts, dtype=None):
+    def parse_params(cls, model_dicts, dtype=None):
         """Parse the parameters from the model dictionaries.
            A model knows how to parse its parameters.
         """

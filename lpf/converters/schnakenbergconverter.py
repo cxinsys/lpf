@@ -1,7 +1,7 @@
 import numpy as np
 from lpf.converters import Converter
 
-class SchnakenbergModel(Converter):
+class SchnakenbergConverter(Converter):
 
     def __init__(self):
         self._name = "SchnakenbergConverter"

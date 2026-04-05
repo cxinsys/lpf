@@ -31,7 +31,7 @@ def _get_native():
     global _native_solver
     if _native_solver is None:
         try:
-            from lpf.csrc.native import NativeSolver
+            from lpf.kernels.aot.native import NativeSolver
             _native_solver = NativeSolver()
         except Exception:
             from types import SimpleNamespace

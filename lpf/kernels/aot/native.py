@@ -2,7 +2,7 @@
 ctypes wrapper for the native libsolver.so shared library.
 
 Usage:
-    from lpf.csrc.native import NativeSolver
+    from lpf.kernels.aot.native import NativeSolver
     ns = NativeSolver()
     if ns.is_available():
         result_buf = ns.solve(solver_type, model, y_a, y_b, params, ...)

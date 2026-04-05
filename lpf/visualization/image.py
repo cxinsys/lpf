@@ -91,7 +91,7 @@ def merge_multiple(imgs=None,
 
     if dpath_input:
         if not osp.isdir(dpath_input):
-            raise NotADirectoryError("%s doest not exists." % (dpath_input))
+            raise NotADirectoryError("%s does not exist." % (dpath_input))
 
         dpaths = []
         for entity in os.listdir(dpath_input):
@@ -132,7 +132,11 @@ def merge_multiple(imgs=None,
             raise ValueError("font_size should be integer type, not %s" % (type(font_size)))
 
         if not font:
-            font = ImageFont.truetype("arial.ttf", font_size, encoding="UTF-8")
+            try:
+                font = ImageFont.truetype("arial.ttf", font_size, encoding="UTF-8")
+            except OSError:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                                          font_size, encoding="UTF-8")
 
         if not text_margin_ratio:
             text_margin_ratio = 0.2
@@ -241,7 +245,7 @@ def merge_single_timeseries(imgs=None,
 
     if dpath_input:
         if not osp.isdir(dpath_input):
-            raise NotADirectoryError("%s doest not exists."%(dpath_input))
+            raise NotADirectoryError("%s does not exist."%(dpath_input))
 
         fpaths = []
         for entity in os.listdir(dpath_input):
@@ -268,7 +272,11 @@ def merge_single_timeseries(imgs=None,
             raise ValueError("font_size should be integer type, not %s"%(type(font_size)))
 
         if not font:
-            font = ImageFont.truetype("arial.ttf", font_size, encoding="UTF-8")
+            try:
+                font = ImageFont.truetype("arial.ttf", font_size, encoding="UTF-8")
+            except OSError:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                                          font_size, encoding="UTF-8")
 
         if not text_margin_ratio:
             text_margin_ratio = 0.2
@@ -376,7 +384,7 @@ def merge_multiple_timeseries(dpath_input,
     """
 
     if not osp.isdir(dpath_input):
-        raise NotADirectoryError("%s doest not exists."%(dpath_input))
+        raise NotADirectoryError("%s does not exist."%(dpath_input))
 
     if dpath_output:
         os.makedirs(dpath_output, exist_ok=True)
@@ -428,7 +436,11 @@ def merge_multiple_timeseries(dpath_input,
             raise ValueError("font_size should be integer type, not %s"%(type(font_size)))
 
         if not font:
-            font = ImageFont.truetype("arial.ttf", font_size, encoding="UTF-8")
+            try:
+                font = ImageFont.truetype("arial.ttf", font_size, encoding="UTF-8")
+            except OSError:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                                          font_size, encoding="UTF-8")
 
         if not text_margin_ratio:
             text_margin_ratio = 0.2
