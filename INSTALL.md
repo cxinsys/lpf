@@ -5,18 +5,22 @@
 CUDA 13.x:
 
 ```bash
-pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl \
-    --extra-index-url https://download.pytorch.org/whl/cu132
+pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl
 ```
 
 CUDA 12.x:
 
 ```bash
-pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu128-py3-none-linux_x86_64.whl \
-    --extra-index-url https://download.pytorch.org/whl/cu128
+pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu128-py3-none-linux_x86_64.whl
 ```
 
-This installs `lpf`, CuPy, PyTorch, and all other dependencies automatically.
+This installs `lpf`, CuPy, and all other dependencies automatically.
+
+PyTorch is optional — only needed for `device="torch:gpu:0"`:
+
+```bash
+pip install "lpf[torch]" --extra-index-url https://download.pytorch.org/whl/cu132
+```
 
 Check your CUDA version: `nvidia-smi`
 
