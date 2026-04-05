@@ -19,7 +19,11 @@ This installs `lpf`, CuPy, and all other dependencies automatically.
 PyTorch is optional — only needed for `device="torch:gpu:0"`:
 
 ```bash
-pip install "lpf[torch]" --extra-index-url https://download.pytorch.org/whl/cu132
+# CUDA 13.x:
+pip install torch --extra-index-url https://download.pytorch.org/whl/cu132
+
+# CUDA 12.x:
+pip install torch --extra-index-url https://download.pytorch.org/whl/cu128
 ```
 
 Check your CUDA version: `nvidia-smi`

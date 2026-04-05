@@ -127,7 +127,6 @@ setup(
         'xxhash',
     ] + _cuda_deps(),
     extras_require={
-        'torch': ['torch>=2.11'],
         'viz': ['lpips', 'opencv-python', 'torchmetrics'],
         'test': ['pytest'],
     },
