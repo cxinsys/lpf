@@ -1,29 +1,41 @@
 # Installation Guide
 
-## Quick Install (Recommended)
-
-Auto-detects your CUDA version and installs everything:
+## Quick Install
 
 ```bash
-git clone https://github.com/cxinsys/lpf.git
+pip install cupy-cuda13x && pip install torch --extra-index-url https://download.pytorch.org/whl/cu130 && pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu130-py3-none-linux_x86_64.whl
+```
 
-cd lpf
+This installs `lpf` + CuPy + PyTorch for **CUDA 13.0** in one command.
+For other CUDA versions, see the table below or use the installer script.
+
+### Other CUDA versions
+
+| CUDA | One-line install |
+|------|-----------------|
+| 12.6 | `pip install cupy-cuda12x && pip install torch --extra-index-url https://download.pytorch.org/whl/cu126 && pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu126-py3-none-linux_x86_64.whl` |
+| 12.8 | `pip install cupy-cuda12x && pip install torch --extra-index-url https://download.pytorch.org/whl/cu128 && pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu128-py3-none-linux_x86_64.whl` |
+| 13.0 | (shown above) |
+| 13.2 | `pip install cupy-cuda13x && pip install torch --extra-index-url https://download.pytorch.org/whl/cu132 && pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl` |
+
+Check your CUDA version: `nvidia-smi`
+
+### Installer script (auto-detect)
+
+```bash
+git clone https://github.com/cxinsys/lpf.git && cd lpf
 
 python install.py
 ```
 
-This single command installs the matching `lpf` wheel, CuPy, and PyTorch
-for your GPU using [uv](https://docs.astral.sh/uv/) (auto-installed if missing).
+Auto-detects CUDA and installs everything via [uv](https://docs.astral.sh/uv/):
 
 ```bash
-# Or specify a CUDA version manually:
-python install.py --cuda 130
+python install.py --cuda 130   # force specific CUDA version
 
-# CPU-only:
-python install.py --cpu
+python install.py --cpu         # CPU-only
 
-# Use pip instead of uv:
-python install.py --pip
+python install.py --pip         # use pip instead of uv
 ```
 
 ### Pre-built wheels
