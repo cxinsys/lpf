@@ -30,7 +30,7 @@ LPF uses CuPy as the default GPU backend, so PyTorch is not required for basic G
 
 However, if you want to integrate LPF into a PyTorch-based workflow (for example,
 using LPF simulation results as inputs to a neural network, or running LPF alongside
-other PyTorch models on the same GPU), you can set `device="torch:gpu:0"` to keep all
+other PyTorch models on the same GPU), you can set `device="torch:gpu:<gpu_id>"` (e.g. `"torch:gpu:0"`) to keep all
 data as PyTorch tensors. This avoids unnecessary copies between frameworks.
 
 In this mode, LPF internally bridges PyTorch tensors to CuPy via DLPack (zero-copy)
