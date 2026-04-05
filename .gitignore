@@ -133,3 +133,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Binary build artifacts
+*.fatbin
+*.so
+
+# Video outputs
+*.mp4
