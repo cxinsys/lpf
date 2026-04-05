@@ -1,63 +1,104 @@
 # Installation Guide
 
-## 1. Basic Installation
+## Quick Install (Recommended)
+
+Auto-detects your CUDA version and installs everything:
 
 ```bash
-# Clone the repository
 git clone https://github.com/cxinsys/lpf.git
+
 cd lpf
+
+python install.py
 ```
 
-### Option A: conda
+This single command installs the matching `lpf` wheel, CuPy, and PyTorch
+for your GPU using [uv](https://docs.astral.sh/uv/) (auto-installed if missing).
 
 ```bash
-conda create -n lpf python=3.13 -y
+# Or specify a CUDA version manually:
+python install.py --cuda 130
+
+# CPU-only:
+python install.py --cpu
+
+# Use pip instead of uv:
+python install.py --pip
+```
+
+### Pre-built wheels
+
+| CUDA | Wheel | CuPy | PyTorch |
+|------|-------|------|---------|
+| 12.6 | `lpf-0.2.0+cu126` | `cupy-cuda12x` | `torch+cu126` |
+| 12.8 | `lpf-0.2.0+cu128` | `cupy-cuda12x` | `torch+cu128` |
+| 13.0 | `lpf-0.2.0+cu130` | `cupy-cuda13x` | `torch+cu130` |
+| 13.2 | `lpf-0.2.0+cu132` | `cupy-cuda13x` | `torch+cu132` |
+
+All wheels are available at [GitHub Releases](https://github.com/cxinsys/lpf/releases/tag/v0.2.0).
+
+---
+
+## Manual Installation
+
+### 1. Create an environment
+
+#### conda
+
+```bash
+conda create -n lpf python=3.11 -y
 
 conda activate lpf
-
-pip install -e .
 ```
 
-### Option B: venv
+#### venv
 
 ```bash
 python -m venv .venv
 
 source .venv/bin/activate   # Linux / macOS
 # .venv\Scripts\activate    # Windows
-
-pip install -e .
 ```
 
-Core dependencies installed automatically:
+### 2. Install lpf
 
-- `numpy`
-- `scipy`
-- `pillow`
-- `tqdm`
-- `pyyaml`
-- `xxhash`
+```bash
+# From source (development):
+pip install -e .
+
+# From wheel (production):
+pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu130-py3-none-linux_x86_64.whl
+```
+
+### 3. Install GPU packages
+
+```bash
+# CuPy (required for GPU):
+pip install cupy-cuda13x    # CUDA 13.x
+pip install cupy-cuda12x    # CUDA 12.x
+
+# PyTorch (optional, for device="torch:gpu:0"):
+pip install torch --extra-index-url https://download.pytorch.org/whl/cu130
+```
+
+Check your CUDA version with `nvidia-smi`.
+
+> **Note:** CuPy is required for CUDA kernel acceleration regardless of whether
+> you use `device="cuda:0"` or `device="torch:gpu:0"`. When using PyTorch,
+> `lpf` internally bridges PyTorch tensors to CuPy via DLPack (zero-copy)
+> for kernel execution.
 
 ### Optional dependencies
 
 ```bash
-pip install -e ".[viz]"    # Visualization & objectives
+pip install -e ".[viz]"    # lpips, opencv-python, torchmetrics
 
-pip install -e ".[test]"   # Testing
+pip install -e ".[test]"   # pytest
 ```
-
-`[viz]` installs:
-
-- `lpips`
-- `opencv-python`
-- `torchmetrics`
 
 ---
 
-## 2. GPU Acceleration
-
-`lpf` automatically uses CUDA kernels when a GPU-capable backend is detected.
-No code changes needed — just set `device` when creating a model:
+## GPU Usage
 
 ```python
 model = LiawModel(..., device="cuda:0")      # CuPy backend
@@ -68,31 +109,9 @@ solver = EulerSolver(dt=0.01, n_iters=500000)
 solver.solve(model)  # CUDA kernels activate automatically
 ```
 
-### Required packages for GPU
-
-| Package | Install command | Purpose |
-|---------|----------------|---------|
-| **CuPy** | `pip install cupy-cuda13x` | GPU array operations + JIT kernel compilation |
-| **PyTorch** | `pip install torch torchvision` | Alternative GPU backend |
-
-Choose the CuPy package matching your CUDA driver version:
-
-| CUDA driver version | CuPy package |
-|---------------------|--------------|
-| CUDA 13.x | `pip install cupy-cuda13x` |
-| CUDA 12.x | `pip install cupy-cuda12x` |
-| CUDA 11.x | `pip install cupy-cuda11x` |
-
-Check your CUDA version with `nvidia-smi`.
-
-> **Note:** CuPy is required for CUDA kernel acceleration regardless of whether
-> you use `device="cuda:0"` or `device="torch:gpu:0"`. When using PyTorch,
-> `lpf` internally bridges PyTorch tensors to CuPy via DLPack (zero-copy)
-> for kernel execution.
-
 ---
 
-## 3. CUDA Kernel Compilation Modes
+## CUDA Kernel Compilation Modes
 
 `lpf` provides two ways to compile CUDA kernels: **JIT** and **AOT**.
 Both produce identical results. The system selects the best available option automatically.
@@ -101,84 +120,34 @@ Both produce identical results. The system selects the best available option aut
 
 Kernels are compiled at runtime on first use via CuPy's NVRTC compiler.
 
-- **Requirements:** `cupy-cuda1Xx` only (includes NVRTC)
-- **No `nvcc` needed**
-- **First-run overhead:** ~2-3 seconds (cached afterwards by CuPy)
+- **No `nvcc` needed** — CuPy includes NVRTC
+- **First-run overhead:** ~2-3 seconds (cached afterwards)
 - **Supported dtypes:** float32, float64
 
-```bash
-# This is all you need:
-pip install cupy-cuda13x
-```
+### AOT (Ahead-Of-Time) — Pre-built wheels or manual build
 
-### AOT (Ahead-Of-Time) — Optional, faster startup
-
-Kernels are pre-compiled into a binary (`.fatbin` + `.so`) using `nvcc`.
-Eliminates first-run compilation overhead and enables float16 support.
-
-- **Requirements:** `nvcc` (CUDA Toolkit compiler)
-- **Supported dtypes:** float16, float32, float64
+Pre-built wheels from GitHub Releases already include AOT binaries.
+To build manually:
 
 ```bash
-# Install nvcc (choose one):
+# Install nvcc:
 conda install -c nvidia cuda-nvcc                          # conda
 
-pip install nvidia-cuda-nvcc-cu13                           # pip (venv)
+pip install nvidia-cuda-nvcc-cu13                           # pip
 
 # or install CUDA Toolkit from https://developer.nvidia.com/cuda-downloads
 ```
 
 ```bash
-# Build the AOT kernels:
-python -m lpf.kernels.aot.build
-
-# Verify:
-ls lpf/kernels/aot/kernels.fatbin lpf/kernels/aot/libsolver.so
-```
-
-Build options:
-
-```bash
+# Build AOT kernels:
 python -m lpf.kernels.aot.build                # Auto-detect GPU architecture
 
 python -m lpf.kernels.aot.build --arch sm_90   # Specific architecture
 
 python -m lpf.kernels.aot.build --all-arch     # All common architectures (portable)
-
-python -m lpf.kernels.aot.build -v             # Verbose (show nvcc commands)
-```
-
-### Building a wheel
-
-A unified build script handles AOT compilation and wheel packaging:
-
-```bash
-python build_wheel.py                 # AOT compile + wheel (auto-detect GPU)
-
-python build_wheel.py --all-arch      # All common architectures (sm_80~90)
-
-python build_wheel.py --arch sm_90    # Specific architecture
-
-python build_wheel.py --skip-aot      # Skip AOT, use existing binaries
-
-python build_wheel.py --cpu           # CPU-only wheel
-```
-
-The resulting wheel includes AOT binaries and is platform-specific:
-
-```
-dist/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl
-```
-
-Install from wheel:
-
-```bash
-pip install dist/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl
 ```
 
 ### How auto-selection works
-
-When you call `solver.solve(model)` with a CUDA device:
 
 ```
 1. Native .so exists?  →  C solve loop (zero Python during iteration)
@@ -192,10 +161,25 @@ All three paths produce the same numerical results.
 
 ---
 
-## 4. Verifying the Installation
+## Building Wheels
 
 ```bash
-# Run all tests
+python build_wheel.py                 # AOT compile + wheel (auto-detect GPU)
+
+python build_wheel.py --all-arch      # All common architectures (sm_80~90)
+
+python build_wheel.py --arch sm_90    # Specific architecture
+
+python build_wheel.py --skip-aot      # Skip AOT, use existing binaries
+
+python build_wheel.py --cpu           # CPU-only wheel
+```
+
+---
+
+## Verifying the Installation
+
+```bash
 python -m pytest tests/ -v
 ```
 
@@ -223,11 +207,12 @@ print('GPU acceleration working!')
 
 ---
 
-## 5. Summary
+## Summary
 
-| Setup level | What you install | What you get |
-|-------------|-----------------|--------------|
-| **CPU only** | `pip install -e .` | NumPy solver (~100 it/s) |
-| **GPU (JIT)** | + `pip install cupy-cuda13x` | CUDA kernels, auto-compiled (~150K it/s) |
-| **GPU (AOT)** | + `conda install cuda-nvcc` + `python -m lpf.kernels.aot.build` | Pre-compiled kernels + native C loop |
-| **PyTorch GPU** | + `pip install torch` | Same CUDA kernels via DLPack bridge |
+| Setup level | Command | What you get |
+|-------------|---------|--------------|
+| **Quick (GPU)** | `python install.py` | lpf + CuPy + PyTorch, CUDA auto-detected |
+| **CPU only** | `python install.py --cpu` | NumPy solver (~100 it/s) |
+| **GPU (JIT)** | manual CuPy install | CUDA kernels, auto-compiled (~150K it/s) |
+| **GPU (AOT)** | pre-built wheel or `python -m lpf.kernels.aot.build` | Pre-compiled kernels + native C loop |
+| **PyTorch GPU** | manual torch install | Same CUDA kernels via DLPack bridge |
