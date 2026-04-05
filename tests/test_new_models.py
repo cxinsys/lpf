@@ -1,19 +1,12 @@
 """Tests for 5 new reaction-diffusion models:
 Brusselator, FitzHugh-Nagumo, Lengyel-Epstein, Thomas, Barkley.
 
-Covers:
-  - Python (CPU) solve: finite results
-  - CUDA (cuda:0) solve: finite results + matches CPU
-  - Torch CUDA solve: finite results
-  - All solvers: Euler, Heun, RK4 on each model
-  - Model I/O: to_dict, parse_params round-trip
-  - ModelFactory registration
+All tests in this file run on CPU (no GPU required).
+GPU-specific tests are in test_cuda_solvers.py.
 """
 
 import numpy as np
 import pytest
-
-cupy = pytest.importorskip("cupy")
 
 
 # ---- Model specs: (class_name, n_params, sample_params) ----
@@ -36,7 +29,7 @@ def _get_model_class(name):
     return getattr(M, name)
 
 
-def _make_model(model_name, n_params, sample_params, device="cpu",
+def _make_model(model_name, n_params, sample_params,
                 batch_size=2, dtype=np.float32):
     from lpf.initializers import LiawInitializer
 
@@ -51,17 +44,8 @@ def _make_model(model_name, n_params, sample_params, device="cpu",
         n_init_pts=3, params=params,
         thr_color=0.5 * np.ones((batch_size, 1, 1)),
         width=32, height=32, dx=0.1,
-        device=device, dtype=dtype,
+        device="cpu", dtype=dtype,
     )
-
-
-def _get_numpy(model):
-    arr = model.y_mesh
-    if hasattr(arr, 'get'):
-        return arr.get()
-    if hasattr(arr, 'cpu'):
-        return arr.detach().cpu().numpy()
-    return np.asarray(arr)
 
 
 # ---- CPU Python solve ----
@@ -70,85 +54,26 @@ class TestCPUSolve:
     @pytest.mark.parametrize("model_name,n_params,sample_params", MODEL_SPECS)
     def test_cpu_euler_finite(self, model_name, n_params, sample_params):
         from lpf.solvers import EulerSolver
-        model = _make_model(model_name, n_params, sample_params, "cpu")
+        model = _make_model(model_name, n_params, sample_params)
         EulerSolver(dt=0.01, n_iters=50).solve(model, verbose=0)
-        y = _get_numpy(model)
-        assert np.all(np.isfinite(y)), f"{model_name} CPU produced non-finite"
+        y = np.asarray(model.y_mesh)
+        assert np.all(np.isfinite(y)), f"{model_name} CPU Euler non-finite"
 
     @pytest.mark.parametrize("model_name,n_params,sample_params", MODEL_SPECS)
     def test_cpu_rk4_finite(self, model_name, n_params, sample_params):
         from lpf.solvers import RungeKuttaSolver
-        model = _make_model(model_name, n_params, sample_params, "cpu")
+        model = _make_model(model_name, n_params, sample_params)
         RungeKuttaSolver(dt=0.01, n_iters=50).solve(model, verbose=0)
-        y = _get_numpy(model)
-        assert np.all(np.isfinite(y)), f"{model_name} CPU RK4 produced non-finite"
-
-
-# ---- CUDA solve ----
-
-class TestCUDASolve:
-    @pytest.mark.parametrize("model_name,n_params,sample_params", MODEL_SPECS)
-    def test_cuda_euler_finite(self, model_name, n_params, sample_params):
-        from lpf.solvers import EulerSolver
-        model = _make_model(model_name, n_params, sample_params, "cuda:0")
-        EulerSolver(dt=0.01, n_iters=50).solve(model, verbose=0)
-        y = _get_numpy(model)
-        assert np.all(np.isfinite(y)), f"{model_name} CUDA Euler non-finite"
+        y = np.asarray(model.y_mesh)
+        assert np.all(np.isfinite(y)), f"{model_name} CPU RK4 non-finite"
 
     @pytest.mark.parametrize("model_name,n_params,sample_params", MODEL_SPECS)
-    def test_cuda_heun_finite(self, model_name, n_params, sample_params):
+    def test_cpu_heun_finite(self, model_name, n_params, sample_params):
         from lpf.solvers import HeunSolver
-        model = _make_model(model_name, n_params, sample_params, "cuda:0")
+        model = _make_model(model_name, n_params, sample_params)
         HeunSolver(dt=0.01, n_iters=50).solve(model, verbose=0)
-        y = _get_numpy(model)
-        assert np.all(np.isfinite(y)), f"{model_name} CUDA Heun non-finite"
-
-    @pytest.mark.parametrize("model_name,n_params,sample_params", MODEL_SPECS)
-    def test_cuda_rk4_finite(self, model_name, n_params, sample_params):
-        from lpf.solvers import RungeKuttaSolver
-        model = _make_model(model_name, n_params, sample_params, "cuda:0")
-        RungeKuttaSolver(dt=0.01, n_iters=50).solve(model, verbose=0)
-        y = _get_numpy(model)
-        assert np.all(np.isfinite(y)), f"{model_name} CUDA RK4 non-finite"
-
-
-# ---- CUDA vs CPU correctness ----
-
-class TestCUDAvsCSPU:
-    @pytest.mark.parametrize("model_name,n_params,sample_params", MODEL_SPECS)
-    def test_cuda_matches_cpu(self, model_name, n_params, sample_params):
-        from lpf.solvers import EulerSolver
-        n_iters, dt = 50, 0.01
-
-        m_cpu = _make_model(model_name, n_params, sample_params, "cpu")
-        EulerSolver(dt=dt, n_iters=n_iters).solve(m_cpu, verbose=0)
-        y_cpu = _get_numpy(m_cpu)
-
-        m_cuda = _make_model(model_name, n_params, sample_params, "cuda:0")
-        EulerSolver(dt=dt, n_iters=n_iters).solve(m_cuda, verbose=0)
-        y_cuda = _get_numpy(m_cuda)
-
-        valid = np.isfinite(y_cpu) & np.isfinite(y_cuda)
-        if valid.any():
-            assert np.max(np.abs(y_cpu[valid] - y_cuda[valid])) < 1e-2, \
-                f"{model_name}: CUDA vs CPU diff too large"
-
-
-# ---- Torch CUDA ----
-
-class TestTorchCUDA:
-    @pytest.mark.parametrize("model_name,n_params,sample_params", MODEL_SPECS)
-    def test_torch_cuda_finite(self, model_name, n_params, sample_params):
-        torch = pytest.importorskip("torch")
-        if not torch.cuda.is_available():
-            pytest.skip("CUDA not available for torch")
-
-        from lpf.solvers import EulerSolver
-        model = _make_model(model_name, n_params, sample_params, "torch:gpu:0")
-        EulerSolver(dt=0.01, n_iters=50).solve(model, verbose=0)
-        y = _get_numpy(model)
-        assert np.all(np.isfinite(y)), f"{model_name} torch:gpu non-finite"
-        assert isinstance(model.y_mesh, torch.Tensor)
+        y = np.asarray(model.y_mesh)
+        assert np.all(np.isfinite(y)), f"{model_name} CPU Heun non-finite"
 
 
 # ---- Model I/O: to_dict / parse_params ----
@@ -156,7 +81,7 @@ class TestTorchCUDA:
 class TestModelIO:
     @pytest.mark.parametrize("model_name,n_params,sample_params", MODEL_SPECS)
     def test_to_dict_has_params(self, model_name, n_params, sample_params):
-        model = _make_model(model_name, n_params, sample_params, "cpu")
+        model = _make_model(model_name, n_params, sample_params)
         d = model.to_dict(index=0)
         assert "Du" in d
         assert "Dv" in d
@@ -164,7 +89,7 @@ class TestModelIO:
 
     @pytest.mark.parametrize("model_name,n_params,sample_params", MODEL_SPECS)
     def test_parse_params_roundtrip(self, model_name, n_params, sample_params):
-        model = _make_model(model_name, n_params, sample_params, "cpu")
+        model = _make_model(model_name, n_params, sample_params)
         d = model.to_dict(index=0)
         cls = _get_model_class(model_name)
         parsed = cls.parse_params([d])
@@ -186,7 +111,6 @@ class TestModelFactory:
         init_pts = np.array([[[8, 8]]], dtype=np.uint32)
         init_states = np.array([[0.5, 0.5]], dtype=np.float32)
 
-        # Get n_params from the spec
         spec = {s[0].lower().replace("model", ""): s for s in MODEL_SPECS}
         _, n_p, sp = spec[name]
         params = np.array([sp], dtype=np.float32)
@@ -202,15 +126,50 @@ class TestModelFactory:
         model.initialize()
 
 
-# ---- Float64 ----
+# ---- Float64 (CPU) ----
 
-class TestFloat64NewModels:
+class TestFloat64CPU:
     @pytest.mark.parametrize("model_name,n_params,sample_params", MODEL_SPECS)
-    def test_float64_cuda(self, model_name, n_params, sample_params):
+    def test_float64_cpu(self, model_name, n_params, sample_params):
         from lpf.solvers import EulerSolver
-        model = _make_model(model_name, n_params, sample_params,
-                            "cuda:0", dtype=np.float64)
+        model = _make_model(model_name, n_params, sample_params, dtype=np.float64)
         EulerSolver(dt=0.01, n_iters=20).solve(model, verbose=0)
-        y = _get_numpy(model)
+        y = np.asarray(model.y_mesh)
         assert y.dtype == np.float64
         assert np.all(np.isfinite(y))
+
+
+# ---- Trajectory (CPU) ----
+
+class TestTrajectoryCPU:
+    def test_trajectory_with_waypoints(self):
+        from lpf.solvers import EulerSolver
+        model = _make_model("BrusselatorModel", 4, [1e-3, 1e-2, 1.0, 3.0])
+        result = EulerSolver(dt=0.01, n_iters=50).solve(
+            model, trj_waypoints=[10, 30, 50], verbose=0)
+        assert isinstance(result, dict)
+        assert result["trj"].shape[0] == 3
+
+    def test_trajectory_with_period(self):
+        from lpf.solvers import EulerSolver
+        model = _make_model("FitzHughNagumoModel", 5,
+                            [1e-3, 1e-1, 0.01, 0.5, 0.1])
+        trj = EulerSolver(dt=0.01, n_iters=100).solve(
+            model, period_output=50, get_trj=True, verbose=0)
+        assert trj.shape[0] == 3  # iter 1, 50, 100
+
+
+# ---- Reactions produce non-zero derivatives ----
+
+class TestReactions:
+    @pytest.mark.parametrize("model_name,n_params,sample_params", MODEL_SPECS)
+    def test_reactions_nonzero(self, model_name, n_params, sample_params):
+        """Reaction terms should be non-trivial for typical inputs."""
+        model = _make_model(model_name, n_params, sample_params)
+        model.initialize()
+        u_c = model.u[:, 1:-1, 1:-1]
+        v_c = model.v[:, 1:-1, 1:-1]
+        f, g = model.reactions(0.0, u_c, v_c)
+        # At least one of f, g should be non-zero
+        assert not (np.allclose(f, 0) and np.allclose(g, 0)), \
+            f"{model_name} reactions returned all zeros"

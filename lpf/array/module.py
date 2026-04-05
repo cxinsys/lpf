@@ -83,17 +83,39 @@ def get_array_module(device):
     _backend, _device, _device_id = parse_device(device)
 
     if _backend == "cupy" and _device in ["gpu", "cuda"]:
-        return CupyModule(_device, _device_id)
+        try:
+            return CupyModule(_device, _device_id)
+        except ImportError:
+            raise ImportError(
+                f"device='{device}' requires CuPy. "
+                "Install it with: pip install cupy-cuda12x"
+            ) from None
     elif _backend == "torch":
+        try:
+            import torch
+        except ImportError:
+            raise ImportError(
+                f"device='{device}' requires PyTorch. "
+                "Install it with: pip install torch"
+            ) from None
         if _device in ["gpu", "cuda"]:
+            if not torch.cuda.is_available():
+                raise RuntimeError(
+                    f"device='{device}' requires CUDA, "
+                    "but torch.cuda.is_available() is False."
+                )
             return TorchModule("cuda", _device_id)
         else:
             return TorchModule("cpu", 0)
     elif _backend == "jax":
-        if _device in ["gpu", "cuda"]:
-            return JaxModule("gpu", _device_id)
-        else:
-            return JaxModule("cpu", 0)
+        try:
+            return JaxModule(_device, _device_id) if _device in ["gpu", "cuda"] \
+                else JaxModule("cpu", 0)
+        except ImportError:
+            raise ImportError(
+                f"device='{device}' requires JAX. "
+                "Install it with: pip install jax[cuda]"
+            ) from None
     else:
         return NumpyModule(_device, _device_id)
 

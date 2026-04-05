@@ -93,10 +93,11 @@ class EvoSearch:
 
         # Evaluate objectives.
         morph, pattern = self.model.create_image(0, arr_color)
-        sum_obj = 0
+        imgs = [morph.convert("RGB")]
+        sum_obj = 0.0
         for obj in self.objectives:
-            val = obj.compute(morph.convert("RGB"), self.targets)
-            sum_obj += val
+            val = obj.compute(imgs, self.targets)
+            sum_obj += float(np.sum(val))
 
         return [sum_obj]
 

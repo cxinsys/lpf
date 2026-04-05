@@ -12,6 +12,8 @@ class ReactionDiffusionModel(ABC):
             dtype = np.float32
 
         self._dtype = dtype
+        self._params = None
+        self._batch_size = None
 
     @property
     def am(self):  # ArrayModule object
@@ -59,7 +61,7 @@ class ReactionDiffusionModel(ABC):
             if self._params is None:
                 self._params = self.am.array(obj, dtype=self._dtype)
             else:
-                self._params[...] = obj
+                self._params[...] = self.am.array(obj, dtype=self._dtype)
 
         if self._params is not None:
             self._batch_size = self._params.shape[0]
