@@ -2,51 +2,37 @@
 
 ## Quick Install
 
-CUDA 13.x:
+CUDA 13.2 example:
 
 ```bash
 pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl
 ```
 
-CUDA 12.x:
-
-```bash
-pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu128-py3-none-linux_x86_64.whl
-```
-
 This installs `lpf`, CuPy, and all other dependencies automatically.
+Replace `cu132` with your CUDA version from the table below.
 
-PyTorch is optional — only needed for `device="torch:gpu:0"`:
+### Available wheels
 
-```bash
-# CUDA 13.x:
-pip install torch --extra-index-url https://download.pytorch.org/whl/cu132
+Check your CUDA version with `nvidia-smi` and pick the matching wheel.
 
-# CUDA 12.x:
-pip install torch --extra-index-url https://download.pytorch.org/whl/cu128
-```
-
-Check your CUDA version: `nvidia-smi`
-
-| CUDA | Wheel |
-|------|-------|
-| **13.2** | `lpf-0.2.0+cu132` (recommended for CUDA 13.x) |
-| 13.0 | `lpf-0.2.0+cu130` |
-| **12.8** | `lpf-0.2.0+cu128` (recommended for CUDA 12.x) |
-| 12.6 | `lpf-0.2.0+cu126` |
+| CUDA | lpf wheel | CuPy (auto-installed) |
+|------|-----------|-----------------------|
+| 13.2 | `lpf-0.2.0+cu132` | `cupy-cuda13x` |
+| 13.0 | `lpf-0.2.0+cu130` | `cupy-cuda13x` |
+| 12.8 | `lpf-0.2.0+cu128` | `cupy-cuda12x` |
+| 12.6 | `lpf-0.2.0+cu126` | `cupy-cuda12x` |
 
 All wheels: [GitHub Releases](https://github.com/cxinsys/lpf/releases/tag/v0.2.0)
 
-### Pre-built wheels
+### PyTorch (optional)
 
-| CUDA | Wheel | CuPy | PyTorch |
-|------|-------|------|---------|
-| 12.6 | `lpf-0.2.0+cu126` | `cupy-cuda12x` | `torch+cu126` |
-| 12.8 | `lpf-0.2.0+cu128` | `cupy-cuda12x` | `torch+cu128` |
-| 13.0 | `lpf-0.2.0+cu130` | `cupy-cuda13x` | `torch+cu130` |
-| 13.2 | `lpf-0.2.0+cu132` | `cupy-cuda13x` | `torch+cu132` |
+Only needed for `device="torch:gpu:0"`. Install separately with the matching CUDA version:
 
-All wheels are available at [GitHub Releases](https://github.com/cxinsys/lpf/releases/tag/v0.2.0).
+```bash
+pip install torch --extra-index-url https://download.pytorch.org/whl/cu132
+```
+
+Replace `cu132` to match your CUDA version (e.g. `cu128`, `cu130`).
 
 ---
 
