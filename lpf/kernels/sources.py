@@ -12,12 +12,23 @@ Preprocessor macros (set at compile time):
 
 
 # =============================================================================
-# Fused Euler Step Kernel
+# Tile dimensions for shared-memory stencil (must match compiler.py)
+# =============================================================================
+TILE_X = 32
+TILE_Y = 8
+
+
+# =============================================================================
+# Fused Euler Step Kernel (shared-memory tiled, 2-D grid)
 # Computes: y_out = y_in + dt * (D * laplacian(y_in) + reaction(y_in))
 # Uses ping-pong buffers: reads y_in, writes y_out
-# Each thread handles one (batch, row, col) point for BOTH u and v species.
+# Grid: (ceil(W/TILE_X), ceil(H/TILE_Y), B)  Block: (TILE_X, TILE_Y)
 # =============================================================================
 FUSED_EULER_STEP_TEMPLATE = r"""
+#define TILE_X 32
+#define TILE_Y 8
+#define SW (TILE_X + 2)
+
 extern "C" __global__
 void fused_euler_step(
     const REAL* __restrict__ y_in,
@@ -29,44 +40,60 @@ void fused_euler_step(
     const REAL dt,
     const REAL dx2_inv
 ) {
-    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    const int total = B * H * W;
-    if (idx >= total) return;
+    __shared__ REAL s_u[(TILE_Y + 2) * SW];
+    __shared__ REAL s_v[(TILE_Y + 2) * SW];
 
-    const int b  = idx / (H * W);
-    const int hw = idx % (H * W);
-    const int i  = hw / W;
-    const int j  = hw % W;
+    const int tx = threadIdx.x, ty = threadIdx.y;
+    const int gx = blockIdx.x * TILE_X + tx;
+    const int gy = blockIdx.y * TILE_Y + ty;
+    const int b  = blockIdx.z;
+    const int HW = H * W, BHW = B * HW;
+    const int gidx = b * HW + gy * W + gx;
+    const int si = (ty + 1) * SW + (tx + 1);
+    const int valid = (gx < W && gy < H);
 
-    const int BHW    = B * H * W;
-    const int center = b * (H * W) + i * W + j;
+    // Load center
+    const REAL u_val = valid ? y_in[gidx]       : REAL_CONST(0.0);
+    const REAL v_val = valid ? y_in[BHW + gidx] : REAL_CONST(0.0);
+    s_u[si] = u_val;  s_v[si] = v_val;
 
-    const REAL u_c = y_in[center];
-    const REAL v_c = y_in[BHW + center];
+    // Load halos
+    if (ty == 0) {
+        const int h = tx + 1, h_gy = gy - 1;
+        if (h_gy >= 0 && gx < W) { int hi = b*HW + h_gy*W + gx; s_u[h] = y_in[hi]; s_v[h] = y_in[BHW+hi]; }
+        else { s_u[h] = u_val; s_v[h] = v_val; }
+    }
+    if (ty == TILE_Y - 1) {
+        const int h = (TILE_Y+1)*SW + (tx+1), h_gy = gy + 1;
+        if (h_gy < H && gx < W) { int hi = b*HW + h_gy*W + gx; s_u[h] = y_in[hi]; s_v[h] = y_in[BHW+hi]; }
+        else { s_u[h] = u_val; s_v[h] = v_val; }
+    }
+    if (tx == 0) {
+        const int h = (ty+1)*SW, h_gx = gx - 1;
+        if (h_gx >= 0 && gy < H) { int hi = b*HW + gy*W + h_gx; s_u[h] = y_in[hi]; s_v[h] = y_in[BHW+hi]; }
+        else { s_u[h] = u_val; s_v[h] = v_val; }
+    }
+    if (tx == TILE_X - 1) {
+        const int h = (ty+1)*SW + (TILE_X+1), h_gx = gx + 1;
+        if (h_gx < W && gy < H) { int hi = b*HW + gy*W + h_gx; s_u[h] = y_in[hi]; s_v[h] = y_in[BHW+hi]; }
+        else { s_u[h] = u_val; s_v[h] = v_val; }
+    }
+    __syncthreads();
+
+    if (!valid) return;
 
     // Boundary: dydt = 0 (Neumann), so y_out = y_in
-    if (i == 0 || i == H - 1 || j == 0 || j == W - 1) {
-        y_out[center]       = u_c;
-        y_out[BHW + center] = v_c;
+    if (gx == 0 || gx == W-1 || gy == 0 || gy == H-1) {
+        y_out[gidx]       = u_val;
+        y_out[BHW + gidx] = v_val;
         return;
     }
 
-    // 5-point stencil neighbors for u
-    const REAL u_top = y_in[center - W];
-    const REAL u_bot = y_in[center + W];
-    const REAL u_lft = y_in[center - 1];
-    const REAL u_rgt = y_in[center + 1];
-
-    // 5-point stencil neighbors for v
-    const REAL v_top = y_in[BHW + center - W];
-    const REAL v_bot = y_in[BHW + center + W];
-    const REAL v_lft = y_in[BHW + center - 1];
-    const REAL v_rgt = y_in[BHW + center + 1];
-
-    // Discrete Laplacian
-    const REAL lap_u = (u_top + u_lft + u_bot + u_rgt
+    // 5-point stencil from shared memory
+    const REAL u_c = s_u[si], v_c = s_v[si];
+    const REAL lap_u = (s_u[si-SW] + s_u[si-1] + s_u[si+SW] + s_u[si+1]
                         - REAL_CONST(4.0) * u_c) * dx2_inv;
-    const REAL lap_v = (v_top + v_lft + v_bot + v_rgt
+    const REAL lap_v = (s_v[si-SW] + s_v[si-1] + s_v[si+SW] + s_v[si+1]
                         - REAL_CONST(4.0) * v_c) * dx2_inv;
 
     // Kinetic parameters
@@ -78,18 +105,23 @@ void fused_euler_step(
     ${REACTION_CODE}
 
     // Euler update: y_new = y_old + dt * (D * laplacian + reaction)
-    y_out[center]       = u_c + dt * (Du * lap_u + f);
-    y_out[BHW + center] = v_c + dt * (Dv * lap_v + g);
+    y_out[gidx]       = u_c + dt * (Du * lap_u + f);
+    y_out[BHW + gidx] = v_c + dt * (Dv * lap_v + g);
 }
 """
 
 
 # =============================================================================
-# Fused PDE Function Kernel (for multi-stage solvers like RK4)
+# Fused PDE Function Kernel (shared-memory tiled, 2-D grid)
 # Computes: dydt = D * laplacian(y_in) + reaction(y_in)
 # Reads y_in, writes dydt. Boundary: dydt = 0.
+# Grid: (ceil(W/TILE_X), ceil(H/TILE_Y), B)  Block: (TILE_X, TILE_Y)
 # =============================================================================
 FUSED_PDEFUNC_TEMPLATE = r"""
+#define TILE_X 32
+#define TILE_Y 8
+#define SW (TILE_X + 2)
+
 extern "C" __global__
 void fused_pdefunc(
     const REAL* __restrict__ y_in,
@@ -100,44 +132,60 @@ void fused_pdefunc(
     const int W,
     const REAL dx2_inv
 ) {
-    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    const int total = B * H * W;
-    if (idx >= total) return;
+    __shared__ REAL s_u[(TILE_Y + 2) * SW];
+    __shared__ REAL s_v[(TILE_Y + 2) * SW];
 
-    const int b  = idx / (H * W);
-    const int hw = idx % (H * W);
-    const int i  = hw / W;
-    const int j  = hw % W;
+    const int tx = threadIdx.x, ty = threadIdx.y;
+    const int gx = blockIdx.x * TILE_X + tx;
+    const int gy = blockIdx.y * TILE_Y + ty;
+    const int b  = blockIdx.z;
+    const int HW = H * W, BHW = B * HW;
+    const int gidx = b * HW + gy * W + gx;
+    const int si = (ty + 1) * SW + (tx + 1);
+    const int valid = (gx < W && gy < H);
 
-    const int BHW    = B * H * W;
-    const int center = b * (H * W) + i * W + j;
+    // Load center
+    const REAL u_val = valid ? y_in[gidx]       : REAL_CONST(0.0);
+    const REAL v_val = valid ? y_in[BHW + gidx] : REAL_CONST(0.0);
+    s_u[si] = u_val;  s_v[si] = v_val;
+
+    // Load halos
+    if (ty == 0) {
+        const int h = tx + 1, h_gy = gy - 1;
+        if (h_gy >= 0 && gx < W) { int hi = b*HW + h_gy*W + gx; s_u[h] = y_in[hi]; s_v[h] = y_in[BHW+hi]; }
+        else { s_u[h] = u_val; s_v[h] = v_val; }
+    }
+    if (ty == TILE_Y - 1) {
+        const int h = (TILE_Y+1)*SW + (tx+1), h_gy = gy + 1;
+        if (h_gy < H && gx < W) { int hi = b*HW + h_gy*W + gx; s_u[h] = y_in[hi]; s_v[h] = y_in[BHW+hi]; }
+        else { s_u[h] = u_val; s_v[h] = v_val; }
+    }
+    if (tx == 0) {
+        const int h = (ty+1)*SW, h_gx = gx - 1;
+        if (h_gx >= 0 && gy < H) { int hi = b*HW + gy*W + h_gx; s_u[h] = y_in[hi]; s_v[h] = y_in[BHW+hi]; }
+        else { s_u[h] = u_val; s_v[h] = v_val; }
+    }
+    if (tx == TILE_X - 1) {
+        const int h = (ty+1)*SW + (TILE_X+1), h_gx = gx + 1;
+        if (h_gx < W && gy < H) { int hi = b*HW + gy*W + h_gx; s_u[h] = y_in[hi]; s_v[h] = y_in[BHW+hi]; }
+        else { s_u[h] = u_val; s_v[h] = v_val; }
+    }
+    __syncthreads();
+
+    if (!valid) return;
 
     // Boundary: dydt = 0
-    if (i == 0 || i == H - 1 || j == 0 || j == W - 1) {
-        dydt[center]       = REAL_CONST(0.0);
-        dydt[BHW + center] = REAL_CONST(0.0);
+    if (gx == 0 || gx == W-1 || gy == 0 || gy == H-1) {
+        dydt[gidx]       = REAL_CONST(0.0);
+        dydt[BHW + gidx] = REAL_CONST(0.0);
         return;
     }
 
-    const REAL u_c = y_in[center];
-    const REAL v_c = y_in[BHW + center];
-
-    // 5-point stencil neighbors for u
-    const REAL u_top = y_in[center - W];
-    const REAL u_bot = y_in[center + W];
-    const REAL u_lft = y_in[center - 1];
-    const REAL u_rgt = y_in[center + 1];
-
-    // 5-point stencil neighbors for v
-    const REAL v_top = y_in[BHW + center - W];
-    const REAL v_bot = y_in[BHW + center + W];
-    const REAL v_lft = y_in[BHW + center - 1];
-    const REAL v_rgt = y_in[BHW + center + 1];
-
-    // Discrete Laplacian
-    const REAL lap_u = (u_top + u_lft + u_bot + u_rgt
+    // 5-point stencil from shared memory
+    const REAL u_c = s_u[si], v_c = s_v[si];
+    const REAL lap_u = (s_u[si-SW] + s_u[si-1] + s_u[si+SW] + s_u[si+1]
                         - REAL_CONST(4.0) * u_c) * dx2_inv;
-    const REAL lap_v = (v_top + v_lft + v_bot + v_rgt
+    const REAL lap_v = (s_v[si-SW] + s_v[si-1] + s_v[si+SW] + s_v[si+1]
                         - REAL_CONST(4.0) * v_c) * dx2_inv;
 
     // Kinetic parameters
@@ -149,8 +197,8 @@ void fused_pdefunc(
     ${REACTION_CODE}
 
     // Write derivatives
-    dydt[center]       = Du * lap_u + f;
-    dydt[BHW + center] = Dv * lap_v + g;
+    dydt[gidx]       = Du * lap_u + f;
+    dydt[BHW + gidx] = Dv * lap_v + g;
 }
 """
 

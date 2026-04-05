@@ -20,6 +20,8 @@ from lpf.kernels.sources import (
     SCALE_SOURCE,
     LINEAR_COMBINE2_SOURCE,
     LINEAR_COMBINE3_SOURCE,
+    TILE_X,
+    TILE_Y,
 )
 
 # Module-level cache: (model_name, dtype_str, fast_math) -> CuKernelManager
@@ -125,11 +127,14 @@ class CuKernelManager:
             ))
         else:
             kernel = self._get_jit_euler()
-            total = B * H * W
-            block = 256
-            grid = ((total + block - 1) // block,)
+            grid = (
+                (W + TILE_X - 1) // TILE_X,
+                (H + TILE_Y - 1) // TILE_Y,
+                B,
+            )
+            block = (TILE_X, TILE_Y)
             scalar = self.scalar_type
-            kernel(grid, (block,), (
+            kernel(grid, block, (
                 y_in, y_out, params,
                 np.int32(B), np.int32(H), np.int32(W),
                 scalar(dt), scalar(dx2_inv),
@@ -147,11 +152,14 @@ class CuKernelManager:
             ))
         else:
             kernel = self._get_jit_pdefunc()
-            total = B * H * W
-            block = 256
-            grid = ((total + block - 1) // block,)
+            grid = (
+                (W + TILE_X - 1) // TILE_X,
+                (H + TILE_Y - 1) // TILE_Y,
+                B,
+            )
+            block = (TILE_X, TILE_Y)
             scalar = self.scalar_type
-            kernel(grid, (block,), (
+            kernel(grid, block, (
                 y_in, dydt, params,
                 np.int32(B), np.int32(H), np.int32(W),
                 scalar(dx2_inv),

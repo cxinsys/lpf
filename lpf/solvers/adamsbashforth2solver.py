@@ -19,7 +19,9 @@ class AdamsBashforth2Solver(Solver):
         return super().solve(model=model, **kwargs)
 
     def step(self, model, t, dt, y_mesh):
-        dydt = model.pdefunc(t, y_mesh)
+        # pdefunc() returns an internal buffer that is overwritten on the
+        # next call, so copy before storing for the next step.
+        dydt = model.pdefunc(t, y_mesh).copy()
         if self._prev_dydt is None:
             delta = dt * dydt
         else:

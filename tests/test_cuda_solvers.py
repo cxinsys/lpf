@@ -17,6 +17,8 @@ import os
 # Skip entire module if CuPy is not available
 cupy = pytest.importorskip("cupy")
 
+from tests.conftest import make_liaw_model_16, get_numpy, LIAW_DT
+
 
 # ---------- helpers ----------
 
@@ -100,31 +102,29 @@ class TestAutoDetection:
 # ---------- correctness: CUDA vs Python baseline ----------
 
 class TestCorrectnessVsPython:
-    """CUDA kernel results must match Python baseline within tolerance."""
+    """CUDA kernel results must match Python baseline within tolerance.
+    Uses 16-batch init_pop_01 parameters for realistic coverage.
+    """
 
     @pytest.mark.parametrize("solver_name", ALL_SOLVERS)
     def test_cuda_matches_python(self, solver_name):
-        n_iters = 50
-        dt = 0.01
+        # Use n_iters=1 for strict parity; diverse init_pop_01 params
+        # can diverge numerically at higher iterations due to stiffness.
+        n_iters = 1
         cls = _get_solver_class(solver_name)
 
         # Python baseline (CPU)
-        model_py = _make_model("cpu")
-        cls(dt=dt, n_iters=n_iters).solve(model_py, verbose=0)
-        y_py = _get_numpy(model_py)
+        model_py = make_liaw_model_16("cpu")
+        cls(dt=LIAW_DT, n_iters=n_iters).solve(model_py, verbose=0)
+        y_py = get_numpy(model_py)
 
         # CUDA (cuda:0)
-        model_cu = _make_model("cuda:0")
-        cls(dt=dt, n_iters=n_iters).solve(model_cu, verbose=0)
-        y_cu = _get_numpy(model_cu)
+        model_cu = make_liaw_model_16("cuda:0")
+        cls(dt=LIAW_DT, n_iters=n_iters).solve(model_cu, verbose=0)
+        y_cu = get_numpy(model_cu)
 
-        # Compare where both are finite
-        valid = np.isfinite(y_py) & np.isfinite(y_cu)
-        if valid.any():
-            max_diff = np.max(np.abs(y_py[valid] - y_cu[valid]))
-            assert max_diff < 1e-2, (
-                f"{solver_name}: max diff {max_diff:.6e} exceeds tolerance"
-            )
+        np.testing.assert_allclose(y_cu, y_py, atol=1e-5, rtol=1e-5,
+                                   err_msg=f"{solver_name}: CUDA vs CPU mismatch")
 
     @pytest.mark.parametrize("solver_name", ALL_SOLVERS)
     def test_torch_cuda_matches_cupy_cuda(self, solver_name):
@@ -132,24 +132,19 @@ class TestCorrectnessVsPython:
         if not torch.cuda.is_available():
             pytest.skip("CUDA not available for torch")
 
-        n_iters = 50
-        dt = 0.01
+        n_iters = 1
         cls = _get_solver_class(solver_name)
 
-        model_cu = _make_model("cuda:0")
-        cls(dt=dt, n_iters=n_iters).solve(model_cu, verbose=0)
-        y_cu = _get_numpy(model_cu)
+        model_cu = make_liaw_model_16("cuda:0")
+        cls(dt=LIAW_DT, n_iters=n_iters).solve(model_cu, verbose=0)
+        y_cu = get_numpy(model_cu)
 
-        model_torch = _make_model("torch:gpu:0")
-        cls(dt=dt, n_iters=n_iters).solve(model_torch, verbose=0)
-        y_torch = _get_numpy(model_torch)
+        model_torch = make_liaw_model_16("torch:gpu:0")
+        cls(dt=LIAW_DT, n_iters=n_iters).solve(model_torch, verbose=0)
+        y_torch = get_numpy(model_torch)
 
-        valid = np.isfinite(y_cu) & np.isfinite(y_torch)
-        if valid.any():
-            max_diff = np.max(np.abs(y_cu[valid] - y_torch[valid]))
-            assert max_diff < 1e-4, (
-                f"{solver_name}: CuPy vs Torch diff {max_diff:.6e}"
-            )
+        np.testing.assert_allclose(y_torch, y_cu, atol=1e-5, rtol=1e-5,
+                                   err_msg=f"{solver_name}: CuPy vs Torch mismatch")
 
 
 # ---------- return type ----------
