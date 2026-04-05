@@ -109,6 +109,18 @@ class AOTKernelLoader:
         suffix = _DTYPE_SUFFIX[np.dtype(dtype)]
         return self._get(f"heun_combine_{suffix}")
 
+    def get_scale_kernel(self, dtype):
+        suffix = _DTYPE_SUFFIX[np.dtype(dtype)]
+        return self._get(f"scale_{suffix}")
+
+    def get_linear_combine2_kernel(self, dtype):
+        suffix = _DTYPE_SUFFIX[np.dtype(dtype)]
+        return self._get(f"linear_combine2_{suffix}")
+
+    def get_linear_combine3_kernel(self, dtype):
+        suffix = _DTYPE_SUFFIX[np.dtype(dtype)]
+        return self._get(f"linear_combine3_{suffix}")
+
     # ---- launch helpers ----
 
     @staticmethod

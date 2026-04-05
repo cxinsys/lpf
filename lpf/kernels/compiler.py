@@ -99,15 +99,6 @@ class CuKernelManager:
         return self._reaction_info["n_params"]
 
     @property
-    def scalar_type(self):
-        if self._dtype == np.float16:
-            return np.float32
-        elif self._dtype == np.float32:
-            return np.float32
-        else:
-            return np.float64
-
-    @property
     def using_aot(self):
         return self._use_aot
 
@@ -133,11 +124,10 @@ class CuKernelManager:
                 B,
             )
             block = (TILE_X, TILE_Y)
-            scalar = self.scalar_type
             kernel(grid, block, (
                 y_in, y_out, params,
                 np.int32(B), np.int32(H), np.int32(W),
-                scalar(dt), scalar(dx2_inv),
+                np.float64(dt), np.float64(dx2_inv),
             ))
 
     def launch_pdefunc(self, y_in, dydt, params, B, H, W, dx2_inv):
@@ -158,11 +148,10 @@ class CuKernelManager:
                 B,
             )
             block = (TILE_X, TILE_Y)
-            scalar = self.scalar_type
             kernel(grid, block, (
                 y_in, dydt, params,
                 np.int32(B), np.int32(H), np.int32(W),
-                scalar(dx2_inv),
+                np.float64(dx2_inv),
             ))
 
     def launch_rk_stage(self, y, k, y_out, alpha, N):
@@ -177,9 +166,8 @@ class CuKernelManager:
             kernel = self._get_jit_stage()
             block = 256
             grid = ((N + block - 1) // block,)
-            scalar = self.scalar_type
             kernel(grid, (block,), (
-                y, k, y_out, scalar(alpha), np.int32(N),
+                y, k, y_out, np.float64(alpha), np.int32(N),
             ))
 
     def launch_rk4_combine(self, delta, k1, k2, k3, k4, dt_over_6, N):
@@ -195,10 +183,9 @@ class CuKernelManager:
             kernel = self._get_jit_rk4_combine()
             block = 256
             grid = ((N + block - 1) // block,)
-            scalar = self.scalar_type
             kernel(grid, (block,), (
                 delta, k1, k2, k3, k4,
-                scalar(dt_over_6), np.int32(N),
+                np.float64(dt_over_6), np.int32(N),
             ))
 
     def launch_heun_combine(self, delta, k1, k2, N):
@@ -215,28 +202,43 @@ class CuKernelManager:
 
     def launch_scale(self, x, out, alpha, N):
         """Launch scale: out = alpha * x."""
-        kernel = self._get_jit_scale()
-        scalar = self.scalar_type
-        block = 256
-        grid = ((N + block - 1) // block,)
-        kernel(grid, (block,), (x, out, scalar(alpha), np.int32(N)))
+        if self._use_aot:
+            kernel = self._aot.get_scale_kernel(self._dtype)
+            grid, block = self._aot.util_grid_block(N, self._dtype)
+            kernel(grid, block, (x, out, np.float64(alpha), np.int32(N)))
+        else:
+            kernel = self._get_jit_scale()
+            block = 256
+            grid = ((N + block - 1) // block,)
+            kernel(grid, (block,), (x, out, np.float64(alpha), np.int32(N)))
 
     def launch_linear_combine2(self, x, y, out, a, b, N):
         """Launch linear combine: out = a*x + b*y."""
-        kernel = self._get_jit_lc2()
-        scalar = self.scalar_type
-        block = 256
-        grid = ((N + block - 1) // block,)
-        kernel(grid, (block,), (x, y, out, scalar(a), scalar(b), np.int32(N)))
+        if self._use_aot:
+            kernel = self._aot.get_linear_combine2_kernel(self._dtype)
+            grid, block = self._aot.util_grid_block(N, self._dtype)
+            kernel(grid, block, (
+                x, y, out, np.float64(a), np.float64(b), np.int32(N)))
+        else:
+            kernel = self._get_jit_lc2()
+            block = 256
+            grid = ((N + block - 1) // block,)
+            kernel(grid, (block,), (x, y, out, np.float64(a), np.float64(b), np.int32(N)))
 
     def launch_linear_combine3(self, x, y, z, out, a, b, c, N):
         """Launch linear combine: out = a*x + b*y + c*z."""
-        kernel = self._get_jit_lc3()
-        scalar = self.scalar_type
-        block = 256
-        grid = ((N + block - 1) // block,)
-        kernel(grid, (block,), (
-            x, y, z, out, scalar(a), scalar(b), scalar(c), np.int32(N)))
+        if self._use_aot:
+            kernel = self._aot.get_linear_combine3_kernel(self._dtype)
+            grid, block = self._aot.util_grid_block(N, self._dtype)
+            kernel(grid, block, (
+                x, y, z, out,
+                np.float64(a), np.float64(b), np.float64(c), np.int32(N)))
+        else:
+            kernel = self._get_jit_lc3()
+            block = 256
+            grid = ((N + block - 1) // block,)
+            kernel(grid, (block,), (
+                x, y, z, out, np.float64(a), np.float64(b), np.float64(c), np.int32(N)))
 
     # ================================================================
     # JIT kernel compilation (lazy)

@@ -37,9 +37,11 @@ void fused_euler_step(
     const int B,
     const int H,
     const int W,
-    const REAL dt,
-    const REAL dx2_inv
+    const double dt_d,
+    const double dx2_inv_d
 ) {
+    const REAL dt = (REAL)dt_d;
+    const REAL dx2_inv = (REAL)dx2_inv_d;
     __shared__ REAL s_u[(TILE_Y + 2) * SW];
     __shared__ REAL s_v[(TILE_Y + 2) * SW];
 
@@ -130,8 +132,9 @@ void fused_pdefunc(
     const int B,
     const int H,
     const int W,
-    const REAL dx2_inv
+    const double dx2_inv_d
 ) {
+    const REAL dx2_inv = (REAL)dx2_inv_d;
     __shared__ REAL s_u[(TILE_Y + 2) * SW];
     __shared__ REAL s_v[(TILE_Y + 2) * SW];
 
@@ -214,9 +217,10 @@ void rk_stage_update(
     const REAL* __restrict__ y,
     const REAL* __restrict__ k,
     REAL* __restrict__ y_out,
-    const REAL alpha,
+    const double alpha_d,
     const int N
 ) {
+    const REAL alpha = (REAL)alpha_d;
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= N) return;
     y_out[i] = y[i] + alpha * k[i];
@@ -237,9 +241,10 @@ void rk4_combine(
     const REAL* __restrict__ k2,
     const REAL* __restrict__ k3,
     const REAL* __restrict__ k4,
-    const REAL dt_over_6,
+    const double dt_over_6_d,
     const int N
 ) {
+    const REAL dt_over_6 = (REAL)dt_over_6_d;
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= N) return;
     delta[i] = dt_over_6 * (k1[i]
@@ -277,9 +282,10 @@ extern "C" __global__
 void scale(
     const REAL* __restrict__ x,
     REAL* __restrict__ out,
-    const REAL alpha,
+    const double alpha_d,
     const int N
 ) {
+    const REAL alpha = (REAL)alpha_d;
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= N) return;
     out[i] = alpha * x[i];
@@ -296,10 +302,12 @@ void linear_combine2(
     const REAL* __restrict__ x,
     const REAL* __restrict__ y,
     REAL* __restrict__ out,
-    const REAL a,
-    const REAL b,
+    const double a_d,
+    const double b_d,
     const int N
 ) {
+    const REAL a = (REAL)a_d;
+    const REAL b = (REAL)b_d;
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= N) return;
     out[i] = a * x[i] + b * y[i];
@@ -317,11 +325,14 @@ void linear_combine3(
     const REAL* __restrict__ y,
     const REAL* __restrict__ z,
     REAL* __restrict__ out,
-    const REAL a,
-    const REAL b,
-    const REAL c,
+    const double a_d,
+    const double b_d,
+    const double c_d,
     const int N
 ) {
+    const REAL a = (REAL)a_d;
+    const REAL b = (REAL)b_d;
+    const REAL c = (REAL)c_d;
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= N) return;
     out[i] = a * x[i] + b * y[i] + c * z[i];
