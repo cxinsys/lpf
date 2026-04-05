@@ -25,7 +25,9 @@ _INCLUDE_DIR = os.path.join(_CSRC_DIR, "include")
 _SRC_FILE = os.path.join(_CSRC_DIR, "kernels.cu")
 _OUT_FILE = os.path.join(_THIS_DIR, "kernels.fatbin")
 _LOOP_SRC = os.path.join(_CSRC_DIR, "solver_loop.cu")
-_LOOP_OUT = os.path.join(_THIS_DIR, "libsolver.so")
+_IS_WINDOWS = sys.platform == "win32"
+_LIB_EXT = ".dll" if _IS_WINDOWS else ".so"
+_LOOP_OUT = os.path.join(_THIS_DIR, "libsolver" + _LIB_EXT)
 
 # Common architectures: Ampere (80), Ada Lovelace (86, 89), Blackwell (90)
 _COMMON_ARCHS = ["sm_80", "sm_86", "sm_89", "sm_90"]
@@ -106,10 +108,15 @@ def build(archs=None, verbose=False):
     subprocess.check_call(cmd)
     print(f"Built: {_OUT_FILE}  (archs: {', '.join(archs)})")
 
-    # ---- Build shared library (solver_loop.cu → libsolver.so) ----
+    # ---- Build shared library (solver_loop.cu → libsolver.so/.dll) ----
+    if _IS_WINDOWS:
+        shared_flags = ["-shared", "-Xcompiler", "/MD"]
+    else:
+        shared_flags = ["-shared", "-Xcompiler", "-fPIC"]
+
     cmd_so = [
         nvcc,
-        "-shared", "-Xcompiler", "-fPIC",
+        *shared_flags,
         "-std=c++17",
         "-O3",
         "--use_fast_math",

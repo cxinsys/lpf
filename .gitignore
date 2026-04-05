@@ -137,6 +137,7 @@ dmypy.json
 # Binary build artifacts
 *.fatbin
 *.so
+*.dll
 
 # Video outputs
 *.mp4
