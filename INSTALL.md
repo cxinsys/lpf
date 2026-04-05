@@ -28,9 +28,9 @@ All wheels: [GitHub Releases](https://github.com/cxinsys/lpf/releases/tag/v0.2.0
 
 LPF uses CuPy as the default GPU backend, so PyTorch is not required for basic GPU usage.
 
-However, if you want to integrate LPF into a PyTorch-based workflow — for example,
+However, if you want to integrate LPF into a PyTorch-based workflow (for example,
 using LPF simulation results as inputs to a neural network, or running LPF alongside
-other PyTorch models on the same GPU — you can set `device="torch:gpu:0"` to keep all
+other PyTorch models on the same GPU), you can set `device="torch:gpu:0"` to keep all
 data as PyTorch tensors. This avoids unnecessary copies between frameworks.
 
 In this mode, LPF internally bridges PyTorch tensors to CuPy via DLPack (zero-copy)
@@ -122,15 +122,15 @@ solver.solve(model)  # CUDA kernels activate automatically
 LPF provides two ways to compile CUDA kernels: **JIT** and **AOT**.
 Both produce identical results. The system selects the best available option automatically.
 
-### JIT (Just-In-Time) — Default, zero setup
+### JIT (Just-In-Time): Default, zero setup
 
 Kernels are compiled at runtime on first use via CuPy's NVRTC compiler.
 
-- **No `nvcc` needed** — CuPy includes NVRTC
+- **No `nvcc` needed** (CuPy includes NVRTC)
 - **First-run overhead:** ~2-3 seconds (cached afterwards)
 - **Supported dtypes:** float32, float64
 
-### AOT (Ahead-Of-Time) — Pre-built wheels or manual build
+### AOT (Ahead-Of-Time): Pre-built wheels or manual build
 
 Pre-built wheels from GitHub Releases already include AOT binaries.
 To build manually:
