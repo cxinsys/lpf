@@ -26,7 +26,15 @@ All wheels: [GitHub Releases](https://github.com/cxinsys/lpf/releases/tag/v0.2.0
 
 ### PyTorch (optional)
 
-Only needed for `device="torch:gpu:0"`. Install separately with the matching CUDA version:
+`lpf` uses CuPy as the default GPU backend, so PyTorch is not required for basic GPU usage.
+
+However, if you want to integrate `lpf` into a PyTorch-based workflow — for example,
+using `lpf` simulation results as inputs to a neural network, or running `lpf` alongside
+other PyTorch models on the same GPU — you can set `device="torch:gpu:0"` to keep all
+data as PyTorch tensors. This avoids unnecessary copies between frameworks.
+
+In this mode, `lpf` internally bridges PyTorch tensors to CuPy via DLPack (zero-copy)
+for CUDA kernel execution, and returns the results back as PyTorch tensors.
 
 ```bash
 pip install torch --extra-index-url https://download.pytorch.org/whl/cu132
