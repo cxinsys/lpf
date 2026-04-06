@@ -2,7 +2,7 @@
 """
 Benchmark: cross-backend performance comparison.
 
-Compares NumPy, JAX (CPU), PyTorch (CPU/CUDA), and CuPy (CUDA) across
+Compares NumPy, JAX (CUDA), PyTorch (CPU/CUDA), and CuPy (CUDA) across
 multiple solvers, grid sizes, and batch sizes.
 
 Usage:
@@ -143,8 +143,12 @@ def get_available_backends():
     backends = [("numpy", "cpu", "NumPy (CPU)")]
 
     try:
-        import jax  # noqa: F401
-        backends.append(("jax:cpu", "jax:cpu", "JAX (CPU)"))
+        import jax
+        try:
+            if jax.devices("gpu"):
+                backends.append(("jax:gpu:0", "jax:gpu:0", "JAX (CUDA)"))
+        except RuntimeError:
+            pass
     except ImportError:
         pass
 
