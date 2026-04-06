@@ -201,6 +201,100 @@ class TestJitAotParity:
                                       err_msg=f"JIT vs AOT not bit-exact ({dtype.__name__})")
 
 
+# ---------- JAX kernel parity ----------
+
+class TestJaxParity:
+    """JAX kernels (CPU + GPU) must match CuPy CUDA fused kernel results.
+
+    These tests document the cross-backend numerical agreement that the
+    JAX dispatch path is expected to maintain.  Skip cleanly if JAX is
+    not installed.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _require_jax(self):
+        pytest.importorskip("jax", reason="JAX not installed")
+
+    @staticmethod
+    def _jax_devices():
+        import jax
+        devs = ["jax:cpu"]
+        try:
+            if jax.devices("gpu"):
+                devs.append("jax:gpu:0")
+        except Exception:
+            pass
+        return devs
+
+    @pytest.mark.parametrize("solver_name", ALL_SOLVERS)
+    @pytest.mark.parametrize("dtype", [np.float32])
+    def test_jax_cpu_matches_cpu(self, solver_name, dtype):
+        """JAX CPU path must match the NumPy CPU baseline within N*eps."""
+        y_cpu = _solve(make_liaw_model_16("cpu", dtype=dtype), solver_name)
+        y_jax = _solve(make_liaw_model_16("jax:cpu", dtype=dtype), solver_name)
+
+        valid = np.isfinite(y_cpu) & np.isfinite(y_jax)
+        if not valid.any():
+            pytest.skip("All values non-finite")
+
+        max_abs = np.max(np.abs(y_cpu[valid] - y_jax[valid]))
+        eps = np.finfo(dtype).eps
+        max_val = np.max(np.abs(y_cpu[valid]))
+        tol = N_ITERS * eps * max(max_val, 1.0)
+        assert max_abs < tol, (
+            f"{solver_name} {dtype.__name__}: JAX CPU vs NumPy CPU "
+            f"max abs diff {max_abs:.2e} exceeds {tol:.2e}"
+        )
+
+    @pytest.mark.parametrize("solver_name", ALL_SOLVERS)
+    @pytest.mark.parametrize("dtype", [np.float32])
+    def test_jax_gpu_matches_cpu(self, solver_name, dtype):
+        """JAX GPU path must match the NumPy CPU baseline within N*eps."""
+        if "jax:gpu:0" not in self._jax_devices():
+            pytest.skip("JAX GPU not available")
+
+        y_cpu = _solve(make_liaw_model_16("cpu", dtype=dtype), solver_name)
+        y_jax = _solve(
+            make_liaw_model_16("jax:gpu:0", dtype=dtype), solver_name)
+
+        valid = np.isfinite(y_cpu) & np.isfinite(y_jax)
+        if not valid.any():
+            pytest.skip("All values non-finite")
+
+        max_abs = np.max(np.abs(y_cpu[valid] - y_jax[valid]))
+        eps = np.finfo(dtype).eps
+        max_val = np.max(np.abs(y_cpu[valid]))
+        tol = N_ITERS * eps * max(max_val, 1.0)
+        assert max_abs < tol, (
+            f"{solver_name} {dtype.__name__}: JAX GPU vs NumPy CPU "
+            f"max abs diff {max_abs:.2e} exceeds {tol:.2e}"
+        )
+
+    @pytest.mark.parametrize("solver_name", ALL_SOLVERS)
+    @pytest.mark.parametrize("dtype", [np.float32])
+    def test_jax_gpu_matches_cupy(self, solver_name, dtype):
+        """JAX GPU and CuPy CUDA fused kernel must agree within N*eps."""
+        if "jax:gpu:0" not in self._jax_devices():
+            pytest.skip("JAX GPU not available")
+
+        y_cu = _solve(make_liaw_model_16("cuda:0", dtype=dtype), solver_name)
+        y_jax = _solve(
+            make_liaw_model_16("jax:gpu:0", dtype=dtype), solver_name)
+
+        valid = np.isfinite(y_cu) & np.isfinite(y_jax)
+        if not valid.any():
+            pytest.skip("All values non-finite")
+
+        max_abs = np.max(np.abs(y_cu[valid] - y_jax[valid]))
+        eps = np.finfo(dtype).eps
+        max_val = np.max(np.abs(y_cu[valid]))
+        tol = N_ITERS * eps * max(max_val, 1.0)
+        assert max_abs < tol, (
+            f"{solver_name} {dtype.__name__}: JAX GPU vs CuPy CUDA "
+            f"max abs diff {max_abs:.2e} exceeds {tol:.2e}"
+        )
+
+
 # ---------- PyTorch CUDA parity ----------
 
 class TestTorchParity:
