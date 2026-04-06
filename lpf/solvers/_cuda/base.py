@@ -65,10 +65,20 @@ class CuSolverBase(Solver):
         self._bufs_ready = False
 
     def _ensure_cuda(self, model):
-        if self._km is None or self._km._model_name != model.name:
+        need_reinit = (
+            self._km is None
+            or self._km._model_name != model.name
+            or self._km._dtype != np.dtype(model.dtype)
+        )
+        if need_reinit:
             self._km = get_kernel_manager(
                 model.name, model.dtype, self._fast_math)
             self._bufs_ready = False
+
+        # Check if buffers need reallocation (shape changed)
+        if self._bufs_ready and hasattr(self, '_cached_shape'):
+            if self._cached_shape != model.shape_grid:
+                self._bufs_ready = False
 
     # ---- PyTorch ↔ CuPy zero-copy bridge ----
 
@@ -164,13 +174,23 @@ class CuSolverBase(Solver):
         if init_model:
             model.initialize()
 
-        # ---- PyTorch CUDA bridge (zero-copy via DLPack) ----
-        torch_bridge = self._maybe_bridge_torch(model)
-
+        # ---- resolve n_iters / iter_end BEFORE file I/O setup ----
         if iter_end is None:
             if n_iters is None:
                 raise ValueError("n_iters should be defined.")
+            if n_iters < 1:
+                raise ValueError("n_iters should be greater than or equal to 1.")
             iter_end = iter_begin + n_iters
+        else:
+            if iter_end <= iter_begin:
+                raise ValueError(
+                    f"iter_end ({iter_end}) must be greater than "
+                    f"iter_begin ({iter_begin}).")
+            if n_iters is None:
+                n_iters = iter_end - iter_begin
+
+        # ---- PyTorch CUDA bridge (zero-copy via DLPack) ----
+        torch_bridge = self._maybe_bridge_torch(model)
 
         # ---- CUDA setup ----
         self._ensure_cuda(model)
@@ -182,18 +202,25 @@ class CuSolverBase(Solver):
         batch_size = model.batch_size
         actual_iters = iter_end - iter_begin
 
-        # ---- compute ALL output waypoints ----
-        # Merge user trj_waypoints + period_output points into one sorted list.
+        # ---- compute output waypoints ----
+        # When trj_waypoints is provided, it takes precedence over
+        # period_output (matching CPU solver behavior).
         if trj_waypoints is not None:
-            output_iters = set(trj_waypoints)
+            # Filter to valid range [iter_begin+1, iter_end]
+            valid_range = range(iter_begin + 1, iter_end + 1)
+            output_iters = set(w for w in trj_waypoints if w in valid_range)
             get_trj = True
         else:
             output_iters = set()
 
-        if period_output is not None:
-            for i in range(iter_begin, iter_end):
-                if i == iter_begin or (i + 1) % period_output == 0:
-                    output_iters.add(i + 1)
+            # Default: capture every iteration when get_trj=True without guidance
+            if get_trj and period_output is None:
+                period_output = 1
+
+            if period_output is not None:
+                for i in range(iter_begin, iter_end):
+                    if i == iter_begin or (i + 1) % period_output == 0:
+                        output_iters.add(i + 1)
 
         output_iters_sorted = sorted(output_iters)
         n_output = len(output_iters_sorted)
@@ -243,8 +270,9 @@ class CuSolverBase(Solver):
         # Captures state at ALL output iterations (for both trj and file I/O).
         trj_y = None
         if n_output > 0:
-            trj_y = cp.zeros((n_output, *model.shape_grid),
-                             dtype=model.y_mesh.dtype)
+            with model.am:
+                trj_y = cp.zeros((n_output, *model.shape_grid),
+                                 dtype=model.y_mesh.dtype)
 
         # ---- run the CUDA solve loop ----
         B, H, W = model.batch_size, model.height, model.width
@@ -257,22 +285,40 @@ class CuSolverBase(Solver):
         )
 
         t_total = time.time()
+        n_captured = 0  # actual number of snapshots captured
 
         if can_native and n_output > 0:
+            # Native loop uses local 1-based counter (1..n_iters).
+            # Convert absolute waypoints to local offsets.
+            native_iters = [x - iter_begin for x in output_iters_sorted]
             result = self._solve_native(
                 model, dt, dx2_inv, actual_iters, B, H, W,
-                trj_y, output_iters_sorted, rtol)
+                trj_y, native_iters, rtol)
+            # Compute how many waypoints were actually captured
+            stopped = result.get('stopped_at', -1) if isinstance(result, dict) else -1
+            if stopped > 0:
+                n_captured = sum(1 for x in native_iters if x <= stopped)
+            else:
+                n_captured = n_output
         elif can_native and n_output == 0:
             result = self._solve_native(
                 model, dt, dx2_inv, actual_iters, B, H, W,
                 None, None, rtol)
         else:
-            result = self._solve_python_loop(
+            result, n_captured = self._solve_python_loop(
                 model, dt, dx2_inv, iter_begin, iter_end,
                 output_iters_sorted, trj_y, rtol, verbose)
 
+        # ---- trim trajectory buffer to actual captured count ----
+        if trj_y is not None and n_captured < n_output:
+            trj_y = trj_y[:n_captured]
+            output_iters_sorted = output_iters_sorted[:n_captured]
+
+        # ---- restore PyTorch references if bridged ----
+        self._restore_torch(model, torch_bridge)
+
         # ---- post-loop: write files from captured snapshots ----
-        if has_file_io and trj_y is not None:
+        if has_file_io and trj_y is not None and n_captured > 0:
             self._write_files(
                 model, trj_y, output_iters_sorted, batch_size,
                 dpath_morph, dpath_pattern, dpath_states,
@@ -281,15 +327,24 @@ class CuSolverBase(Solver):
         if verbose >= 1:
             print("- [Duration] : %.5e sec." % (time.time() - t_total))
 
-        # ---- restore PyTorch references if bridged ----
-        self._restore_torch(model, torch_bridge)
-
         gc.collect()
 
         # ---- return trajectory if requested ----
-        if get_trj and trj_y is not None:
+        if get_trj:
+            if trj_y is None:
+                # No capture points — return empty trajectory.
+                # Use np.dtype() to handle both numpy and torch dtypes.
+                with model.am:
+                    trj_y = cp.zeros((0, *model.shape_grid),
+                                     dtype=np.dtype(model.dtype))
+            # Convert CuPy trajectory to torch if model was originally torch
+            if torch_bridge is not None:
+                import torch
+                torch_dev = torch.device('cuda', model.am.device_id)
+                trj_y = torch.as_tensor(trj_y.get(), device=torch_dev)
             if trj_waypoints is not None:
-                return {"iters": sorted(trj_waypoints), "trj": trj_y}
+                captured_wp = sorted(set(trj_waypoints) & set(output_iters_sorted))
+                return {"iters": captured_wp, "trj": trj_y}
             return trj_y
 
         return result
@@ -350,14 +405,14 @@ class CuSolverBase(Solver):
         y_next = cp.empty_like(y_cur)
 
         ix_trj = 0
-        t = 0.0
+        t = iter_begin * dt  # resume from correct time offset
         t_seg = time.time()
         n_tp = len(output_iters_sorted) if output_iters_sorted else 0
 
         for i in range(iter_begin, iter_end):
-            t += dt
             self._fast_step(model, t, dt, y_cur, y_next)
             y_cur, y_next = y_next, y_cur
+            t += dt
 
             if (i + 1) in output_set:
                 if trj_y is not None and ix_trj < n_tp:
@@ -383,7 +438,7 @@ class CuSolverBase(Solver):
             model._u = model._y_mesh[0, :, :, :]
             model._v = model._y_mesh[1, :, :, :]
 
-        return None
+        return None, ix_trj
 
     # ==================================================================
     # Post-loop file I/O — writes all captured snapshots
@@ -395,12 +450,17 @@ class CuSolverBase(Solver):
                      dname_model, fstr_morph, fstr_pattern, fstr_states):
         """Write image/state files from captured trajectory snapshots."""
         for snap_idx, iter_num in enumerate(output_iters):
-            # Temporarily set model state to the snapshot
+            # Convert snapshot to numpy — trj_y is always CuPy internally
             snapshot = trj_y[snap_idx]
+            if hasattr(snapshot, 'get'):
+                snapshot = snapshot.get()
+            else:
+                snapshot = np.asarray(snapshot)
             u_snap = snapshot[0]
             v_snap = snapshot[1]
 
             if dpath_morph or dpath_pattern:
+                # Pass numpy arr_u; colorize handles numpy via isinstance check
                 arr_color = model.colorize(arr_u=u_snap)
                 for j in range(batch_size):
                     fpath_m = None
@@ -423,5 +483,6 @@ class CuSolverBase(Solver):
                     fpath_s = pjoin(dpath_states,
                                     dname_model % (j + 1),
                                     fstr_states % iter_num)
+                    # u_snap, v_snap are numpy — save_states handles this
                     model.save_states(index=j, fpath=fpath_s,
                                       u=u_snap, v=v_snap)

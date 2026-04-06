@@ -523,7 +523,12 @@ class TorchModule(ArrayModule):
         else:
             kwargs.pop("dtype", None)
 
-        return self._module.tensor(data, *args, **kwargs)   
+        if isinstance(data, self._module.Tensor):
+            return data.detach().clone().to(
+                device=kwargs.get('device', data.device),
+                dtype=kwargs.get('dtype', data.dtype),
+            )
+        return self._module.tensor(data, *args, **kwargs)
     
     def any(self, *args, **kwargs):
         """

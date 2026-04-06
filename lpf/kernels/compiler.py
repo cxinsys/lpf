@@ -75,6 +75,9 @@ class CuKernelManager:
         self._jit_stage = None
         self._jit_rk4_combine = None
         self._jit_heun_combine = None
+        self._jit_scale = None
+        self._jit_lc2 = None
+        self._jit_lc3 = None
 
         # Try to load AOT fatbin
         self._aot = None
@@ -246,15 +249,21 @@ class CuKernelManager:
 
     def _build_preamble(self):
         lines = []
-        if self._dtype == np.float32:
+        if self._dtype == np.float16:
+            lines.append("#include <cuda_fp16.h>")
+            lines.append("#define REAL __half")
+            lines.append("#define REAL_CONST(x) __float2half(x##f)")
+            lines.append("#define MAKE_REAL(x) __float2half((float)(x))")
+        elif self._dtype == np.float32:
             lines.append("#define REAL float")
             lines.append("#define REAL_CONST(x) x##f")
+            lines.append("#define MAKE_REAL(x) ((float)(x))")
         elif self._dtype == np.float64:
             lines.append("#define REAL double")
             lines.append("#define REAL_CONST(x) x")
+            lines.append("#define MAKE_REAL(x) ((double)(x))")
         else:
-            raise ValueError(f"JIT compilation not supported for {self._dtype}. "
-                             "Use AOT build: python -m lpf.kernels.aot.build")
+            raise ValueError(f"Unsupported dtype for JIT compilation: {self._dtype}")
         lines.append(f"#define N_PARAMS {self._reaction_info['n_params']}")
         return "\n".join(lines) + "\n"
 
@@ -300,18 +309,18 @@ class CuKernelManager:
         return self._jit_heun_combine
 
     def _get_jit_scale(self):
-        if not hasattr(self, '_jit_scale') or self._jit_scale is None:
+        if self._jit_scale is None:
             self._jit_scale = self._compile_utility(SCALE_SOURCE, 'scale')
         return self._jit_scale
 
     def _get_jit_lc2(self):
-        if not hasattr(self, '_jit_lc2') or self._jit_lc2 is None:
+        if self._jit_lc2 is None:
             self._jit_lc2 = self._compile_utility(
                 LINEAR_COMBINE2_SOURCE, 'linear_combine2')
         return self._jit_lc2
 
     def _get_jit_lc3(self):
-        if not hasattr(self, '_jit_lc3') or self._jit_lc3 is None:
+        if self._jit_lc3 is None:
             self._jit_lc3 = self._compile_utility(
                 LINEAR_COMBINE3_SOURCE, 'linear_combine3')
         return self._jit_lc3

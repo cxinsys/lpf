@@ -97,6 +97,8 @@ class TwoComponentModel(ReactionDiffusionModel):
 
     @property
     def u(self):
+        if self._y_mesh is not None:
+            return self._y_mesh[0, :, :, :]
         return self._u
 
     @u.setter
@@ -111,6 +113,8 @@ class TwoComponentModel(ReactionDiffusionModel):
 
     @property
     def v(self):
+        if self._y_mesh is not None:
+            return self._y_mesh[1, :, :, :]
         return self._v
 
     @v.setter
@@ -166,9 +170,6 @@ class TwoComponentModel(ReactionDiffusionModel):
         u = y_mesh[0, :, :, :]
         v = y_mesh[1, :, :, :]
 
-        # Model must update its states.
-        self._u = u
-        self._v = v
         dx = self._dx
 
         # Get the kinetic parameters.
@@ -184,31 +185,26 @@ class TwoComponentModel(ReactionDiffusionModel):
         self._g = g
 
         # Diffusions + Reactions
-        # dydt_mesh[0, :, 1:-1, 1:-1] = Du * self.laplacian2d(u, dx) + f
-        # dydt_mesh[1, :, 1:-1, 1:-1] = Dv * self.laplacian2d(v, dx) + g
-
-        self.am.set(
+        dydt_mesh = self.am.set(
             dydt_mesh,
             (0, slice(None), slice(1, -1), slice(1, -1)),
             Du * self.laplacian2d(u, dx) + f
         )
-        
-        self.am.set(
+
+        dydt_mesh = self.am.set(
             dydt_mesh,
             (1, slice(None), slice(1, -1), slice(1, -1)),
             Dv * self.laplacian2d(v, dx) + g
         )
 
-        # Neumann boundary condition: dydt = 0
-        # -> Actually, it is a Dirichlet boundary condition, since reactions do not occur at the boundaries.
-        self.am.set(dydt_mesh, (slice(None), slice(None), 0, slice(None)),  0.0)
-        self.am.set(dydt_mesh, (slice(None), slice(None), -1, slice(None)),  0.0)
-        self.am.set(dydt_mesh, (slice(None), slice(None), slice(None), 0),  0.0)
-        self.am.set(dydt_mesh, (slice(None), slice(None), slice(None), -1),  0.0)
+        # Boundary condition: dydt = 0 at edges
+        dydt_mesh = self.am.set(dydt_mesh, (slice(None), slice(None), 0, slice(None)),  0.0)
+        dydt_mesh = self.am.set(dydt_mesh, (slice(None), slice(None), -1, slice(None)),  0.0)
+        dydt_mesh = self.am.set(dydt_mesh, (slice(None), slice(None), slice(None), 0),  0.0)
+        dydt_mesh = self.am.set(dydt_mesh, (slice(None), slice(None), slice(None), -1),  0.0)
 
-        # self.apply_boundary_condition(dydt_mesh=dydt_mesh)  # e.g.) BC: dydt = 0 (Newmann)
-
-        return self._dydt_mesh
+        self._dydt_mesh = dydt_mesh
+        return dydt_mesh
 
     def is_state_invalid(self, index, arr_u=None, arr_v=None):
         if arr_u is None:
@@ -253,7 +249,8 @@ class TwoComponentModel(ReactionDiffusionModel):
         color[:, :, :, 1] = self._color_v[1]
         color[:, :, :, 2] = self._color_v[2]
         
-        idx = self.am.get(arr_u) > thr_color
+        arr_u_np = arr_u if isinstance(arr_u, np.ndarray) else self.am.get(arr_u)
+        idx = arr_u_np > thr_color
         color[idx, 0] = self._color_u[0]
         color[idx, 1] = self._color_u[1]
         color[idx, 2] = self._color_u[2]

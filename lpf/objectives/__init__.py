@@ -15,20 +15,24 @@ from lpf.objectives.histrmse import MeanHistogramRootMeanSquareError
 from lpf.objectives.histrmse import MinHistogramRootMeanSquareError
 from lpf.objectives.histrmse import MaxHistogramRootMeanSquareError
 
-from lpf.objectives.vggperceptualloss import SumVgg16PerceptualLoss
-from lpf.objectives.vggperceptualloss import MeanVgg16PerceptualLoss
-from lpf.objectives.vggperceptualloss import MinVgg16PerceptualLoss
-from lpf.objectives.vggperceptualloss import MaxVgg16PerceptualLoss
+# Torch-dependent objectives: lazy import so lpf.objectives works without torch
+try:
+    from lpf.objectives.vggperceptualloss import SumVgg16PerceptualLoss
+    from lpf.objectives.vggperceptualloss import MeanVgg16PerceptualLoss
+    from lpf.objectives.vggperceptualloss import MinVgg16PerceptualLoss
+    from lpf.objectives.vggperceptualloss import MaxVgg16PerceptualLoss
 
-from lpf.objectives.ssim import SumStructuralSimilarityIndexMeasure
-from lpf.objectives.ssim import MeanStructuralSimilarityIndexMeasure
-from lpf.objectives.ssim import MinStructuralSimilarityIndexMeasure
-from lpf.objectives.ssim import MaxStructuralSimilarityIndexMeasure
+    from lpf.objectives.ssim import SumStructuralSimilarityIndexMeasure
+    from lpf.objectives.ssim import MeanStructuralSimilarityIndexMeasure
+    from lpf.objectives.ssim import MinStructuralSimilarityIndexMeasure
+    from lpf.objectives.ssim import MaxStructuralSimilarityIndexMeasure
 
-from lpf.objectives.perceptualsimilarity import SumLearnedPerceptualImagePatchSimilarity
-from lpf.objectives.perceptualsimilarity import MeanLearnedPerceptualImagePatchSimilarity
-from lpf.objectives.perceptualsimilarity import MinLearnedPerceptualImagePatchSimilarity
-from lpf.objectives.perceptualsimilarity import MaxLearnedPerceptualImagePatchSimilarity
+    from lpf.objectives.perceptualsimilarity import SumLearnedPerceptualImagePatchSimilarity
+    from lpf.objectives.perceptualsimilarity import MeanLearnedPerceptualImagePatchSimilarity
+    from lpf.objectives.perceptualsimilarity import MinLearnedPerceptualImagePatchSimilarity
+    from lpf.objectives.perceptualsimilarity import MaxLearnedPerceptualImagePatchSimilarity
+except (ImportError, ModuleNotFoundError):
+    pass
 
 from lpf.objectives.objectivefactory import ObjectiveFactory
 

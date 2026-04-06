@@ -13,6 +13,7 @@ Covers:
 import numpy as np
 import pytest
 import os
+from types import SimpleNamespace
 
 # Skip entire module if CuPy is not available
 cupy = pytest.importorskip("cupy")
@@ -192,8 +193,8 @@ class TestTrajectoryCapture:
         assert result["trj"].shape[0] == len(waypoints)
         assert result["iters"] == waypoints
 
-    def test_trajectory_torch_returns_cupy(self):
-        """Trajectory buffer is CuPy (internal). Model arrays are restored to torch."""
+    def test_trajectory_torch_returns_torch(self):
+        """Trajectory should be returned as torch.Tensor for torch models."""
         torch = pytest.importorskip("torch")
         if not torch.cuda.is_available():
             pytest.skip("CUDA not available for torch")
@@ -202,10 +203,45 @@ class TestTrajectoryCapture:
         from lpf.solvers import EulerSolver
         trj = EulerSolver(dt=0.01, n_iters=50).solve(
             model, period_output=25, get_trj=True, verbose=0)
-        # Trajectory is captured as cupy internally
         assert trj.shape[0] > 0
+        # Trajectory should be torch tensor, matching the model framework
+        assert isinstance(trj, torch.Tensor)
+        assert trj.device.type == "cuda"
         # Model should be restored to torch
         assert isinstance(model.y_mesh, torch.Tensor)
+
+    def test_native_matches_python_with_nonzero_iter_begin(self, monkeypatch):
+        import lpf.solvers._cuda.base as cuda_base
+        native = cuda_base._get_native()
+        if not native.is_available():
+            pytest.skip("Native AOT solver not available")
+
+        from lpf.solvers import EulerSolver
+
+        model_native = _make_model("cuda:0", width=16, height=16)
+        trj_native = EulerSolver(dt=0.01, n_iters=3).solve(
+            model_native,
+            iter_begin=5,
+            period_output=2,
+            get_trj=True,
+            verbose=0,
+        )
+
+        monkeypatch.setattr(
+            cuda_base,
+            "_native_solver",
+            SimpleNamespace(is_available=lambda: False),
+        )
+        model_python = _make_model("cuda:0", width=16, height=16)
+        trj_python = EulerSolver(dt=0.01, n_iters=3).solve(
+            model_python,
+            iter_begin=5,
+            period_output=2,
+            get_trj=True,
+            verbose=0,
+        )
+
+        np.testing.assert_allclose(trj_native.get(), trj_python.get(), atol=1e-6, rtol=1e-6)
 
 
 # ---------- file I/O ----------
@@ -236,6 +272,32 @@ class TestFileIO:
         assert len(morph_files) > 0, "Should save morph images"
         assert len(state_files) > 0, "Should save state files"
 
+    def test_torch_cuda_save_states(self, tmp_path):
+        torch = pytest.importorskip("torch")
+        if not torch.cuda.is_available():
+            pytest.skip("CUDA not available for torch")
+
+        model = _make_model("torch:gpu:0")
+        from lpf.solvers import EulerSolver
+
+        dpath_states = str(tmp_path / "states")
+        EulerSolver(dt=0.01, n_iters=20).solve(
+            model,
+            period_output=10,
+            dpath_states=dpath_states,
+            verbose=0,
+        )
+
+        state_files = []
+        for _, _, files in os.walk(str(tmp_path)):
+            for fname in files:
+                if fname.endswith(".npz"):
+                    state_files.append(fname)
+
+        assert state_files, "Should save state files for torch CUDA models"
+        assert isinstance(model.y_mesh, torch.Tensor)
+        assert model.y_mesh.device.type == "cuda"
+
 
 # ---------- batch sizes ----------
 
@@ -250,6 +312,23 @@ class TestBatchSizes:
         y = _get_numpy(model)
         assert y.shape == (2, batch_size, 32, 32)
         assert np.all(np.isfinite(y))
+
+    @pytest.mark.parametrize("solver_name", ALL_SOLVERS)
+    def test_solver_reuse_across_shape_change_matches_fresh_solver(self, solver_name):
+        cls = _get_solver_class(solver_name)
+
+        solver_reuse = cls(dt=0.01, n_iters=1)
+        solver_reuse.solve(_make_model("cuda:0", width=16, height=16), verbose=0)
+
+        model_reuse = _make_model("cuda:0", width=24, height=24)
+        solver_reuse.solve(model_reuse, verbose=0)
+        y_reuse = _get_numpy(model_reuse)
+
+        model_fresh = _make_model("cuda:0", width=24, height=24)
+        cls(dt=0.01, n_iters=1).solve(model_fresh, verbose=0)
+        y_fresh = _get_numpy(model_fresh)
+
+        np.testing.assert_allclose(y_reuse, y_fresh, atol=1e-6, rtol=1e-6)
 
 
 # ---------- float64 ----------

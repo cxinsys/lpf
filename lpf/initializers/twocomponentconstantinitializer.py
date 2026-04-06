@@ -53,8 +53,8 @@ class TwoComponentConstantInitializer(TwoComponentInitializer):
 
             # model._y_mesh[0, :, :, :] = u0
             # model._y_mesh[1, :, :, :] = v0
-            model.am.set(model._y_mesh, (0, ...), u0)
-            model.am.set(model._y_mesh, (1, ...), v0)
+            model._y_mesh = model.am.set(model._y_mesh, (0, ...), u0)
+            model._y_mesh = model.am.set(model._y_mesh, (1, ...), v0)
         # end of with
 
     def to_dict(self, index):

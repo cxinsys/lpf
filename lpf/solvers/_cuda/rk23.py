@@ -13,14 +13,16 @@ class CuRK23Solver(CuSolverBase):
     def _alloc_buffers(self, model):
         import cupy as cp
         shape, dtype = model.shape_grid, model.y_mesh.dtype
-        self._k1 = cp.empty(shape, dtype=dtype)
-        self._k2 = cp.empty(shape, dtype=dtype)
-        self._k3 = cp.empty(shape, dtype=dtype)
-        self._y_temp = cp.empty(shape, dtype=dtype)
-        self._delta = cp.empty(shape, dtype=dtype)
+        with model.am:
+            self._k1 = cp.empty(shape, dtype=dtype)
+            self._k2 = cp.empty(shape, dtype=dtype)
+            self._k3 = cp.empty(shape, dtype=dtype)
+            self._y_temp = cp.empty(shape, dtype=dtype)
+            self._delta = cp.empty(shape, dtype=dtype)
         B, H, W = model.batch_size, model.height, model.width
         self._N = 2 * B * H * W
         self._dx2_inv = 1.0 / (model.dx ** 2)
+        self._cached_shape = shape
         self._bufs_ready = True
 
     def _get_work_bufs(self):

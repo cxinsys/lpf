@@ -12,6 +12,7 @@ class CuEulerSolver(CuSolverBase):
 
     def _alloc_buffers(self, model):
         self._dx2_inv = 1.0 / (model.dx ** 2)
+        self._cached_shape = model.shape_grid
         self._bufs_ready = True
 
     def _get_work_bufs(self):

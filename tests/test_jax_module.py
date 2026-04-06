@@ -39,3 +39,32 @@ class TestJaxModuleAPI:
     def test_clear_memory_does_not_crash(self):
         """clear_memory() should run without AttributeError."""
         self.am.clear_memory()
+
+    def test_set_returns_new_array(self):
+        """JAX am.set() returns a new array (functional update).
+
+        Callers that ignore the return value will silently get stale data.
+        This test documents the known limitation: code using am.set()
+        must use the return value when running on JAX.
+        """
+        arr = self.am.zeros((2, 3))
+        result = self.am.set(arr, (0, 0), 99.0)
+        # JAX: arr is unchanged, result has the update
+        assert float(result[0, 0]) == 99.0
+        assert float(arr[0, 0]) == 0.0, \
+            "JAX arrays are immutable; am.set() must not mutate in-place"
+
+    def test_set_return_value_required_for_correctness(self):
+        """Demonstrates that ignoring am.set() return silently loses updates.
+
+        This is the root cause of C2: twocomponentmodel.pdefunc() calls
+        am.set(dydt_mesh, ...) without using the return value, which means
+        dydt_mesh stays zero on JAX.
+        """
+        arr = self.am.zeros((3,))
+        # Simulates the pattern in twocomponentmodel.py — return value ignored
+        self.am.set(arr, 0, 1.0)  # return value discarded
+        self.am.set(arr, 1, 2.0)
+        # arr is still all zeros
+        assert float(arr[0]) == 0.0
+        assert float(arr[1]) == 0.0

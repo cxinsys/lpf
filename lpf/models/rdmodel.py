@@ -80,7 +80,6 @@ class ReactionDiffusionModel(ABC):
     
     @y_mesh.setter
     def y_mesh(self, obj):
-        self._y_mesh[:] = obj
         with self.am:
             if self._y_mesh is None:
                 self._y_mesh = self.am.array(obj, dtype=self._dtype)

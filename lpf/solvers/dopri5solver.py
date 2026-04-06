@@ -1,8 +1,9 @@
 import warnings
 from lpf.solvers.solver import Solver
+from lpf.solvers._cupy_pdefunc_mixin import CupyPdefuncMixin
 
 
-class DOPRI5Solver(Solver):
+class DOPRI5Solver(CupyPdefuncMixin, Solver):
     """Dormand-Prince 5th-order solver with embedded error estimation.
 
     Features FSAL (First Same As Last) property for efficiency.
@@ -51,25 +52,8 @@ class DOPRI5Solver(Solver):
         self.reset_fsal()
         if model is None:
             model = self._model
-        if self._is_cuda(model):
-            self._init_cuda(model)
+        self._maybe_init_cuda(model)
         return super().solve(model=model, **kwargs)
-
-    def _init_cuda(self, model):
-        from lpf.kernels.compiler import get_kernel_manager
-        if self._km is None or self._km._model_name != model.name:
-            self._km = get_kernel_manager(model.name, model.dtype, self._fast_math)
-
-    def _call_pdefunc(self, model, t, y_mesh):
-        if self._km is not None and self._is_cuda(model):
-            import cupy as cp
-            out = cp.empty_like(y_mesh)
-            self._km.launch_pdefunc(
-                y_mesh, out, model.params,
-                model.batch_size, model.height, model.width,
-                1.0 / (model.dx ** 2))
-            return out
-        return model.pdefunc(t, y_mesh)
 
     def step(self, model, t, dt, y_mesh):
         if self._adaptive_dt is None:

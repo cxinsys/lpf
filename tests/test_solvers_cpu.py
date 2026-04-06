@@ -153,6 +153,17 @@ class TestFileIO:
             npz_files.extend(f for f in fnames if f.endswith('.npz'))
         assert len(npz_files) > 0
 
+    def test_save_pattern_independently(self, tmp_path):
+        """Pattern saving should work without morph saving."""
+        from lpf.solvers import EulerSolver
+        model = _make_model()
+        dpath = str(tmp_path / "pattern")
+        EulerSolver().solve(
+            model, dt=0.01, n_iters=20, period_output=10,
+            dpath_pattern=dpath, init_model=False, verbose=0)
+        assert os.path.isdir(dpath)
+        assert len(os.listdir(dpath)) > 0
+
 
 # ---- solver consistency ----
 

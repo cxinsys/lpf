@@ -25,11 +25,13 @@ from lpf.objectives import Objective
 class Vgg16PerceptualLoss(torch.nn.Module):
     def __init__(self, resize=True):
         super(Vgg16PerceptualLoss, self).__init__()
-        blocks = []
-        blocks.append(torchvision.models.vgg16(weights=VGG16_Weights.IMAGENET1K_V1).features[:4].eval())
-        blocks.append(torchvision.models.vgg16(weights=VGG16_Weights.IMAGENET1K_V1).features[4:9].eval())
-        blocks.append(torchvision.models.vgg16(weights=VGG16_Weights.IMAGENET1K_V1).features[9:16].eval())
-        blocks.append(torchvision.models.vgg16(weights=VGG16_Weights.IMAGENET1K_V1).features[16:23].eval())
+        vgg_features = torchvision.models.vgg16(weights=VGG16_Weights.IMAGENET1K_V1).features.eval()
+        blocks = [
+            vgg_features[:4],
+            vgg_features[4:9],
+            vgg_features[9:16],
+            vgg_features[16:23],
+        ]
         for bl in blocks:
             for p in bl.parameters():
                 p.requires_grad = False

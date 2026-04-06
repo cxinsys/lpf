@@ -32,6 +32,14 @@ class TwoComponentDiploidModel(Diploidy, TwoComponentModel):
             self._u = alpha * pa_model._u + beta * ma_model._u
             self._v = alpha * pa_model._v + beta * ma_model._v
         
+    @property
+    def u(self):
+        return self._u
+
+    @property
+    def v(self):
+        return self._v
+
     def has_initializer(self):
         return Diploidy.has_initializer(self)
 
@@ -57,9 +65,15 @@ class TwoComponentDiploidModel(Diploidy, TwoComponentModel):
 
             # The total u and v are determined by
             # a linear combination of paternal and maternal u and v.
-            self._u[:] = alpha * pa_model._u + beta * ma_model._u
-            self._v[:] = alpha * pa_model._v + beta * ma_model._v
-            
+            self._u[:] = alpha * y_mesh[0] + beta * y_mesh[2]
+            self._v[:] = alpha * y_mesh[1] + beta * y_mesh[3]
+
         return self._dydt_mesh
+
+    def is_early_stopping(self, rtol):
+        """Delegate to paternal/maternal models' reaction terms."""
+        pa = self._paternal_model
+        ma = self._maternal_model
+        return pa.is_early_stopping(rtol) and ma.is_early_stopping(rtol)
 
 # end of class TwoComponentDiploidModel

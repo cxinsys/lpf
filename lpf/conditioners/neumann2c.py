@@ -28,15 +28,15 @@ class Neumann2C(TwoComponentBoundaryConditioner):
             - index 1 -> v
         """
         # Set the boundary of u.
-        model.am.set(dydt_mesh, (0, slice(None), 0, slice(None)), self.val_u)
-        model.am.set(dydt_mesh, (0, slice(None), -1, slice(None)), self.val_u)
-        model.am.set(dydt_mesh, (0, slice(None), slice(None), 0), self.val_u)
-        model.am.set(dydt_mesh, (0, slice(None), slice(None), -1), self.val_u)
+        dydt_mesh = model.am.set(dydt_mesh, (0, slice(None), 0, slice(None)), self.val_u)
+        dydt_mesh = model.am.set(dydt_mesh, (0, slice(None), -1, slice(None)), self.val_u)
+        dydt_mesh = model.am.set(dydt_mesh, (0, slice(None), slice(None), 0), self.val_u)
+        dydt_mesh = model.am.set(dydt_mesh, (0, slice(None), slice(None), -1), self.val_u)
 
         # Set the boundary of v.
-        model.am.set(dydt_mesh, (1, slice(None), 0, slice(None)), self.val_v)
-        model.am.set(dydt_mesh, (1, slice(None), -1, slice(None)), self.val_v)
-        model.am.set(dydt_mesh, (1, slice(None), slice(None), 0), self.val_v)
-        model.am.set(dydt_mesh, (1, slice(None), slice(None), -1), self.val_v)
+        dydt_mesh = model.am.set(dydt_mesh, (1, slice(None), 0, slice(None)), self.val_v)
+        dydt_mesh = model.am.set(dydt_mesh, (1, slice(None), -1, slice(None)), self.val_v)
+        dydt_mesh = model.am.set(dydt_mesh, (1, slice(None), slice(None), 0), self.val_v)
+        dydt_mesh = model.am.set(dydt_mesh, (1, slice(None), slice(None), -1), self.val_v)
 
         return dydt_mesh

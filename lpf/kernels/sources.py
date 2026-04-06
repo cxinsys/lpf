@@ -40,8 +40,8 @@ void fused_euler_step(
     const double dt_d,
     const double dx2_inv_d
 ) {
-    const REAL dt = (REAL)dt_d;
-    const REAL dx2_inv = (REAL)dx2_inv_d;
+    const REAL dt = MAKE_REAL(dt_d);
+    const REAL dx2_inv = MAKE_REAL(dx2_inv_d);
     __shared__ REAL s_u[(TILE_Y + 2) * SW];
     __shared__ REAL s_v[(TILE_Y + 2) * SW];
 
@@ -134,7 +134,7 @@ void fused_pdefunc(
     const int W,
     const double dx2_inv_d
 ) {
-    const REAL dx2_inv = (REAL)dx2_inv_d;
+    const REAL dx2_inv = MAKE_REAL(dx2_inv_d);
     __shared__ REAL s_u[(TILE_Y + 2) * SW];
     __shared__ REAL s_v[(TILE_Y + 2) * SW];
 
@@ -220,7 +220,7 @@ void rk_stage_update(
     const double alpha_d,
     const int N
 ) {
-    const REAL alpha = (REAL)alpha_d;
+    const REAL alpha = MAKE_REAL(alpha_d);
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= N) return;
     y_out[i] = y[i] + alpha * k[i];
@@ -244,7 +244,7 @@ void rk4_combine(
     const double dt_over_6_d,
     const int N
 ) {
-    const REAL dt_over_6 = (REAL)dt_over_6_d;
+    const REAL dt_over_6 = MAKE_REAL(dt_over_6_d);
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= N) return;
     delta[i] = dt_over_6 * (k1[i]
@@ -285,7 +285,7 @@ void scale(
     const double alpha_d,
     const int N
 ) {
-    const REAL alpha = (REAL)alpha_d;
+    const REAL alpha = MAKE_REAL(alpha_d);
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= N) return;
     out[i] = alpha * x[i];
@@ -306,8 +306,8 @@ void linear_combine2(
     const double b_d,
     const int N
 ) {
-    const REAL a = (REAL)a_d;
-    const REAL b = (REAL)b_d;
+    const REAL a = MAKE_REAL(a_d);
+    const REAL b = MAKE_REAL(b_d);
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= N) return;
     out[i] = a * x[i] + b * y[i];
@@ -330,9 +330,9 @@ void linear_combine3(
     const double c_d,
     const int N
 ) {
-    const REAL a = (REAL)a_d;
-    const REAL b = (REAL)b_d;
-    const REAL c = (REAL)c_d;
+    const REAL a = MAKE_REAL(a_d);
+    const REAL b = MAKE_REAL(b_d);
+    const REAL c = MAKE_REAL(c_d);
     const int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= N) return;
     out[i] = a * x[i] + b * y[i] + c * z[i];

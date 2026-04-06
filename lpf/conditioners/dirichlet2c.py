@@ -39,15 +39,15 @@ class Dirichlet2C(TwoComponentBoundaryConditioner):
             # y_mesh[:, :, -1] = self._val_v
 
             # Set the boundary of u.
-            model.am.set(y_mesh, (0, slice(None), 0, slice(None)), self.val_u)
-            model.am.set(y_mesh, (0, slice(None), -1, slice(None)), self.val_u)
-            model.am.set(y_mesh, (0, slice(None), slice(None), 0), self.val_u)
-            model.am.set(y_mesh, (0, slice(None), slice(None), -1), self.val_u)
+            y_mesh = model.am.set(y_mesh, (0, slice(None), 0, slice(None)), self.val_u)
+            y_mesh = model.am.set(y_mesh, (0, slice(None), -1, slice(None)), self.val_u)
+            y_mesh = model.am.set(y_mesh, (0, slice(None), slice(None), 0), self.val_u)
+            y_mesh = model.am.set(y_mesh, (0, slice(None), slice(None), -1), self.val_u)
 
             # Set the boundary of v.
-            model.am.set(y_mesh, (1, slice(None), 0, slice(None)), self.val_v)
-            model.am.set(y_mesh, (1, slice(None), -1, slice(None)), self.val_v)
-            model.am.set(y_mesh, (1, slice(None), slice(None), 0), self.val_v)
-            model.am.set(y_mesh, (1, slice(None), slice(None), -1), self.val_v)
+            y_mesh = model.am.set(y_mesh, (1, slice(None), 0, slice(None)), self.val_v)
+            y_mesh = model.am.set(y_mesh, (1, slice(None), -1, slice(None)), self.val_v)
+            y_mesh = model.am.set(y_mesh, (1, slice(None), slice(None), 0), self.val_v)
+            y_mesh = model.am.set(y_mesh, (1, slice(None), slice(None), -1), self.val_v)
 
             return y_mesh

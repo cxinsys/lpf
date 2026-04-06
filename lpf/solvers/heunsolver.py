@@ -18,6 +18,8 @@ class HeunSolver(Solver):
         return CuHeunSolver(fast_math=self._fast_math)
 
     def step(self, model, t, dt, y_mesh):
-        k1 = dt * model.pdefunc(t, y_mesh)
+        # pdefunc() returns an internal buffer that is overwritten on the
+        # next call, so each stage result must be copied.
+        k1 = dt * model.pdefunc(t, y_mesh).copy()
         k2 = dt * model.pdefunc(t + dt, y_mesh + k1)
         return 0.5 * (k1 + k2)

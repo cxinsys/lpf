@@ -83,12 +83,12 @@ class RandomTwoComponentDiploidReproducer(object):
         if haploid_model_class is None:
             haploid_model_class = LiawModel
         elif not issubclass(haploid_model_class, lpf.models.TwoComponentModel):
-            raise TypeError("diploid_model_class must be a subclass of lpf.models.TwoComponentModel.")
+            raise TypeError("haploid_model_class must be a subclass of lpf.models.TwoComponentModel.")
 
         if haploid_initializer_class is None:
             haploid_initializer_class = LiawInitializer
         elif not issubclass(haploid_initializer_class, lpf.initializers.TwoComponentInitializer):
-            raise TypeError("diploid_model_class must be a subclass of lpf.initializers.TwoComponentInitializer.")
+            raise TypeError("haploid_initializer_class must be a subclass of lpf.initializers.TwoComponentInitializer.")
 
         
         self._diploid_model_class = diploid_model_class
@@ -127,7 +127,7 @@ class RandomTwoComponentDiploidReproducer(object):
 
     @property
     def solver(self):
-        return self._sovler
+        return self._solver
 
     @property
     def n_generations(self):

@@ -12,6 +12,39 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 
+@pytest.mark.parametrize(
+    ("module_name", "class_name"),
+    [
+        ("lpf.solvers.dopri5solver", "DOPRI5Solver"),
+        ("lpf.solvers.adaptiverk45solver", "AdaptiveRKF45Solver"),
+    ],
+)
+def test_cpu_call_pdefunc_copies_reused_buffer(liaw_model, module_name, class_name):
+    """CPU adaptive solvers must copy model.pdefunc() results on every call.
+
+    TwoComponentModel.pdefunc() reuses an internal buffer. If the adaptive
+    solvers keep that reference directly, later stages overwrite earlier ones.
+    """
+    module = __import__(module_name, fromlist=[class_name])
+    solver_cls = getattr(module, class_name)
+    solver = solver_cls()
+
+    reusable = np.empty_like(liaw_model.y_mesh)
+
+    def fake_pdefunc(t=None, y_mesh=None, y_linear=None):
+        reusable.fill(np.float32(t))
+        return reusable
+
+    liaw_model.pdefunc = fake_pdefunc
+
+    first = solver._call_pdefunc(liaw_model, 1.0, liaw_model.y_mesh)
+    second = solver._call_pdefunc(liaw_model, 2.0, liaw_model.y_mesh)
+
+    assert first is not second
+    assert np.all(first == np.float32(1.0))
+    assert np.all(second == np.float32(2.0))
+
+
 class TestAdaptiveRKF45SubStepping:
     """Verify that AdaptiveRKF45Solver sub-steps correctly to cover full dt."""
 
@@ -124,4 +157,3 @@ class TestDOPRI5SubStepping:
 
         assert len(sqrt_calls) > 0, "Solver should call model.am.sqrt()"
         assert len(mean_calls) > 0, "Solver should call model.am.mean()"
-
