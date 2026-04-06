@@ -355,9 +355,21 @@ class TwoComponentModel(ReactionDiffusionModel):
                 generation=None,
                 fitness=None):
 
+        from lpf import __version__ as _lpf_version
+
         n2v = {}
-        
+
         n2v["model"] = self._name
+
+        # Reproduction metadata: pin the lpf version, numerical precision,
+        # and the array backend used to produce these results. dtype changes
+        # alter results bit-for-bit; the lpf version pins solver/kernel
+        # behavior; device is recorded for context (different backends can
+        # accumulate rounding differently).
+        n2v["lpf_version"] = _lpf_version
+        n2v["dtype"] = np.dtype(self._dtype).name
+        _device = self._am.device if self._am is not None else None
+        n2v["device"] = str(_device) if _device is not None else "cpu"
 
         if index is not None:
             n2v["index"] = index

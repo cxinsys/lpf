@@ -5,7 +5,7 @@
  * internally, so the Python caller always passes np.float64 for scalars.
  *
  * Compile:
- *   nvcc --fatbin -std=c++17 -O3 --use_fast_math \
+ *   nvcc --fatbin -std=c++17 -O3 \
  *        -I include/ kernels.cu -o kernels.fatbin
  */
 

@@ -64,10 +64,12 @@ class CuKernelManager:
         self._fast_math = fast_math
         self._reaction_info = REACTION_REGISTRY[model_name]
 
-        # NVRTC compile options
+        # NVRTC compile options.
+        # fast_math is intentionally never applied — it relaxes IEEE-754
+        # (FTZ/DAZ, approximate div/sqrt) which we do not want for the
+        # reaction-diffusion solvers. The fast_math kwarg is kept on the
+        # solver/manager API for backward compatibility but is a no-op.
         self._options = ()
-        if fast_math:
-            self._options += ('--use_fast_math',)
 
         # Lazily compiled JIT kernels
         self._jit_euler = None

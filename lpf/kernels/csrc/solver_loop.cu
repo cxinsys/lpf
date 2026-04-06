@@ -9,7 +9,7 @@
  *   - Ping-pong buffers
  *
  * Compile:
- *   nvcc -shared -Xcompiler -fPIC -std=c++17 -O3 --use_fast_math \
+ *   nvcc -shared -Xcompiler -fPIC -std=c++17 -O3 \
  *        -I include/ solver_loop.cu -o libsolver.so
  */
 
