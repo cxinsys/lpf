@@ -243,7 +243,8 @@ class Solver:
 
             if should_record:
                 if get_trj:
-                    self._trj_y[ix_trj, ...] = model.y_mesh
+                    self._trj_y = model.am.set(
+                        self._trj_y, ix_trj, model.y_mesh)
                     ix_trj += 1
 
                 if dpath_morph or dpath_pattern:

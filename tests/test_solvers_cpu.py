@@ -117,6 +117,32 @@ class TestTrajectory:
         assert result["trj"].shape[0] == 3
         assert result["iters"] == [5, 10, 20]
 
+    def test_return_none_without_get_trj(self):
+        from lpf.solvers import EulerSolver
+        model = _make_model()
+        result = EulerSolver(dt=0.01, n_iters=20).solve(
+            model, init_model=False, verbose=0)
+        assert result is None
+
+    def test_return_array_with_get_trj(self):
+        from lpf.solvers import EulerSolver
+        model = _make_model()
+        result = EulerSolver(dt=0.01, n_iters=20).solve(
+            model, period_output=10, get_trj=True, init_model=False, verbose=0)
+        assert isinstance(result, np.ndarray)
+        assert result.ndim == 5  # (time, states, batch, height, width)
+
+    def test_return_dict_with_waypoints(self):
+        from lpf.solvers import EulerSolver
+        model = _make_model()
+        result = EulerSolver(dt=0.01, n_iters=20).solve(
+            model, trj_waypoints=[5, 10, 20], init_model=False, verbose=0)
+        assert isinstance(result, dict)
+        assert "trj" in result
+        assert "iters" in result
+        assert isinstance(result["iters"], list)
+        assert isinstance(result["trj"], np.ndarray)
+
     def test_trajectory_evolves(self):
         from lpf.solvers import EulerSolver
         model = _make_model()

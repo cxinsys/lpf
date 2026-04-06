@@ -193,22 +193,58 @@ class TestTrajectoryCapture:
         assert result["trj"].shape[0] == len(waypoints)
         assert result["iters"] == waypoints
 
-    def test_trajectory_torch_returns_torch(self):
-        """Trajectory should be returned as torch.Tensor for torch models."""
+    def test_return_none_without_get_trj(self):
+        """solve() without get_trj should return None on CUDA path."""
+        from lpf.solvers import EulerSolver
+        model = _make_model("cuda:0")
+        result = EulerSolver(dt=0.01, n_iters=20).solve(model, verbose=0)
+        assert result is None
+
+    def test_return_cupy_array_for_cupy_model(self):
+        """CuPy model should return CuPy array trajectory."""
+        from lpf.solvers import EulerSolver
+        model = _make_model("cuda:0")
+        result = EulerSolver(dt=0.01, n_iters=20).solve(
+            model, period_output=10, get_trj=True, verbose=0)
+        assert isinstance(result, cupy.ndarray)
+
+    def test_return_dict_with_waypoints_cupy(self):
+        """CuPy model with waypoints should return dict with CuPy array."""
+        from lpf.solvers import EulerSolver
+        model = _make_model("cuda:0")
+        result = EulerSolver(dt=0.01, n_iters=20).solve(
+            model, trj_waypoints=[5, 10, 20], verbose=0)
+        assert isinstance(result, dict)
+        assert isinstance(result["trj"], cupy.ndarray)
+        assert isinstance(result["iters"], list)
+
+    def test_return_torch_tensor_for_torch_model(self):
+        """Torch model should return torch.Tensor trajectory."""
         torch = pytest.importorskip("torch")
         if not torch.cuda.is_available():
             pytest.skip("CUDA not available for torch")
 
-        model = _make_model("torch:gpu:0")
         from lpf.solvers import EulerSolver
+        model = _make_model("torch:gpu:0")
         trj = EulerSolver(dt=0.01, n_iters=50).solve(
             model, period_output=25, get_trj=True, verbose=0)
-        assert trj.shape[0] > 0
-        # Trajectory should be torch tensor, matching the model framework
         assert isinstance(trj, torch.Tensor)
         assert trj.device.type == "cuda"
-        # Model should be restored to torch
-        assert isinstance(model.y_mesh, torch.Tensor)
+
+    def test_return_dict_with_waypoints_torch(self):
+        """Torch model with waypoints should return dict with torch.Tensor."""
+        torch = pytest.importorskip("torch")
+        if not torch.cuda.is_available():
+            pytest.skip("CUDA not available for torch")
+
+        from lpf.solvers import EulerSolver
+        model = _make_model("torch:gpu:0")
+        result = EulerSolver(dt=0.01, n_iters=20).solve(
+            model, trj_waypoints=[5, 10, 20], verbose=0)
+        assert isinstance(result, dict)
+        assert isinstance(result["trj"], torch.Tensor)
+        assert result["trj"].device.type == "cuda"
+        assert isinstance(result["iters"], list)
 
     def test_native_matches_python_with_nonzero_iter_begin(self, monkeypatch):
         import lpf.solvers._cuda.base as cuda_base

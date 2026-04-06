@@ -109,8 +109,7 @@ def get_array_module(device):
             return TorchModule("cpu", 0)
     elif _backend == "jax":
         try:
-            return JaxModule(_device, _device_id) if _device in ["gpu", "cuda"] \
-                else JaxModule("cpu", 0)
+            return JaxModule(_device, _device_id)
         except ImportError:
             raise ImportError(
                 f"device='{device}' requires JAX. "
@@ -632,8 +631,8 @@ class JaxModule(NumpyModule):
 
         import os
 
-        os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"]="false"
-        os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"]="platform"
+        os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+        os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
 
         import jax
         from jax import device_put
@@ -643,11 +642,37 @@ class JaxModule(NumpyModule):
         self._module = jnp
         self._device_put = device_put
 
-        for jax_device in jax.devices(device):
-            if jax_device.id == device_id:
-                self._device = jax_device
-                break
-        # end of for
+        # Normalize device type for JAX
+        device_type = device
+        if device_type in ("cuda",):
+            device_type = "gpu"
+
+        try:
+            devices = jax.devices(device_type)
+        except RuntimeError:
+            devices = []
+
+        if not devices:
+            raise RuntimeError(
+                f"No JAX devices found for type '{device_type}'. "
+                + ("Install jax[cuda] for GPU support."
+                   if device_type in ("gpu", "cuda") else ""))
+
+        # Select device by ID
+        self._device = None
+        if device_id is not None:
+            for jax_device in devices:
+                if jax_device.id == device_id:
+                    self._device = jax_device
+                    break
+
+        if self._device is None:
+            available_ids = [d.id for d in devices]
+            if device_id is not None and device_id not in available_ids:
+                raise ValueError(
+                    f"JAX device_id={device_id} not found among "
+                    f"{device_type} devices. Available IDs: {available_ids}")
+            self._device = devices[0]
 
     def any(self, *args, **kwargs):
         return self._module.any(*args, **kwargs)
@@ -704,7 +729,7 @@ class JaxModule(NumpyModule):
         return self._module.vstack(tup)
 
     def clear_memory(self):
-        self._jax.clear_backends()
+        self._jax.clear_caches()
 
         import gc
         gc.collect()

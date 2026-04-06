@@ -110,10 +110,10 @@ class Diploidy(ABC):
             self._y_mesh = self.am.zeros(self._shape_grid,
                                          dtype=pa_model.dtype)
 
-            self._y_mesh[0, :] = pa_model._y_mesh[0, :]
-            self._y_mesh[1, :] = pa_model._y_mesh[1, :]
-            self._y_mesh[2, :] = ma_model._y_mesh[0, :]
-            self._y_mesh[3, :] = ma_model._y_mesh[1, :]
+            self._y_mesh = self.am.set(self._y_mesh, 0, pa_model._y_mesh[0, :])
+            self._y_mesh = self.am.set(self._y_mesh, 1, pa_model._y_mesh[1, :])
+            self._y_mesh = self.am.set(self._y_mesh, 2, ma_model._y_mesh[0, :])
+            self._y_mesh = self.am.set(self._y_mesh, 3, ma_model._y_mesh[1, :])
 
             # # The total u and v are determined by
             # # a linear combination of paternal and maternal u and v.

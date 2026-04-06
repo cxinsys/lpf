@@ -57,16 +57,18 @@ class TwoComponentDiploidModel(Diploidy, TwoComponentModel):
             
             dydt_mesh_pa = pa_model.pdefunc(t, y_mesh=y_mesh[:2, :, : ,:])
             dydt_mesh_ma = ma_model.pdefunc(t, y_mesh=y_mesh[2:, :, : ,:])
-        
-            self._dydt_mesh[0, :] = dydt_mesh_pa[0, :]
-            self._dydt_mesh[1, :] = dydt_mesh_pa[1, :]
-            self._dydt_mesh[2, :] = dydt_mesh_ma[0, :]
-            self._dydt_mesh[3, :] = dydt_mesh_ma[1, :]
+
+            dydt_mesh = self._dydt_mesh
+            dydt_mesh = self.am.set(dydt_mesh, 0, dydt_mesh_pa[0, :])
+            dydt_mesh = self.am.set(dydt_mesh, 1, dydt_mesh_pa[1, :])
+            dydt_mesh = self.am.set(dydt_mesh, 2, dydt_mesh_ma[0, :])
+            dydt_mesh = self.am.set(dydt_mesh, 3, dydt_mesh_ma[1, :])
+            self._dydt_mesh = dydt_mesh
 
             # The total u and v are determined by
             # a linear combination of paternal and maternal u and v.
-            self._u[:] = alpha * y_mesh[0] + beta * y_mesh[2]
-            self._v[:] = alpha * y_mesh[1] + beta * y_mesh[3]
+            self._u = alpha * y_mesh[0] + beta * y_mesh[2]
+            self._v = alpha * y_mesh[1] + beta * y_mesh[3]
 
         return self._dydt_mesh
 

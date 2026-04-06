@@ -347,7 +347,7 @@ class CuSolverBase(Solver):
                 return {"iters": captured_wp, "trj": trj_y}
             return trj_y
 
-        return result
+        return None
 
     # ==================================================================
     # Native .so path

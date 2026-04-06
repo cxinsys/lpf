@@ -40,43 +40,28 @@ if __name__ == "__main__":
     shutil.copyfile(fpath_src, fpath_dst)
 
     # Create a parameter array
-    init_states = np.zeros((batch_size, 2), dtype=np.float64)
-    params = np.zeros((batch_size, 8, 1, 1), dtype=np.float64)
-       
-    
+    init_states = np.zeros((batch_size, 2), dtype=np.float32)
+    params = np.zeros((batch_size, 8, 1, 1), dtype=np.float32)
+
+    solver = EulerSolver()
+
     i = 0
     while i < n_repeats:
-        
+
         # Create the output directory.
         str_now = datetime.now().strftime('%Y%m%d-%H%M%S')
         dpath_output = pjoin(droot, "repeat_%d"%(i+1))
         os.makedirs(dpath_output, exist_ok=True)
-        
-    
-        # Generate the random initial points.
+
+        # Generate random initial points.
         init_pts = np.random.randint(0, 128, size=(batch_size, 25, 2),
                                      dtype=np.uint32)
-           
-        
-        # Create the initializer
-        initializer = LiawInitializer(init_pts)
-        
-        # Create the model.
-        model = LiawModel(
-            width=width,
-            height=height,
-            dx=dx,
-            dt=dt,
-            n_iters=n_iters,
-            initializer=initializer,
-            device=device
-        )
 
-        init_pts = np.random.randint(0, 128, size=(batch_size, 25, 2))        
-        
+        # Generate random initial states.
         init_states[:, 0] = 10 ** np.random.uniform(-1, 1.0, size=(batch_size))  # u0
         init_states[:, 1] = 10 ** np.random.uniform(-1, 1.0, size=(batch_size))  # v0
-        
+
+        # Generate random params.
         params[:, 0] = 10 ** np.random.uniform(-4,  0, size=(batch_size, 1, 1))  # Du
         params[:, 1] = 10 ** np.random.uniform(-4,  0, size=(batch_size, 1, 1))  # Dv
         params[:, 2] = 10 ** np.random.uniform(-2,  2, size=(batch_size, 1, 1))  # ru
@@ -85,18 +70,25 @@ if __name__ == "__main__":
         params[:, 5] = 10 ** np.random.uniform(-4,  0, size=(batch_size, 1, 1))  # su
         params[:, 6] = 10 ** np.random.uniform(-4,  0, size=(batch_size, 1, 1))  # sv
         params[:, 7] = 10 ** np.random.uniform(-3, -1, size=(batch_size, 1, 1))  # mu
-        
-    
-        # init_states, params = model.parse_model_dicts(model_dicts)
+
+        # Create initializer and model with current random values.
+        initializer = LiawInitializer(init_states=init_states, init_pts=init_pts)
+        model = LiawModel(
+            width=width,
+            height=height,
+            dx=dx,
+            initializer=initializer,
+            params=params,
+            device=device
+        )
+
         t_beg = time.time()
         try:
-            solver = EulerSolver()
-            solver.solve(init_states,
-                         params,
-                         init_pts=init_pts,
+            solver.solve(model=model,
+                         dt=dt,
                          n_iters=n_iters,
                          period_output=n_iters,
-                         dpath_images=dpath_output,
+                         dpath_morph=dpath_output,
                          verbose=1)
         except Exception as err:
             print("[IGNORE THE INDIVIDUAL WITH ERROR]", err)
@@ -104,15 +96,14 @@ if __name__ == "__main__":
             continue
         t_end = time.time()
         print("Elapsed time: %f sec." % (t_end - t_beg))
-        
-        
+
+
         for j in range(batch_size):
-            fpath = pjoin(dpath_output, "individual_%d"%(j+1), "model.json")
-            model.save_model(i=j,
-                             fpath=fpath,
-                             initializer=initializer,
-                             params=params)
+            dpath_model_j = pjoin(dpath_output, "individual_%d"%(j+1))
+            os.makedirs(dpath_model_j, exist_ok=True)
+            fpath = pjoin(dpath_model_j, "model.json")
+            model.save_model(index=j, fpath=fpath)
         # end of for
-        
+
         i += 1
     # end of while

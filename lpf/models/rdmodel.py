@@ -58,10 +58,7 @@ class ReactionDiffusionModel(ABC):
     @params.setter
     def params(self, obj):
         with self.am:
-            if self._params is None:
-                self._params = self.am.array(obj, dtype=self._dtype)
-            else:
-                self._params[...] = self.am.array(obj, dtype=self._dtype)
+            self._params = self.am.array(obj, dtype=self._dtype)
 
         if self._params is not None:
             self._batch_size = self._params.shape[0]
@@ -81,10 +78,7 @@ class ReactionDiffusionModel(ABC):
     @y_mesh.setter
     def y_mesh(self, obj):
         with self.am:
-            if self._y_mesh is None:
-                self._y_mesh = self.am.array(obj, dtype=self._dtype)
-            else:
-                self._y_mesh[...] = obj
+            self._y_mesh = obj
 
     @property
     def thr_color(self):

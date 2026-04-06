@@ -109,8 +109,8 @@ if __name__ == "__main__":
     
     ix_morph = 0  # Select a morph in the batch.
         
-    np_trj_1 = trj_1.get()
-    np_trj_2 = trj_2.get()
+    np_trj_1 = np.asarray(trj_1)
+    np_trj_2 = np.asarray(trj_2)
 
     # Visualize the changes in the adjacent states using MSE.
     diff_trj_1 = np.mean(np.sqrt((np_trj_1[0:-1] - np_trj_1[1:])**2),

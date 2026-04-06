@@ -23,9 +23,13 @@ class TwoComponentCrosstalkDiploidModel(TwoComponentDiploidModel):
             beta = self._beta
 
             # The total u and v are determined by a linear combination of paternal and maternal u and v.
-            self._y_mesh[0, :] = alpha * pa_model._y_mesh[0, :] + beta * ma_model._y_mesh[0, :]
-            self._y_mesh[1, :] = alpha * pa_model._y_mesh[1, :] + beta * ma_model._y_mesh[1, :]
-            
+            self._y_mesh = self.am.set(
+                self._y_mesh, 0,
+                alpha * pa_model._y_mesh[0, :] + beta * ma_model._y_mesh[0, :])
+            self._y_mesh = self.am.set(
+                self._y_mesh, 1,
+                alpha * pa_model._y_mesh[1, :] + beta * ma_model._y_mesh[1, :])
+
             self._u = self._y_mesh[0, :]
             self._v = self._y_mesh[1, :]
             
@@ -49,8 +53,14 @@ class TwoComponentCrosstalkDiploidModel(TwoComponentDiploidModel):
             dydt_mesh_pa = pa_model.pdefunc(t, y_mesh=y_mesh)
             dydt_mesh_ma = ma_model.pdefunc(t, y_mesh=y_mesh)
         
-            self._dydt_mesh[0, :] = alpha * pa_model._dydt_mesh[0, :] + beta * ma_model._dydt_mesh[0, :]
-            self._dydt_mesh[1, :] = alpha * pa_model._dydt_mesh[1, :] + beta * ma_model._dydt_mesh[1, :]
+            dydt_mesh = self._dydt_mesh
+            dydt_mesh = self.am.set(
+                dydt_mesh, 0,
+                alpha * pa_model._dydt_mesh[0, :] + beta * ma_model._dydt_mesh[0, :])
+            dydt_mesh = self.am.set(
+                dydt_mesh, 1,
+                alpha * pa_model._dydt_mesh[1, :] + beta * ma_model._dydt_mesh[1, :])
+            self._dydt_mesh = dydt_mesh
             
             # The total u and v are determined by a linear combination of paternal and maternal u and v.
             # self._u[:] = alpha * pa_model._u + beta * ma_model._u

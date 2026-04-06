@@ -104,12 +104,13 @@ class TwoComponentModel(ReactionDiffusionModel):
     @u.setter
     def u(self, obj):
         with self.am:
-            if hasattr(self, '_y_mesh'):
-                self._y_mesh[0, :, :, :] = self.am.array(obj, 
-                                                         dtype=self._dtype)
+            if hasattr(self, '_y_mesh') and self._y_mesh is not None:
+                self._y_mesh = self.am.set(
+                    self._y_mesh,
+                    (0, slice(None), slice(None), slice(None)),
+                    self.am.array(obj, dtype=self._dtype))
             else:
                 self._u = obj
-        
 
     @property
     def v(self):
@@ -120,9 +121,11 @@ class TwoComponentModel(ReactionDiffusionModel):
     @v.setter
     def v(self, obj):
         with self.am:
-            if hasattr(self, '_y_mesh'):
-                self._y_mesh[1, :, :, :] = self.am.array(obj, 
-                                                         dtype=self._dtype)
+            if hasattr(self, '_y_mesh') and self._y_mesh is not None:
+                self._y_mesh = self.am.set(
+                    self._y_mesh,
+                    (1, slice(None), slice(None), slice(None)),
+                    self.am.array(obj, dtype=self._dtype))
             else:
                 self._v = obj
                 
@@ -147,6 +150,13 @@ class TwoComponentModel(ReactionDiffusionModel):
 
         if self._initializer is not None:
             self._initializer.initialize(self)
+
+        # Refresh _u/_v from _y_mesh after initialization.
+        # On JAX, slices are copies (not views), so the initializer's
+        # updates to _y_mesh must be re-read here.
+        with self.am:
+            self._u = self._y_mesh[0, :, :, :]
+            self._v = self._y_mesh[1, :, :, :]
 
     def laplacian2d(self, a, dx):
         a_top = a[:, 0:-2, 1:-1]

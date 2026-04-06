@@ -9,22 +9,18 @@ multiple element-wise CuPy operations orchestrated by a Python loop.
 """
 
 import os
-import sys
 import time
-
-os.environ["PYTHONNOUSERSITE"] = "1"
 
 import numpy as np
 
 from lpf.initializers import LiawInitializer
 from lpf.models import LiawModel
 from lpf.solvers import EulerSolver, RungeKuttaSolver
-from lpf.solvers.solver import Solver
 from lpf.data import load_model_dicts
 
 # ── Parameters ──────────────────────────────────────────────────────────
-LPF_REPO_HOME = os.path.abspath("..")
-dpath_pop = os.path.join(LPF_REPO_HOME, "population", "init_pop_axyridis")
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+dpath_pop = os.path.join(REPO_ROOT, "population", "init_pop_axyridis")
 
 dt = 0.01
 dx = 0.1
