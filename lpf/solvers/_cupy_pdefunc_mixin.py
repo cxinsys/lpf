@@ -30,8 +30,10 @@ class CupyPdefuncMixin:
                 1.0 / (model.dx ** 2))
             return out
         # pdefunc() returns an internal buffer that is overwritten on the
-        # next call, so the result must be copied.
-        return model.pdefunc(t, y_mesh).copy()
+        # next call, so the result must be copied. Use clone() for torch
+        # tensors and copy() for numpy/cupy arrays.
+        out = model.pdefunc(t, y_mesh)
+        return out.clone() if hasattr(out, "clone") else out.copy()
 
     def _maybe_init_cuda(self, model):
         """Init CUDA kernels only for CuPy models."""

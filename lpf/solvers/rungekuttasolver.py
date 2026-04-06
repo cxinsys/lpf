@@ -20,8 +20,8 @@ class RungeKuttaSolver(Solver):
     def step(self, model, t, dt, y_mesh):
         # pdefunc() returns an internal buffer that is overwritten on the
         # next call, so each stage result must be copied.
-        k1 = dt * model.pdefunc(t, y_mesh).copy()
-        k2 = dt * model.pdefunc(t + 0.5 * dt, y_mesh + 0.5 * k1).copy()
-        k3 = dt * model.pdefunc(t + 0.5 * dt, y_mesh + 0.5 * k2).copy()
+        k1 = dt * model.am.copy(model.pdefunc(t, y_mesh))
+        k2 = dt * model.am.copy(model.pdefunc(t + 0.5 * dt, y_mesh + 0.5 * k1))
+        k3 = dt * model.am.copy(model.pdefunc(t + 0.5 * dt, y_mesh + 0.5 * k2))
         k4 = dt * model.pdefunc(t + dt, y_mesh + k3)
         return (k1 + 2*k2 + 2*k3 + k4) / 6

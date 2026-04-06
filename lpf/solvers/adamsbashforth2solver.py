@@ -21,7 +21,7 @@ class AdamsBashforth2Solver(Solver):
     def step(self, model, t, dt, y_mesh):
         # pdefunc() returns an internal buffer that is overwritten on the
         # next call, so copy before storing for the next step.
-        dydt = model.pdefunc(t, y_mesh).copy()
+        dydt = model.am.copy(model.pdefunc(t, y_mesh))
         if self._prev_dydt is None:
             delta = dt * dydt
         else:

@@ -280,6 +280,145 @@ class TestTrajectoryCapture:
         np.testing.assert_allclose(trj_native.get(), trj_python.get(), atol=1e-6, rtol=1e-6)
 
 
+# ---------- CPU/CUDA return-value parity ----------
+
+def _to_numpy(arr):
+    """Convert CuPy array, torch.Tensor, or numpy array to numpy."""
+    if hasattr(arr, 'get'):        # CuPy
+        return arr.get()
+    if hasattr(arr, 'cpu'):        # torch
+        return arr.cpu().numpy()
+    return np.asarray(arr)
+
+
+class TestCpuCudaReturnParity:
+    """solve() return values must agree (type & values) between CPU and CUDA
+    backends for all option combinations. Device-specific array types
+    (numpy / CuPy / torch.Tensor) are the only allowed difference."""
+
+    N_ITERS = 1  # strict numerical parity at n_iters=1 (same as TestCorrectnessVsPython)
+    DT = LIAW_DT
+    ATOL = 1e-5
+    RTOL = 1e-5
+
+    def _solve(self, device, **kwargs):
+        from lpf.solvers import EulerSolver
+        model = make_liaw_model_16(device)
+        return EulerSolver(dt=self.DT, n_iters=self.N_ITERS).solve(
+            model, verbose=0, **kwargs)
+
+    # ---- get_trj=False ----
+
+    def test_none_return_cpu_vs_cupy(self):
+        assert self._solve("cpu") is None
+        assert self._solve("cuda:0") is None
+
+    def test_none_return_cpu_vs_torch(self):
+        torch = pytest.importorskip("torch")
+        if not torch.cuda.is_available():
+            pytest.skip("CUDA not available for torch")
+        assert self._solve("cpu") is None
+        assert self._solve("torch:gpu:0") is None
+
+    # ---- get_trj=True with period_output ----
+
+    def test_trajectory_array_cpu_vs_cupy(self):
+        trj_cpu = self._solve("cpu", period_output=1, get_trj=True)
+        trj_cu = self._solve("cuda:0", period_output=1, get_trj=True)
+
+        # Type follows device
+        assert isinstance(trj_cpu, np.ndarray)
+        assert isinstance(trj_cu, cupy.ndarray)
+
+        # Shape equal
+        assert trj_cpu.shape == trj_cu.shape
+
+        # Values equal (within tolerance)
+        np.testing.assert_allclose(
+            trj_cpu, _to_numpy(trj_cu),
+            atol=self.ATOL, rtol=self.RTOL)
+
+    def test_trajectory_array_cpu_vs_torch(self):
+        torch = pytest.importorskip("torch")
+        if not torch.cuda.is_available():
+            pytest.skip("CUDA not available for torch")
+
+        trj_cpu = self._solve("cpu", period_output=1, get_trj=True)
+        trj_torch = self._solve("torch:gpu:0", period_output=1, get_trj=True)
+
+        assert isinstance(trj_cpu, np.ndarray)
+        assert isinstance(trj_torch, torch.Tensor)
+        assert trj_torch.device.type == "cuda"
+
+        assert tuple(trj_cpu.shape) == tuple(trj_torch.shape)
+        np.testing.assert_allclose(
+            trj_cpu, _to_numpy(trj_torch),
+            atol=self.ATOL, rtol=self.RTOL)
+
+    # ---- trj_waypoints ----
+
+    def test_waypoint_dict_cpu_vs_cupy(self):
+        waypoints = [1]  # must be within [1, N_ITERS]
+        result_cpu = self._solve("cpu", trj_waypoints=waypoints)
+        result_cu = self._solve("cuda:0", trj_waypoints=waypoints)
+
+        # Same dict structure
+        assert isinstance(result_cpu, dict)
+        assert isinstance(result_cu, dict)
+        assert set(result_cpu.keys()) == set(result_cu.keys()) == {"iters", "trj"}
+
+        # iters is a list and identical
+        assert isinstance(result_cpu["iters"], list)
+        assert isinstance(result_cu["iters"], list)
+        assert result_cpu["iters"] == result_cu["iters"] == waypoints
+
+        # trj types follow device, values match
+        assert isinstance(result_cpu["trj"], np.ndarray)
+        assert isinstance(result_cu["trj"], cupy.ndarray)
+        assert result_cpu["trj"].shape == result_cu["trj"].shape
+        np.testing.assert_allclose(
+            result_cpu["trj"], _to_numpy(result_cu["trj"]),
+            atol=self.ATOL, rtol=self.RTOL)
+
+    def test_waypoint_dict_cpu_vs_torch(self):
+        torch = pytest.importorskip("torch")
+        if not torch.cuda.is_available():
+            pytest.skip("CUDA not available for torch")
+
+        waypoints = [1]
+        result_cpu = self._solve("cpu", trj_waypoints=waypoints)
+        result_torch = self._solve("torch:gpu:0", trj_waypoints=waypoints)
+
+        assert isinstance(result_cpu, dict)
+        assert isinstance(result_torch, dict)
+        assert set(result_cpu.keys()) == set(result_torch.keys()) == {"iters", "trj"}
+
+        assert result_cpu["iters"] == result_torch["iters"] == waypoints
+
+        assert isinstance(result_cpu["trj"], np.ndarray)
+        assert isinstance(result_torch["trj"], torch.Tensor)
+        assert result_torch["trj"].device.type == "cuda"
+        assert tuple(result_cpu["trj"].shape) == tuple(result_torch["trj"].shape)
+        np.testing.assert_allclose(
+            result_cpu["trj"], _to_numpy(result_torch["trj"]),
+            atol=self.ATOL, rtol=self.RTOL)
+
+    # ---- empty waypoints / out-of-range ----
+
+    def test_empty_waypoints_cpu_vs_cupy(self):
+        # All waypoints out of range → empty trajectory + empty iters on both
+        waypoints = [999]
+        result_cpu = self._solve("cpu", trj_waypoints=waypoints)
+        result_cu = self._solve("cuda:0", trj_waypoints=waypoints)
+
+        assert isinstance(result_cpu, dict)
+        assert isinstance(result_cu, dict)
+        assert result_cpu["iters"] == []
+        assert result_cu["iters"] == []
+        assert result_cpu["trj"].shape[0] == 0
+        assert result_cu["trj"].shape[0] == 0
+
+
 # ---------- file I/O ----------
 
 class TestFileIO:

@@ -12,33 +12,102 @@ Usage:
 import argparse
 import time
 import sys
+import warnings
 
 import numpy as np
+
+# init_pop_01 morphs are tuned for 128x128. Smaller grids may briefly
+# overflow during transients on some morphs. Silence the resulting
+# RuntimeWarnings — correctness is verified separately by section 5.
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 
 # ---------------------------------------------------------------------------
 # Model helpers
 # ---------------------------------------------------------------------------
 
+_MORPH_CACHE = None
+
+
+def _load_init_pop_01():
+    """Load 16 stable morphs from population/init_pop_01.
+
+    These are real evolved Liaw model parameters known to produce
+    finite trajectories at dt=0.01 on a 128x128 grid.
+    """
+    global _MORPH_CACHE
+    if _MORPH_CACHE is not None:
+        return _MORPH_CACHE
+
+    import json
+    import os
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    pop_dir = os.path.normpath(os.path.join(here, "..", "population", "init_pop_01"))
+
+    fnames = sorted(f for f in os.listdir(pop_dir) if f.endswith(".json"))
+    morphs = []
+    for fn in fnames:
+        with open(os.path.join(pop_dir, fn), "r") as fin:
+            morphs.append(json.load(fin))
+
+    n = len(morphs)
+    params = np.zeros((n, 8), dtype=np.float32)
+    init_states = np.zeros((n, 2), dtype=np.float32)
+    init_pts_list = []
+
+    for i, m in enumerate(morphs):
+        params[i] = [m["Du"], m["Dv"], m["ru"], m["rv"],
+                     m["k"], m["su"], m["sv"], m["mu"]]
+        init_states[i] = [m["u0"], m["v0"]]
+
+        pts = []
+        for k, v in m.items():
+            if k.startswith("init_pts_"):
+                pts.append((int(v[0]), int(v[1])))
+        init_pts_list.append(pts)
+
+    max_pts = max(len(p) for p in init_pts_list)
+    init_pts = np.zeros((n, max_pts, 2), dtype=np.uint32)
+    for i, pts in enumerate(init_pts_list):
+        for j, (r, c) in enumerate(pts):
+            init_pts[i, j] = (r, c)
+
+    _MORPH_CACHE = (params, init_states, init_pts)
+    return _MORPH_CACHE
+
+
 def create_model(batch_size, device, grid_size=128, dtype=np.float32):
+    """Build a LiawModel using the first ``batch_size`` morphs from init_pop_01.
+
+    The morphs are tiled if ``batch_size`` exceeds 16.  Initial points are
+    rescaled to fit grids smaller than the original 128x128.
+    """
     from lpf.models import LiawModel
     from lpf.initializers import LiawInitializer
 
-    height = width = grid_size
-    n_init_pts = 20
+    base_params, base_states, base_pts = _load_init_pop_01()
+    n_morphs = base_params.shape[0]
 
-    np.random.seed(42)
-    init_pts = np.random.randint(0, min(height, width),
-                                 size=(batch_size, n_init_pts, 2)).astype(np.uint32)
-    init_states = np.random.uniform(0.1, 1.0, size=(batch_size, 2)).astype(dtype)
-    log_params = np.random.uniform(-3, 0, size=(batch_size, 8)).astype(dtype)
-    params = 10.0 ** log_params
+    # Tile/cycle morphs to match batch_size
+    idx = np.arange(batch_size) % n_morphs
+    params = base_params[idx].astype(dtype)
+    init_states = base_states[idx].astype(dtype)
+    init_pts = base_pts[idx].copy()
+
+    # Rescale init_pts to current grid (originals were 128x128)
+    if grid_size != 128:
+        scale = grid_size / 128.0
+        init_pts = (init_pts.astype(np.float64) * scale).astype(np.uint32)
+        init_pts = np.clip(init_pts, 0, grid_size - 1)
+
+    n_init_pts = init_pts.shape[1]
 
     model = LiawModel(
         initializer=LiawInitializer(init_pts=init_pts, init_states=init_states),
         n_init_pts=n_init_pts,
         params=params,
-        width=width, height=height, dx=0.1,
+        width=grid_size, height=grid_size, dx=0.1,
         device=device, dtype=dtype,
     )
     return model
@@ -386,8 +455,8 @@ def run_benchmark(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="LPF Cross-Backend Benchmark")
-    parser.add_argument("--n_iters", type=int, default=2000,
-                        help="Number of time steps (default: 2000)")
+    parser.add_argument("--n_iters", type=int, default=1000,
+                        help="Number of time steps (default: 1000)")
     parser.add_argument("--batch_size", type=int, default=4,
                         help="Batch size (default: 4)")
     parser.add_argument("--grid_size", type=int, default=128,
@@ -397,8 +466,9 @@ if __name__ == "__main__":
     parser.add_argument("--repeats", type=int, default=3,
                         help="Repeats per measurement, report best (default: 3)")
     parser.add_argument("--grid_sizes", type=int, nargs="+",
-                        default=[32, 64, 128],
-                        help="Grid sizes for scaling test (default: 32 64 128)")
+                        default=[64, 128],
+                        help="Grid sizes for scaling test (default: 64 128). "
+                             "Note: morphs from init_pop_01 are tuned for 128x128.")
     parser.add_argument("--batch_sizes", type=int, nargs="+",
                         default=[1, 4, 16],
                         help="Batch sizes for scaling test (default: 1 4 16)")
