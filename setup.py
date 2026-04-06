@@ -1,3 +1,19 @@
+"""Build configuration for lpf wheels.
+
+Static metadata (name, description, extras, dependency groups, ...) lives
+in pyproject.toml. This file only handles the two pieces that vary between
+build invocations:
+
+1. Version: gets a "+cuXXX" or "+cpu" local segment from the detected CUDA
+   toolkit so that one source tree can produce per-CUDA wheels.
+2. install_requires: appends the matching CuPy build (cupy-cuda12x or
+   cupy-cuda13x) for CUDA wheels so `pip install lpf-0.2.0+cuXXX-...whl`
+   pulls in the right GPU runtime automatically.
+
+It also customizes bdist_wheel so the wheel is tagged as platform-specific
+(it ships AOT CUDA binaries) instead of a pure-Python wheel.
+"""
+
 import os
 import platform
 import subprocess
@@ -39,23 +55,45 @@ def _detect_cuda_version():
 
 
 # ---------------------------------------------------------------------------
-# Version: 0.2.0+cu132  or  0.2.0+cpu
+# Version: 0.2.0  (editable installs)  or  0.2.0+cu132 / 0.2.0+cpu  (wheels)
 # ---------------------------------------------------------------------------
+# The +cuXXX local segment is only applied when actually building a wheel
+# (build_wheel.py sets LPF_BUILD_VARIANT, or bdist_wheel is invoked
+# directly). For `pip install -e .` and `uv sync` we keep the plain
+# "0.2.0" version so the lockfile stays portable across machines.
 
 _BASE_VERSION = "0.2.0"
 
-_cuda_tag = _detect_cuda_version()
-if os.environ.get('LPF_BUILD_VARIANT'):
-    _variant = os.environ['LPF_BUILD_VARIANT']
+import sys as _sys
+_is_wheel_build = (
+    'bdist_wheel' in _sys.argv
+    or os.environ.get('LPF_BUILD_VARIANT') is not None
+)
+
+if _is_wheel_build:
+    if os.environ.get('LPF_BUILD_VARIANT'):
+        _variant = os.environ['LPF_BUILD_VARIANT']
+    else:
+        _cuda_tag = _detect_cuda_version()
+        _variant = _cuda_tag if _cuda_tag else 'cpu'
+    _version = f"{_BASE_VERSION}+{_variant}"
 else:
-    _variant = _cuda_tag if _cuda_tag else 'cpu'
-
-_version = f"{_BASE_VERSION}+{_variant}"
+    _variant = None
+    _version = _BASE_VERSION
 
 
 # ---------------------------------------------------------------------------
-# CUDA-specific dependencies (baked into the wheel)
+# Base + CUDA dependencies (baked into the wheel via install_requires)
 # ---------------------------------------------------------------------------
+
+_BASE_DEPS = [
+    'numpy',
+    'scipy',
+    'pillow',
+    'tqdm',
+    'pyyaml',
+    'xxhash',
+]
 
 _CUDA_DEPS = {
     'cu126': ['cupy-cuda12x'],
@@ -65,8 +103,12 @@ _CUDA_DEPS = {
 }
 
 
-def _cuda_deps():
-    return _CUDA_DEPS.get(_variant, [])
+def _install_requires():
+    # CUDA-specific deps are only baked into the wheel; editable installs
+    # let the user pick a `cuXXX` extra (or `uv sync --extra cuXXX`).
+    if _variant is None:
+        return list(_BASE_DEPS)
+    return _BASE_DEPS + _CUDA_DEPS.get(_variant, [])
 
 
 # ---------------------------------------------------------------------------
@@ -101,16 +143,8 @@ class BdistWheel(bdist_wheel):
         return impl, abi, plat
 
 
-# ---------------------------------------------------------------------------
-# Setup
-# ---------------------------------------------------------------------------
-
 setup(
-    name='lpf',
     version=_version,
-    description='Ladybird Pattern Formation (LPF)',
-    author='Daewon Lee',
-    author_email='daewon4you@gmail.com',
     packages=find_packages(exclude=['tests', 'tests.*']),
     package_data={
         'lpf.kernels': ['sources.py'],
@@ -118,18 +152,6 @@ setup(
         'lpf.kernels.csrc': ['*.cu'],
         'lpf.kernels.csrc.include': ['*.cuh'],
     },
-    install_requires=[
-        'numpy',
-        'scipy',
-        'pillow',
-        'tqdm',
-        'pyyaml',
-        'xxhash',
-    ] + _cuda_deps(),
-    extras_require={
-        'viz': ['lpips', 'opencv-python', 'torchmetrics'],
-        'test': ['pytest'],
-    },
-    python_requires='>=3.9',
+    install_requires=_install_requires(),
     cmdclass={'bdist_wheel': BdistWheel},
 )

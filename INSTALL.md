@@ -1,15 +1,24 @@
 # Installation Guide
 
-## Quick Install
+## Quick Install (pre-built wheel)
 
-CUDA 13.2 example:
+For most users, grab the pre-built wheel for your CUDA version. CUDA 13.2
+example:
 
 ```bash
 pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl
 ```
 
-This installs LPF, CuPy, and all other dependencies automatically.
-Replace `cu132` with your CUDA version from the table below.
+This installs LPF, CuPy, and all core dependencies automatically. AOT
+CUDA kernels are bundled inside the wheel — no compilation needed at
+import time. Replace `cu132` with your CUDA version from the table below.
+
+To also pull in the perceptual / image-based objectives used by
+evolutionary search:
+
+```bash
+pip install "lpf[evosearch] @ https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl"
+```
 
 ### Available wheels
 
@@ -26,91 +35,114 @@ All wheels: [GitHub Releases](https://github.com/cxinsys/lpf/releases/tag/v0.2.0
 
 ### PyTorch (optional)
 
-LPF uses CuPy as the default GPU backend, so PyTorch is not required for basic GPU usage.
+LPF uses CuPy as the default GPU backend, so PyTorch is not required for
+basic GPU usage.
 
-If you want to integrate LPF into a PyTorch-based workflow
-(for example, using LPF simulation results as inputs to a neural network,
-or running LPF alongside other PyTorch models on the same GPU),
-you can set `device="torch:gpu:<gpu_id>"` (e.g. `"torch:gpu:0"`)
-to keep all data as PyTorch tensors.
-This avoids unnecessary copies between frameworks.
+If you want to integrate LPF into a PyTorch-based workflow (for example,
+using LPF simulation results as inputs to a neural network, or running
+LPF alongside other PyTorch models on the same GPU), set
+`device="torch:cuda:<gpu_id>"` (e.g. `"torch:cuda:0"`) to keep all data
+as PyTorch tensors. This avoids unnecessary copies between frameworks.
 
-In this mode, LPF internally bridges PyTorch tensors to CuPy via DLPack (zero-copy)
-for CUDA kernel execution, and returns the results back as PyTorch tensors.
+In this mode, LPF internally bridges PyTorch tensors to CuPy via DLPack
+(zero-copy) for CUDA kernel execution, and returns the results back as
+PyTorch tensors.
+
+Install PyTorch from the matching CUDA wheel index:
 
 ```bash
-pip install torch --extra-index-url https://download.pytorch.org/whl/cu132
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
 ```
 
-Replace `cu132` to match your CUDA version (e.g. `cu128`, `cu130`).
+Replace `cu130` to match your CUDA version (`cu126`, `cu128`, `cu130`).
+CUDA 13.2 has no dedicated PyTorch wheel — use the cu130 index, which is
+forward-compatible with CUDA 13.x runtimes.
+
+If you cloned the source tree, the easier path is `uv sync --extra cuXXX
+--extra torch-cuXXX` (see [From Source](#from-source-uv-recommended-for-development)
+below).
 
 ---
 
-## Manual Installation
+## From Source (uv, recommended for development)
 
-### 1. Create an environment
+LPF uses [uv](https://docs.astral.sh/uv/) for environment and dependency
+management. A single `uv sync` command creates the virtualenv, installs
+the right Python (3.12 by default, see `.python-version`), pulls every
+dependency from the locked versions in `uv.lock`, and installs LPF in
+editable mode.
 
-#### conda
-
-```bash
-conda create -n lpf python=3.11 -y
-
-conda activate lpf
-```
-
-#### venv
+### 1. Install uv
 
 ```bash
-python -m venv .venv
-
-source .venv/bin/activate   # Linux / macOS
-# .venv\Scripts\activate    # Windows
+curl -LsSf https://astral.sh/uv/install.sh | sh   # Linux / macOS
+# Windows: see https://docs.astral.sh/uv/getting-started/installation/
 ```
 
-### 2. Install LPF
-
-From source (development):
+### 2. Clone and sync
 
 ```bash
-pip install -e .
+git clone https://github.com/cxinsys/lpf.git
+cd lpf
 ```
 
-From wheel (production), replace `cu132` with your CUDA version:
+Pick the extras that match your CUDA toolkit (`nvidia-smi`) and the
+features you need:
 
 ```bash
-pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl
+# Most common: GPU + perceptual objectives (CUDA 13.0 example)
+uv sync --extra cu130 --extra evosearch
+
+# Add the optional PyTorch backend (matching CUDA index is auto-selected)
+uv sync --extra cu130 --extra evosearch --extra torch-cu130
+
+# CPU only (no CuPy, no GPU)
+uv sync
 ```
 
-### 3. Install GPU packages
+### Available extras
 
-CuPy is required for GPU acceleration. Install the one matching your CUDA version:
+| Extra | What it pulls in |
+|-------|------------------|
+| `cu126` / `cu128` / `cu130` / `cu132` | Matching CuPy (`cupy-cuda12x` or `cupy-cuda13x`) |
+| `torch-cu126` / `torch-cu128` / `torch-cu130` / `torch-cu132` | PyTorch + torchvision from the matching `download.pytorch.org/whl/cuXXX` index |
+| `evosearch` | `lpips`, `opencv-python`, `torchmetrics[image]` (perceptual / SSIM objectives) |
+
+CUDA extras are mutually exclusive — pick exactly one. Same for `torch-cu*`.
+Use the `cuXXX` digits that match your CUDA toolkit. CUDA 13.2 has no
+dedicated PyTorch wheel: `torch-cu132` falls back to the cu130 build,
+which is forward-compatible with CUDA 13.x runtimes.
+
+### Running things
+
+`uv run` executes a command inside the synced env without needing to
+activate it manually:
 
 ```bash
-pip install cupy-cuda13x    # CUDA 13.x
-
-pip install cupy-cuda12x    # CUDA 12.x
+uv run pytest tests/ -v
+uv run python benchmarks/bench_kernel_vs_python.py
 ```
 
-PyTorch is optional (see above for details):
+Or activate it the traditional way:
 
 ```bash
-pip install torch --extra-index-url https://download.pytorch.org/whl/cu132
+source .venv/bin/activate
 ```
 
-Check your CUDA version with `nvidia-smi`.
-
-> **Note:** CuPy is required for CUDA kernel acceleration regardless of whether
-> you use `device="cuda:0"` or `device="torch:gpu:0"`. When using PyTorch,
-> LPF internally bridges PyTorch tensors to CuPy via DLPack (zero-copy)
-> for kernel execution.
-
-### Optional dependencies
+### Updating dependencies
 
 ```bash
-pip install -e ".[viz]"    # lpips, opencv-python, torchmetrics
-
-pip install -e ".[test]"   # pytest
+uv lock --upgrade        # refresh uv.lock to the newest compatible versions
+uv sync                  # apply the refreshed lock to the env
 ```
+
+`uv.lock` is committed to the repo so every contributor (and CI) gets a
+bit-identical environment.
+
+> **Note:** CuPy is required for CUDA kernel acceleration regardless of
+> whether you use `device="cuda:0"` or `device="torch:gpu:0"`. When using
+> PyTorch, LPF internally bridges PyTorch tensors to CuPy via DLPack
+> (zero-copy) for kernel execution.
 
 ---
 
@@ -200,6 +232,9 @@ in the future, the per-version wheel structure is already in place.
 
 ## Building Wheels
 
+`build_wheel.py` runs the AOT kernel compilation and then builds a
+platform-tagged wheel with the `+cuXXX` local version segment baked in.
+
 ```bash
 python build_wheel.py                 # AOT compile + wheel (auto-detect GPU)
 
@@ -209,12 +244,24 @@ python build_wheel.py --arch sm_90    # Specific architecture
 
 python build_wheel.py --skip-aot      # Skip AOT, use existing binaries
 
-python build_wheel.py --cpu           # CPU-only wheel
+python build_wheel.py --cpu           # CPU-only wheel (no AOT)
 ```
+
+The script invokes Python's `build` module under the hood, so make sure
+it is available (`pip install build`, or it is already in the `dev`
+group when you `uv sync`).
 
 ---
 
 ## Verifying the Installation
+
+If you installed via `uv sync`:
+
+```bash
+uv run pytest tests/ -v
+```
+
+If you installed a wheel into a regular venv:
 
 ```bash
 python -m pytest tests/ -v
@@ -222,7 +269,7 @@ python -m pytest tests/ -v
 
 Quick GPU smoke test:
 
-```python
+```bash
 python -c "
 from lpf.models import LiawModel
 from lpf.solvers import EulerSolver
@@ -248,8 +295,8 @@ print('GPU acceleration working!')
 
 | Setup level | Command | What you get |
 |-------------|---------|--------------|
-| **GPU (wheel)** | `pip install lpf-0.2.0+cu132-....whl` | LPF + CuPy + AOT kernels |
-| **CPU only** | `pip install -e .` | NumPy solver (~100 it/s) |
-| **GPU (JIT)** | wheel or source + CuPy | CUDA kernels, auto-compiled (~150K it/s) |
-| **GPU (AOT)** | wheel or `python -m lpf.kernels.aot.build` | Pre-compiled kernels + native C loop |
-| **+ PyTorch** | `pip install torch --extra-index-url ...` | Same CUDA kernels via DLPack bridge |
+| **GPU (wheel)** | `pip install lpf-0.2.0+cuXXX-....whl` | LPF + CuPy + AOT kernels (zero setup) |
+| **GPU (uv, source)** | `uv sync --extra cu130 --extra evosearch` | Same as wheel, plus editable source + locked deps |
+| **GPU + PyTorch (uv)** | `uv sync --extra cu130 --extra evosearch --extra torch-cu130` | DLPack bridge to a matching PyTorch CUDA build |
+| **CPU only (uv)** | `uv sync` | NumPy solver, no GPU deps (~100 it/s) |
+| **AOT rebuild** | `python -m lpf.kernels.aot.build --all-arch` | Recompile fused kernels + native C loop |

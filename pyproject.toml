@@ -1,3 +1,120 @@
 [build-system]
 requires = ["setuptools>=70.1"]
 build-backend = "setuptools.build_meta"
+
+# ----------------------------------------------------------------------------
+# Project metadata
+# ----------------------------------------------------------------------------
+# `version` and `dependencies` are dynamic because setup.py rewrites them at
+# build time:
+#   - version gets a "+cuXXX" or "+cpu" local segment based on the detected
+#     CUDA toolkit (see setup.py)
+#   - install_requires has cupy-cuda1Xx appended for CUDA wheels
+# Optional dependencies (extras) and dependency groups live here so that
+# `uv sync` and `pip install lpf[...]` work without running setup.py logic.
+# ----------------------------------------------------------------------------
+
+[project]
+name = "lpf"
+description = "Ladybird Pattern Formation (LPF)"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Daewon Lee", email = "daewon4you@gmail.com" },
+]
+license = { file = "LICENSE" }
+dynamic = ["version", "dependencies"]
+
+[project.optional-dependencies]
+# --- Feature extras ---------------------------------------------------------
+# evosearch: perceptual / image-based objective functions used by evolutionary
+# search. Pulls in lpips (LPIPS), torchmetrics (SSIM), and opencv (image ops).
+evosearch = [
+    "lpips",
+    "opencv-python",
+    "torchmetrics[image]",
+]
+
+# --- CUDA variants ----------------------------------------------------------
+# Pick the one that matches your CUDA toolkit (see `nvidia-smi`).
+# Pulls in the matching CuPy build for fused CUDA kernels.
+cu126 = ["cupy-cuda12x"]
+cu128 = ["cupy-cuda12x"]
+cu130 = ["cupy-cuda13x"]
+cu132 = ["cupy-cuda13x"]
+
+# --- PyTorch variants (optional) --------------------------------------------
+# Use these only if you want the PyTorch backend (device="torch:cuda:0").
+# CuPy + CUDA kernels is the default and recommended path; PyTorch is bridged
+# via DLPack only when explicitly requested.
+# Each torch-cuXXX extra is wired to the matching PyTorch CUDA wheel index
+# under [tool.uv.sources] below. Version pins track the latest PyTorch release
+# that ships wheels for that CUDA minor version (update when new releases ship).
+# torchvision is listed alongside torch so [tool.uv.sources] can pin them
+# both to the same PyTorch CUDA index (mixing PyPI/CUDA wheels yields ABI
+# crashes at import time).
+torch-cu126 = ["torch>=2.7,<2.9", "torchvision"]
+torch-cu128 = ["torch>=2.8,<2.10", "torchvision"]
+torch-cu130 = ["torch>=2.9,<2.11", "torchvision"]
+# CUDA 13.2 has no dedicated PyTorch wheel — fall back to the cu130 build,
+# which is forward-compatible with CUDA 13.x runtimes.
+torch-cu132 = ["torch>=2.9,<2.11", "torchvision"]
+
+[dependency-groups]
+# Development-only tools — never installed for end users via `pip install lpf`.
+dev = ["pytest", "build"]
+
+# ----------------------------------------------------------------------------
+# uv-specific configuration
+# ----------------------------------------------------------------------------
+
+[tool.uv]
+# Mutually exclusive extras: a single env can only target one CUDA variant.
+conflicts = [
+    [
+        { extra = "cu126" },
+        { extra = "cu128" },
+        { extra = "cu130" },
+        { extra = "cu132" },
+    ],
+    [
+        { extra = "torch-cu126" },
+        { extra = "torch-cu128" },
+        { extra = "torch-cu130" },
+        { extra = "torch-cu132" },
+    ],
+]
+
+[tool.uv.sources]
+# Route each torch-cuXXX extra to the matching PyTorch CUDA index. uv will
+# only consult these indexes for the listed packages (because of
+# explicit=true below), so the rest of the resolution still happens against
+# PyPI. torchvision must come from the same index as torch — mixing wheels
+# from PyPI and the CUDA index produces ABI mismatches at import time.
+torch = [
+    { index = "pytorch-cu126", extra = "torch-cu126" },
+    { index = "pytorch-cu128", extra = "torch-cu128" },
+    { index = "pytorch-cu130", extra = "torch-cu130" },
+    { index = "pytorch-cu130", extra = "torch-cu132" },
+]
+torchvision = [
+    { index = "pytorch-cu126", extra = "torch-cu126" },
+    { index = "pytorch-cu128", extra = "torch-cu128" },
+    { index = "pytorch-cu130", extra = "torch-cu130" },
+    { index = "pytorch-cu130", extra = "torch-cu132" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
