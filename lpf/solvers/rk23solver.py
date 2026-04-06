@@ -17,6 +17,10 @@ class RK23Solver(Solver):
         from lpf.solvers._cuda.rk23 import CuRK23Solver
         return CuRK23Solver(fast_math=self._fast_math)
 
+    def _make_jax_solver(self):
+        from lpf.solvers._jax.solvers import JaxRK23Solver
+        return JaxRK23Solver()
+
     def step(self, model, t, dt, y_mesh):
         # pdefunc() returns an internal buffer that is overwritten on the
         # next call, so each stage result must be copied.

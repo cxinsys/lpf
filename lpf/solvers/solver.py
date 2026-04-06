@@ -76,6 +76,17 @@ class Solver:
             if hasattr(self, '_trj_y'):
                 del self._trj_y
 
+        # ---- JAX auto-dispatch ----
+        jax_solver = self._get_jax_solver() if self._is_jax(model) else None
+        if jax_solver is not None:
+            return self._forward_to_jax(
+                model, dt, n_iters, rtol, period_output,
+                dict(dpath_model=dpath_model, dpath_morph=dpath_morph,
+                     dpath_pattern=dpath_pattern, dpath_states=dpath_states,
+                     init_model=init_model, iter_begin=iter_begin,
+                     iter_end=iter_end, get_trj=get_trj,
+                     trj_waypoints=trj_waypoints, verbose=verbose))
+
         # ---- CUDA auto-dispatch ----
         cuda_solver = self._get_cuda_solver() if self._is_cuda(model) else None
         if cuda_solver is not None:
@@ -315,6 +326,54 @@ class Solver:
             n2v["rtol"] = self._rtol
 
         return n2v
+
+    # --- JAX auto-dispatch (shared by all subclasses) ---
+
+    @staticmethod
+    def _is_jax(model):
+        """True if model is on a JAX device (any backend: CPU/GPU/TPU)."""
+        from lpf.array.module import JaxModule
+        if model is None:
+            return False
+        return isinstance(model.am, JaxModule)
+
+    def _make_jax_solver(self):
+        """Override in subclass to return a JAX solver instance."""
+        return None
+
+    def _get_jax_solver(self):
+        """Lazy-create the JAX solver implementation."""
+        if not hasattr(self, '_jax_impl'):
+            self._jax_impl = None
+        if self._jax_impl is None:
+            self._jax_impl = self._make_jax_solver()
+        return self._jax_impl
+
+    def _forward_to_jax(self, model, dt, n_iters, rtol, period_output, kwargs):
+        """Forward stored params to the JAX solver's solve()."""
+        try:
+            result = self._get_jax_solver().solve(
+                model=model,
+                dt=dt if dt is not None else self._dt,
+                n_iters=n_iters if n_iters is not None else self._n_iters,
+                rtol=rtol if rtol is not None else self._rtol,
+                period_output=(period_output if period_output is not None
+                               else self._period_output),
+                **kwargs)
+        except ValueError as e:
+            if "unsupported model" in str(e).lower() \
+               or "unsupported solver" in str(e).lower():
+                raise ValueError(
+                    f"{e}  Use device='cpu' for models without JAX kernel support."
+                ) from None
+            raise
+
+        # Store trajectory on outer solver for solver.trj_y API compatibility
+        if isinstance(result, dict) and 'trj' in result:
+            self._trj_y = result['trj']
+        elif hasattr(result, 'shape'):
+            self._trj_y = result
+        return result
 
     # --- CUDA auto-dispatch (shared by all subclasses) ---
 

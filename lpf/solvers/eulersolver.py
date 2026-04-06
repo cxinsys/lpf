@@ -17,6 +17,10 @@ class EulerSolver(Solver):
         from lpf.solvers._cuda.euler import CuEulerSolver
         return CuEulerSolver(fast_math=self._fast_math)
 
+    def _make_jax_solver(self):
+        from lpf.solvers._jax.solvers import JaxEulerSolver
+        return JaxEulerSolver()
+
     def step(self, model, t, dt, y_mesh):
         dydt = model.pdefunc(t, y_mesh)
         return dydt * dt

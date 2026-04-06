@@ -48,6 +48,15 @@ class DOPRI5Solver(CupyPdefuncMixin, Solver):
         self._fast_math = fast_math
         self._km = None
 
+    def _make_jax_solver(self):
+        from lpf.solvers._jax.solvers import JaxDOPRI5Solver
+        return JaxDOPRI5Solver(
+            tolerance=self.tolerance,
+            safety=self.safety,
+            min_factor=self.min_factor,
+            max_factor=self.max_factor,
+        )
+
     def solve(self, model=None, **kwargs):
         self.reset_fsal()
         if model is None:

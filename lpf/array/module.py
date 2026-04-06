@@ -633,8 +633,13 @@ class JaxModule(NumpyModule):
 
         os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
         os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
+        # LPF is a numerical PDE solver — silent float64→float32 downcasts
+        # are unacceptable. Enable JAX x64 before any jax import side
+        # effects bake in the default.
+        os.environ.setdefault("JAX_ENABLE_X64", "1")
 
         import jax
+        jax.config.update("jax_enable_x64", True)
         from jax import device_put
         import jax.numpy as jnp
 
@@ -653,10 +658,14 @@ class JaxModule(NumpyModule):
             devices = []
 
         if not devices:
+            hint = ""
+            if device_type in ("gpu", "cuda"):
+                hint = " Install jax[cuda] for GPU support."
+            elif device_type == "tpu":
+                hint = (" Install jax[tpu] and run on a TPU host "
+                        "(e.g. Google Cloud TPU VM).")
             raise RuntimeError(
-                f"No JAX devices found for type '{device_type}'. "
-                + ("Install jax[cuda] for GPU support."
-                   if device_type in ("gpu", "cuda") else ""))
+                f"No JAX devices found for type '{device_type}'.{hint}")
 
         # Select device by ID
         self._device = None

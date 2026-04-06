@@ -17,6 +17,10 @@ class HeunSolver(Solver):
         from lpf.solvers._cuda.heun import CuHeunSolver
         return CuHeunSolver(fast_math=self._fast_math)
 
+    def _make_jax_solver(self):
+        from lpf.solvers._jax.solvers import JaxHeunSolver
+        return JaxHeunSolver()
+
     def step(self, model, t, dt, y_mesh):
         # pdefunc() returns an internal buffer that is overwritten on the
         # next call, so each stage result must be copied.

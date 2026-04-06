@@ -14,6 +14,10 @@ class AdamsBashforth2Solver(Solver):
         from lpf.solvers._cuda.ab2 import CuAdamsBashforth2Solver
         return CuAdamsBashforth2Solver(fast_math=self._fast_math)
 
+    def _make_jax_solver(self):
+        from lpf.solvers._jax.solvers import JaxAdamsBashforth2Solver
+        return JaxAdamsBashforth2Solver()
+
     def solve(self, model=None, **kwargs):
         self._prev_dydt = None  # reset multi-step state before any path
         return super().solve(model=model, **kwargs)
