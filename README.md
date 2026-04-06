@@ -43,43 +43,19 @@ conda activate lpf
 
 ### Package installation
 
-In the repository directory under the active anaconda environment, execute the following command.
+See [INSTALL.md](INSTALL.md) for the full installation guide (pre-built CUDA
+wheels, `uv sync` from source, PyTorch backend, AOT kernel build).
 
-```
-python setup.py develop
-```
+Quick paths:
 
-After installing the package, we can update the package with `git pull` command.
-This is why we install this package with `python setup.py develop` instead of `python setup.py install`.
+```bash
+# Pre-built CUDA wheel (replace cu132 with your CUDA version)
+pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl
 
-```
-git pull
-```
-
-### Dependency of the PDE solver
-
-:bulb: To optimize the solver for a batch of parameter sets based on GPU computing, install CuPy. However, if you want to use only the cpu, you can omit it.
-
-- [numpy](https://numpy.org/)
-- [scipy](https://scipy.org/)
-- [pillow](https://pillow.readthedocs.io/en/stable/)
-- [pyyaml](https://pyyaml.org/)
-- [cupy](https://cupy.dev/) (optional)
-
-
-### Dependency of the evolutionary search 
-The order of installing the following packages is important to avoid version conflicts.
-
-
-#### 1. Install PyTorch
-Install PyTorch following the [official documentation](https://pytorch.org/).
-
-
-#### 2. Install the packages in the requirements.
-Install the packages in [requirements](https://github.com/cxinsys/lpf/blob/main/requirements.txt). 
-
-```
-pip install -r requirements.txt
+# From source with uv (recommended for development)
+git clone https://github.com/cxinsys/lpf.git
+cd lpf
+uv sync --extra cu130 --extra evosearch
 ```
 
 #### 3. Install PyGMO

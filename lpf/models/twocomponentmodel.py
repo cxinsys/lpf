@@ -224,9 +224,9 @@ class TwoComponentModel(ReactionDiffusionModel):
             arr_v = self.v
 
         with self.am:
-            arr_u = arr_u[index, ...].astype(np.float32)
-            arr_v = arr_v[index, ...].astype(np.float32)
-            
+            arr_u = arr_u[index, ...]
+            arr_v = arr_v[index, ...]
+
             abs_u = self.am.abs(arr_u)
             abs_v = self.am.abs(arr_v)
 
@@ -319,9 +319,9 @@ class TwoComponentModel(ReactionDiffusionModel):
         arr_right = arr_right[:, 4:, :]
 
         arr_merged = np.hstack([arr_left, arr_right])
-        ladybird = Image.fromarray(arr_merged)
+        morph = Image.fromarray(arr_merged)
 
-        return ladybird, pattern
+        return morph, pattern
 
     def save_image(self,
                    index=0,
@@ -329,9 +329,9 @@ class TwoComponentModel(ReactionDiffusionModel):
                    fpath_pattern=None,
                    arr_color=None):
 
-        ladybird, pattern = self.create_image(index, arr_color)
+        morph, pattern = self.create_image(index, arr_color)
         if fpath_morph:
-            ladybird.save(fpath_morph)
+            morph.save(fpath_morph)
         if fpath_pattern:
             pattern.save(fpath_pattern)
     

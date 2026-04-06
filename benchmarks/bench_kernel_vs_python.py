@@ -1,11 +1,27 @@
-"""Benchmark: Fused CUDA Kernels vs Python Element-wise (CuPy) on GPU.
+#!/usr/bin/env python3
+"""
+Benchmark: Fused CUDA kernel vs Python element-wise (CuPy) on GPU.
 
-Compares two GPU execution paths:
-  1. Fused CUDA kernel  — single kernel launch: Laplacian + Reaction fused
-  2. Python element-wise — Python loop calling CuPy array ops (laplacian, reaction separately)
+Question: how much does LPF's hand-written fused CUDA kernel actually
+buy us over a generic Python loop that calls CuPy element-wise ops on
+the *same* GPU memory?
 
-Both paths run on GPU with CuPy arrays. The difference is kernel fusion vs
-multiple element-wise CuPy operations orchestrated by a Python loop.
+Configurations (all on GPU, batch=16, 128x128, n_iters=500,000):
+
+  1. Fused CUDA kernel       — LPF's hand-written kernel (Laplacian +
+                               reaction fused into a single launch)
+  2. Python element-wise     — Python loop calling CuPy array ops one
+                               at a time (no fusion)
+  3. PyTorch -> DLPack -> Fused CUDA kernel
+                             — Same kernel as #1, reached from torch
+                               tensors via zero-copy DLPack
+
+Also reports:
+  - fast_math comparison for the fused kernel
+  - Numerical correctness of all paths against the fused-kernel result
+
+Usage:
+    python benchmarks/bench_kernel_vs_python.py
 """
 
 import os

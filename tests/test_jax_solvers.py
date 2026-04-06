@@ -12,26 +12,13 @@ Covers:
     early stopping, batch sizes, dtype, return-type parity
   - Diploid model support
 
-Slow tests
-----------
-A few cases (notably 16-batch 128x128 adaptive solvers) require expensive
-XLA compilation of nested ``while_loop``s and can take many minutes.
-They are skipped by default; set ``LPF_RUN_SLOW_JAX=1`` to enable them.
 """
 
-import os
 import numpy as np
 import pytest
 
 # Skip entire module if JAX is not available
 jax = pytest.importorskip("jax", reason="JAX not installed")
-
-
-SLOW_JAX = os.environ.get("LPF_RUN_SLOW_JAX") == "1"
-slow_jax = pytest.mark.skipif(
-    not SLOW_JAX,
-    reason=("Slow JAX test (16-batch nested while_loop compile). "
-            "Set LPF_RUN_SLOW_JAX=1 to enable."))
 
 from tests.conftest import make_liaw_model_16, get_numpy, LIAW_DT
 
@@ -46,14 +33,18 @@ ALL_ADAPTIVE_SOLVERS = ["AdaptiveRKF45Solver", "DOPRI5Solver"]
 ALL_SOLVERS = ALL_FIXED_SOLVERS + ALL_ADAPTIVE_SOLVERS
 
 
-# Devices to test. We always test jax:cpu (always available); jax:gpu:0
-# is added if a GPU device is detected.
-JAX_DEVICES = ["jax:cpu"]
+# Devices to test. JAX CPU is excluded — it duplicates the NumPy baseline
+# without exercising the JAX kernel path we actually ship for. Only run JAX
+# tests when a GPU device is available.
+JAX_DEVICES = []
 try:
     if jax.devices("gpu"):
         JAX_DEVICES.append("jax:gpu:0")
 except Exception:
     pass
+
+if not JAX_DEVICES:
+    pytest.skip("No JAX GPU device available", allow_module_level=True)
 
 
 def _make_model(device, batch_size=1, width=32, height=32, dtype=np.float32):
@@ -178,7 +169,6 @@ class TestCorrectnessVsCpu:
             y_jax, y_cpu, atol=1e-5, rtol=1e-5,
             err_msg=f"{solver_name}: JAX({device}) vs CPU mismatch")
 
-    @slow_jax
     @pytest.mark.parametrize("device", JAX_DEVICES)
     @pytest.mark.parametrize("solver_name", ALL_ADAPTIVE_SOLVERS)
     def test_jax_adaptive_matches_cpu(self, device, solver_name):
@@ -580,7 +570,6 @@ class TestDiploidModel:
         assert y.shape == (4, 1, 32, 32)
         assert np.all(np.isfinite(y))
 
-    @slow_jax
     @pytest.mark.parametrize("device", JAX_DEVICES)
     @pytest.mark.parametrize("solver_name", ALL_ADAPTIVE_SOLVERS)
     def test_diploid_adaptive_solvers(self, device, solver_name):

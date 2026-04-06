@@ -413,7 +413,7 @@ class Solver:
                                else self._period_output),
                 **kwargs)
         except ValueError as e:
-            if "Unsupported model" in str(e):
+            if "unsupported model" in str(e).lower():
                 raise ValueError(
                     f"{e}  Use device='cpu' for models without CUDA kernel support."
                 ) from None

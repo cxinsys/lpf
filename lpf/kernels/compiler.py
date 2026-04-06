@@ -79,19 +79,21 @@ class CuKernelManager:
         self._jit_lc2 = None
         self._jit_lc3 = None
 
-        # Try to load AOT fatbin
+        # Try to load AOT fatbin.
+        # Policy: if no fatbin is present (e.g. source/editable install without
+        # an AOT build), silently use JIT — that is a legitimate path. But if
+        # a fatbin *is* present and we fail to load or validate it, raise:
+        # silent JIT fallback would mask a corrupted/mismatched wheel.
         self._aot = None
         self._use_aot = False
-        try:
-            from lpf.kernels.aot.loader import AOTKernelLoader
-            loader = AOTKernelLoader()
-            if loader.is_available():
-                # Validate that the required kernels exist
-                loader.get_euler_kernel(model_name, dtype)
-                self._aot = loader
-                self._use_aot = True
-        except Exception:
-            pass
+        from lpf.kernels.aot.loader import AOTKernelLoader
+        loader = AOTKernelLoader()
+        if loader.is_available():
+            # Validate that the required kernels exist. Any failure here is a
+            # hard error — the binaries are present but unusable.
+            loader.get_euler_kernel(model_name, dtype)
+            self._aot = loader
+            self._use_aot = True
 
     # ================================================================
     # Properties
