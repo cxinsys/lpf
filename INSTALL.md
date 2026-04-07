@@ -78,11 +78,10 @@ listed there because pip cannot install it reliably on every platform.
 
 > **Note on `uv sync`**: the uv workflow described in
 > [From Source](#from-source-uv-recommended-for-development) is meant
-> for plain simulation and development. `uv sync --extra evosearch`
-> still resolves the perceptual objectives correctly, but it does
-> **not** install pygmo, and adding pygmo into a uv venv after the
-> fact is not straightforward. Use the conda recipe above when you
-> actually need to run the optimizer.
+> for plain simulation and development. It does not install pygmo,
+> and adding pygmo into a uv venv after the fact is not
+> straightforward. Use the conda recipe above when you actually need
+> to run the optimizer.
 
 ### PyTorch (optional)
 
