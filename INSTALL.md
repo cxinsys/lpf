@@ -41,45 +41,48 @@ Copy the command from the row matching your OS and run it.
 
 All wheels: [GitHub Releases](https://github.com/cxinsys/lpf/releases/tag/v0.2.0)
 
-### Evolutionary search extras (optional)
+### Evolutionary search (conda recommended)
 
-If you plan to run evolutionary search (`lpf.search.evosearch`), add the
-`[evosearch]` extra. It pulls in the perceptual / image-similarity
-objectives used as fitness functions — LPIPS, SSIM (`torchmetrics`),
-and OpenCV image ops — none of which are needed for plain simulation.
+If you plan to run evolutionary search seriously, **install LPF inside
+a conda environment** rather than the uv venv. The reason is `pygmo`,
+which the search loop drives the optimizer through: pygmo's PyPI wheels
+are uneven across OS/Python combinations, while conda-forge ships
+maintained binaries for Linux, Windows, and macOS. Mixing pygmo from
+conda with the rest of the stack from a uv venv is awkward because the
+two environments do not share `site-packages`.
 
-`lpips` and `torchmetrics[image]` both depend on PyTorch, so installing
-`[evosearch]` by itself will pull in the **CPU** PyTorch build from
-PyPI. To get a CUDA PyTorch instead, install `torch` from the matching
-PyTorch CUDA index **first**, then install the LPF wheel with
-`[evosearch]` — pip will reuse the already-installed CUDA torch
-instead of pulling the CPU build.
-
-Linux + CUDA 13.2 example:
+Recommended setup (CUDA 13.2 example):
 
 ```bash
-# 1. CUDA PyTorch from the matching index
-#    (CUDA 13.2 has no dedicated PyTorch wheel — the cu130 index is
+# 1. Create a conda env with Python and pygmo from conda-forge
+conda create -n lpf -c conda-forge python=3.12 pygmo
+conda activate lpf
+
+# 2. CUDA PyTorch from the matching PyTorch index
+#    (CUDA 13.2 has no dedicated wheel — the cu130 index is
 #    forward-compatible with CUDA 13.x runtimes)
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
 
-# 2. LPF wheel with the evosearch extra (reuses the CUDA torch above)
+# 3. LPF wheel with the evosearch extra
+#    (reuses the CUDA torch and the conda-installed pygmo)
 pip install "lpf[evosearch] @ https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl"
 ```
 
 Replace the `cu130` index and the `cu132` LPF wheel with the variants
 matching your CUDA toolkit (`cu126`, `cu128`, `cu130`, `cu132`).
 
-If you are installing from source with `uv`, the equivalent single
-command is:
+The `[evosearch]` extra itself only pulls in the perceptual /
+image-similarity objectives used as fitness functions — LPIPS, SSIM
+(`torchmetrics`), and OpenCV image ops. `pygmo` is intentionally not
+listed there because pip cannot install it reliably on every platform.
 
-```bash
-uv sync --extra cu132 --extra evosearch --extra torch-cu132
-```
-
-Here `uv` resolves `torch` through the CUDA PyTorch index configured
-in `[tool.uv.sources]`, so the evosearch dependencies automatically
-land on the CUDA build — no manual pre-install needed.
+> **Note on `uv sync`**: the uv workflow described in
+> [From Source](#from-source-uv-recommended-for-development) is meant
+> for plain simulation and development. `uv sync --extra evosearch`
+> still resolves the perceptual objectives correctly, but it does
+> **not** install pygmo, and adding pygmo into a uv venv after the
+> fact is not straightforward. Use the conda recipe above when you
+> actually need to run the optimizer.
 
 ### PyTorch (optional)
 
