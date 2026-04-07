@@ -9,8 +9,12 @@
  *   - Ping-pong buffers
  *
  * Compile:
- *   nvcc -shared -Xcompiler -fPIC -std=c++17 -O3 \
+ *   nvcc -shared -Xcompiler -fPIC -std=c++17 -O3 --fmad=false \
  *        -I include/ solver_loop.cu -o libsolver.so
+ *
+ * --fmad=false (and no --use_fast_math) is required for bit-exact
+ * reproduction of the legacy PyTorch-eager dataset; see kernels.cu for
+ * the full rationale and benchmark numbers.
  */
 
 #include "include/stencil_core.cuh"

@@ -6,6 +6,15 @@
  * Shared-memory tiled 5-point stencil core.
  * MODE = EULER_STEP: out = y + dt*(D*lap + reaction)
  * MODE = PDEFUNC:    out = D*lap + reaction  (boundary = 0)
+ *
+ * Note: this file MUST be compiled with `--fmad=false`. The expressions
+ * `D*lap + f` and `c + dt*(D*lap + f)` would otherwise be auto-contracted
+ * into `fma` instructions by nvcc, producing results that differ — bit by
+ * bit — from the historical PyTorch-eager reference path (which has no
+ * way to fuse mul+add across separate ATen elementwise kernels). Disabling
+ * fmad makes this fused kernel reproduce the legacy ladybirdmnist dataset
+ * bit-exactly. Performance cost is negligible because the stencil is
+ * memory-bound. See kernels.cu header for benchmark details.
  */
 template<typename T, typename Reaction, int TILE_X, int TILE_Y, KernelMode MODE>
 __device__ void stencil_core(

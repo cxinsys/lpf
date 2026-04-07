@@ -65,11 +65,15 @@ class CuKernelManager:
         self._reaction_info = REACTION_REGISTRY[model_name]
 
         # NVRTC compile options.
+        #   --fmad=false  : disable automatic FMA contraction so the fused
+        #                   stencil/reaction kernel reproduces the bit-exact
+        #                   behaviour of the historical PyTorch-eager path
+        #                   (verified against ladybirdmnist).
         # fast_math is intentionally never applied — it relaxes IEEE-754
-        # (FTZ/DAZ, approximate div/sqrt) which we do not want for the
-        # reaction-diffusion solvers. The fast_math kwarg is kept on the
-        # solver/manager API for backward compatibility but is a no-op.
-        self._options = ()
+        # (FTZ/DAZ, approximate div/sqrt) and breaks reproducibility. The
+        # fast_math kwarg on the solver API is kept for backward compat but
+        # is a no-op.
+        self._options = ('--fmad=false',)
 
         # Lazily compiled JIT kernels
         self._jit_euler = None

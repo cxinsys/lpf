@@ -18,7 +18,7 @@ build-backend = "setuptools.build_meta"
 name = "lpf"
 description = "Ladybird Pattern Formation (LPF)"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "Daewon Lee", email = "daewon4you@gmail.com" },
 ]
@@ -60,6 +60,19 @@ torch-cu130 = ["torch>=2.9,<2.11", "torchvision"]
 # which is forward-compatible with CUDA 13.x runtimes.
 torch-cu132 = ["torch>=2.9,<2.11", "torchvision"]
 
+# --- JAX variants (optional) ------------------------------------------------
+# Enables the JAX/XLA backend (device="jax:gpu:0", "jax:cpu", "jax:tpu:0").
+# JAX ships its CUDA support as `jax[cuda12]` / `jax[cuda13]` (these pull in
+# the matching jax-cudaXX-plugin and jax-cudaXX-pjrt PJRT plugin packages).
+# CUDA 12.x toolkits → jax[cuda12]; CUDA 13.x toolkits → jax[cuda13]. The
+# `cuda13` extra was added in JAX 0.7, so the cu13x extras pin >=0.7.
+jax = ["jax>=0.6"]
+jax-cu126 = ["jax[cuda12]>=0.6"]
+jax-cu128 = ["jax[cuda12]>=0.6"]
+jax-cu130 = ["jax[cuda13]>=0.7"]
+jax-cu132 = ["jax[cuda13]>=0.7"]
+jax-tpu   = ["jax[tpu]>=0.6"]
+
 [dependency-groups]
 # Development-only tools — never installed for end users via `pip install lpf`.
 dev = ["pytest", "build"]
@@ -82,6 +95,14 @@ conflicts = [
         { extra = "torch-cu128" },
         { extra = "torch-cu130" },
         { extra = "torch-cu132" },
+    ],
+    [
+        { extra = "jax" },
+        { extra = "jax-cu126" },
+        { extra = "jax-cu128" },
+        { extra = "jax-cu130" },
+        { extra = "jax-cu132" },
+        { extra = "jax-tpu" },
     ],
 ]
 
