@@ -63,19 +63,22 @@ platforms.
 Recommended setup (CUDA 13.2 example):
 
 ```bash
-# 1. Create a conda env with Python + pygmo from conda-forge
-conda create -n lpf -c conda-forge python=3.12 pygmo
+# 1. Create a conda env with Python 3.12 and activate it
+conda create -n lpf python=3.12
 conda activate lpf
 
-# 2. CUDA PyTorch from the matching PyTorch index
+# 2. Install pygmo from conda-forge into the active env
+conda install -c conda-forge pygmo
+
+# 3. CUDA PyTorch from the matching PyTorch index
 #    (CUDA 13.2 has no dedicated wheel — the cu130 index is
 #    forward-compatible with CUDA 13.x runtimes)
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
 
-# 3. Perceptual / image-similarity objectives
+# 4. Perceptual / image-similarity objectives
 pip install lpips torchmetrics[image] opencv-python
 
-# 4. LPF wheel (reuses the CUDA torch and the conda-installed pygmo)
+# 5. LPF wheel (reuses the CUDA torch and the conda-installed pygmo)
 pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl
 ```
 
