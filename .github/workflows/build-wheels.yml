@@ -55,6 +55,11 @@ jobs:
         with:
           cuda: ${{ matrix.cuda }}
           method: network
+          # Only install the compiler toolchain. The default metapackage
+          # pulls in nvidia-dkms-* which fails to build against the Azure
+          # runner kernel, and we don't need a driver to build wheels.
+          sub-packages: '["nvcc", "cudart", "nvrtc", "nvrtc-dev", "cudart-dev"]'
+          non-cuda-sub-packages: '[]'
 
       - name: Setup MSVC (Windows)
         if: runner.os == 'Windows'
