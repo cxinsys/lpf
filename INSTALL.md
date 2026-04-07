@@ -13,29 +13,29 @@ Copy the command from the row matching your OS and run it.
 
 #### CUDA 13.2 (auto-installs `cupy-cuda13x`)
 
-| OS      | `pip install` |
-|---------|---------------|
+| OS      | Command |
+|---------|---------|
 | Linux   | `pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl` |
 | Windows | `pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-win_amd64.whl` |
 
 #### CUDA 13.0 (auto-installs `cupy-cuda13x`)
 
-| OS      | `pip install` |
-|---------|---------------|
+| OS      | Command |
+|---------|---------|
 | Linux   | `pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu130-py3-none-linux_x86_64.whl` |
 | Windows | `pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu130-py3-none-win_amd64.whl` |
 
 #### CUDA 12.8 (auto-installs `cupy-cuda12x`)
 
-| OS      | `pip install` |
-|---------|---------------|
+| OS      | Command |
+|---------|---------|
 | Linux   | `pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu128-py3-none-linux_x86_64.whl` |
 | Windows | `pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu128-py3-none-win_amd64.whl` |
 
 #### CUDA 12.6 (auto-installs `cupy-cuda12x`)
 
-| OS      | `pip install` |
-|---------|---------------|
+| OS      | Command |
+|---------|---------|
 | Linux   | `pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu126-py3-none-linux_x86_64.whl` |
 | Windows | `pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu126-py3-none-win_amd64.whl` |
 
