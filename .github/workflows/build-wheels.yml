@@ -51,15 +51,24 @@ jobs:
         with:
           python-version: '3.12'
 
+      # Linux: restrict sub-packages so the default metapackage does NOT
+      # pull in nvidia-dkms-*, which fails to build against the Azure
+      # runner kernel. Wheel builds only need the compiler + runtime.
       - uses: Jimver/cuda-toolkit@v0.2.35
+        if: runner.os == 'Linux'
         with:
           cuda: ${{ matrix.cuda }}
           method: network
-          # Only install the compiler toolchain. The default metapackage
-          # pulls in nvidia-dkms-* which fails to build against the Azure
-          # runner kernel, and we don't need a driver to build wheels.
           sub-packages: '["nvcc", "cudart", "nvrtc", "nvrtc-dev", "cudart-dev"]'
           non-cuda-sub-packages: '[]'
+
+      # Windows: use the default install (no DKMS issue on Windows, and the
+      # Windows installer uses different package names than the Linux one).
+      - uses: Jimver/cuda-toolkit@v0.2.35
+        if: runner.os == 'Windows'
+        with:
+          cuda: ${{ matrix.cuda }}
+          method: network
 
       - name: Setup MSVC (Windows)
         if: runner.os == 'Windows'
