@@ -47,12 +47,39 @@ If you plan to run evolutionary search (`lpf.search.evosearch`), add the
 `[evosearch]` extra. It pulls in the perceptual / image-similarity
 objectives used as fitness functions — LPIPS, SSIM (`torchmetrics`),
 and OpenCV image ops — none of which are needed for plain simulation.
-Wrap the wheel URL with `lpf[evosearch] @ <url>`. For example, on
-Linux with CUDA 13.2:
+
+`lpips` and `torchmetrics[image]` both depend on PyTorch, so installing
+`[evosearch]` by itself will pull in the **CPU** PyTorch build from
+PyPI. To get a CUDA PyTorch instead, install `torch` from the matching
+PyTorch CUDA index **first**, then install the LPF wheel with
+`[evosearch]` — pip will reuse the already-installed CUDA torch
+instead of pulling the CPU build.
+
+Linux + CUDA 13.2 example:
 
 ```bash
+# 1. CUDA PyTorch from the matching index
+#    (CUDA 13.2 has no dedicated PyTorch wheel — the cu130 index is
+#    forward-compatible with CUDA 13.x runtimes)
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
+
+# 2. LPF wheel with the evosearch extra (reuses the CUDA torch above)
 pip install "lpf[evosearch] @ https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl"
 ```
+
+Replace the `cu130` index and the `cu132` LPF wheel with the variants
+matching your CUDA toolkit (`cu126`, `cu128`, `cu130`, `cu132`).
+
+If you are installing from source with `uv`, the equivalent single
+command is:
+
+```bash
+uv sync --extra cu132 --extra evosearch --extra torch-cu132
+```
+
+Here `uv` resolves `torch` through the CUDA PyTorch index configured
+in `[tool.uv.sources]`, so the evosearch dependencies automatically
+land on the CUDA build — no manual pre-install needed.
 
 ### PyTorch (optional)
 
