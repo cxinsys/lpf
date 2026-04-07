@@ -43,18 +43,27 @@ All wheels: [GitHub Releases](https://github.com/cxinsys/lpf/releases/tag/v0.2.0
 
 ### Evolutionary search (conda recommended)
 
-If you plan to run evolutionary search seriously, **install LPF inside
-a conda environment** rather than the uv venv. The reason is `pygmo`,
-which the search loop drives the optimizer through: pygmo's PyPI wheels
-are uneven across OS/Python combinations, while conda-forge ships
-maintained binaries for Linux, Windows, and macOS. Mixing pygmo from
-conda with the rest of the stack from a uv venv is awkward because the
-two environments do not share `site-packages`.
+If you plan to run evolutionary search (`lpf.search.evosearch`),
+**install LPF inside a conda environment** rather than the uv venv.
+
+The search loop drives the optimizer through `pygmo`, whose PyPI
+wheels are uneven across OS/Python combinations. conda-forge, by
+contrast, ships maintained `pygmo` binaries for Linux, Windows, and
+macOS. Mixing pygmo from conda with the rest of the stack from a uv
+venv is awkward because the two environments do not share
+`site-packages` — so for evolutionary search we keep everything inside
+one conda env.
+
+The perceptual / image-similarity objectives used as fitness functions
+(`lpips`, `torchmetrics[image]`, `opencv-python`) are also installed
+in this env. They are intentionally **not** declared as an LPF extra,
+because installing them via pip alongside pygmo is fragile on some
+platforms.
 
 Recommended setup (CUDA 13.2 example):
 
 ```bash
-# 1. Create a conda env with Python and pygmo from conda-forge
+# 1. Create a conda env with Python + pygmo from conda-forge
 conda create -n lpf -c conda-forge python=3.12 pygmo
 conda activate lpf
 
@@ -63,25 +72,15 @@ conda activate lpf
 #    forward-compatible with CUDA 13.x runtimes)
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
 
-# 3. LPF wheel with the evosearch extra
-#    (reuses the CUDA torch and the conda-installed pygmo)
-pip install "lpf[evosearch] @ https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl"
+# 3. Perceptual / image-similarity objectives
+pip install lpips torchmetrics[image] opencv-python
+
+# 4. LPF wheel (reuses the CUDA torch and the conda-installed pygmo)
+pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl
 ```
 
 Replace the `cu130` index and the `cu132` LPF wheel with the variants
 matching your CUDA toolkit (`cu126`, `cu128`, `cu130`, `cu132`).
-
-The `[evosearch]` extra itself only pulls in the perceptual /
-image-similarity objectives used as fitness functions — LPIPS, SSIM
-(`torchmetrics`), and OpenCV image ops. `pygmo` is intentionally not
-listed there because pip cannot install it reliably on every platform.
-
-> **Note on `uv sync`**: the uv workflow described in
-> [From Source](#from-source-uv-recommended-for-development) is meant
-> for plain simulation and development. It does not install pygmo,
-> and adding pygmo into a uv venv after the fact is not
-> straightforward. Use the conda recipe above when you actually need
-> to run the optimizer.
 
 ### PyTorch (optional)
 
@@ -140,21 +139,25 @@ Pick the extras that match your CUDA toolkit (`nvidia-smi`) and the
 features you need:
 
 ```bash
-# Most common: GPU + perceptual objectives (CUDA 13.0 example)
-uv sync --extra cu130 --extra evosearch
+# Most common: GPU simulation (CUDA 13.0 example)
+uv sync --extra cu130
 
 # Add the optional PyTorch backend (matching CUDA index is auto-selected)
-uv sync --extra cu130 --extra evosearch --extra torch-cu130
+uv sync --extra cu130 --extra torch-cu130
 
 # Add the optional JAX/XLA backend (CUDA 13 plugin)
-uv sync --extra cu130 --extra evosearch --extra jax-cu130
+uv sync --extra cu130 --extra jax-cu130
 
 # Everything: CuPy + PyTorch + JAX on CUDA 13
-uv sync --extra cu130 --extra evosearch --extra torch-cu130 --extra jax-cu130
+uv sync --extra cu130 --extra torch-cu130 --extra jax-cu130
 
 # CPU only (no CuPy, no GPU)
 uv sync
 ```
+
+> The uv workflow is for plain simulation and development. For
+> evolutionary search, see [Evolutionary search (conda recommended)](#evolutionary-search-conda-recommended)
+> — pygmo and the perceptual objectives are installed via conda, not uv.
 
 ### Available extras
 
@@ -166,7 +169,6 @@ uv sync
 | `jax-cu126` / `jax-cu128` | `jax[cuda12]` — pulls `jax-cuda12-plugin` + `jax-cuda12-pjrt` |
 | `jax-cu130` / `jax-cu132` | `jax[cuda13]` — pulls `jax-cuda13-plugin` + `jax-cuda13-pjrt` |
 | `jax-tpu` | `jax[tpu]` — for `device="jax:tpu:0"` |
-| `evosearch` | `lpips`, `opencv-python`, `torchmetrics[image]` (perceptual / SSIM objectives) |
 
 CUDA extras are mutually exclusive — pick exactly one. Same for `torch-cu*`
 and `jax*`. Use the `cuXXX` digits that match your CUDA toolkit. CUDA 13.2

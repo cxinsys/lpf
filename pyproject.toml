@@ -26,15 +26,6 @@ license = { file = "LICENSE" }
 dynamic = ["version", "dependencies"]
 
 [project.optional-dependencies]
-# --- Feature extras ---------------------------------------------------------
-# evosearch: perceptual / image-based objective functions used by evolutionary
-# search. Pulls in lpips (LPIPS), torchmetrics (SSIM), and opencv (image ops).
-evosearch = [
-    "lpips",
-    "opencv-python",
-    "torchmetrics[image]",
-]
-
 # --- CUDA variants ----------------------------------------------------------
 # Pick the one that matches your CUDA toolkit (see `nvidia-smi`).
 # Pulls in the matching CuPy build for fused CUDA kernels.
