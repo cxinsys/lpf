@@ -145,6 +145,39 @@ If you want an editable source install instead of the wheel, replace
 step 5 with the developer recipe in the next section
 (`pip install -e ".[cu130]"` after `git clone` and `cd lpf`).
 
+### Full install (everything, user path)
+
+The maximal setup for users: every optional backend (PyTorch, JAX)
+plus the full evolutionary-search stack, all in one conda env, on top
+of the pre-built LPF wheel. Use this when you want to exercise every
+feature without building from source.
+
+```bash
+# 1. conda env
+conda create -n lpf python=3.12
+conda activate lpf
+
+# 2. pygmo (evolutionary search optimizer)
+conda install -c conda-forge pygmo
+
+# 3. CUDA PyTorch backend (device="torch:cuda:0")
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
+
+# 4. CUDA JAX backend (device="jax:gpu:0")
+#    cu13x drivers → jax[cuda13]; cu12x drivers → jax[cuda12]
+pip install "jax[cuda13]"
+
+# 5. Evolutionary-search fitness objectives
+pip install lpips torchmetrics[image] opencv-python
+
+# 6. LPF wheel (pulls in CuPy automatically; CUDA 13.0 example)
+pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu130-py3-none-linux_x86_64.whl
+```
+
+Replace `cu130` / `cuda13` with the variant matching your CUDA driver.
+The CUDA 13.2 PyTorch fallback note in the previous section still
+applies (keep the PyTorch index on cu130 but use the cu132 LPF wheel).
+
 ---
 
 ## Editable Source Install (conda + `pip install -e`)
@@ -210,22 +243,47 @@ cd ~/repos/lpf
 pytest tests/ -v
 ```
 
-### Editable install with evolutionary search
+### Full install (everything, developer path)
 
-If your dev env also needs evosearch, install pygmo and the perceptual
-objectives the same way as the [Evolutionary search](#evolutionary-search)
-section, then add LPF in editable mode:
+The maximal setup for LPF developers: editable source + every
+optional backend + the full evolutionary-search stack, in one conda
+env. Same shape as the user full install above, except step 6
+replaces the wheel with `pip install -e ".[cu130,jax-cu130]"` so
+LPF and JAX are installed together as extras of the source tree.
 
 ```bash
+# 1. Dev conda env
 conda create -n lpf-dev python=3.12
 conda activate lpf-dev
+
+# 2. pygmo (evolutionary search optimizer)
 conda install -c conda-forge pygmo
+
+# 3. CUDA PyTorch backend (device="torch:cuda:0")
+#    Install this BEFORE step 6 so pip reuses the CUDA build instead
+#    of pulling the CPU build when LPF's extras resolve.
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
+
+# 4. Evolutionary-search fitness objectives
 pip install lpips torchmetrics[image] opencv-python
+
+# 5. Clone the source
 git clone https://github.com/cxinsys/lpf.git ~/repos/lpf
 cd ~/repos/lpf
-pip install -e ".[cu130]"
+
+# 6. LPF editable + CuPy + JAX (CUDA 13.0 example)
+pip install -e ".[cu130,jax-cu130]"
 ```
+
+Notes:
+
+- The `[torch-cu130]` extra is intentionally **not** chained in step 6
+  because `pip install` does not honor `[tool.uv.sources]`; step 3
+  already installed the CUDA PyTorch build manually.
+- Swap `cu130` / `jax-cu130` for the variants matching your driver
+  (`cu126` / `jax-cu126`, `cu128` / `jax-cu128`, `cu132` / `jax-cu132`).
+- Edits to `~/repos/lpf/...` are picked up immediately by anything
+  that runs in the `lpf-dev` env, from any working directory.
 
 ---
 
