@@ -126,6 +126,14 @@ editable mode.
 
 ### 1. Install uv
 
+If you already have a Python environment, the simplest path is pip:
+
+```bash
+pip install uv
+```
+
+Otherwise use the standalone installer (no Python required):
+
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh   # Linux / macOS
 # Windows: see https://docs.astral.sh/uv/getting-started/installation/
