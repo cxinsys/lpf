@@ -22,49 +22,13 @@
 
 ## Installation
 
-- :snake: [Anaconda](https://www.anaconda.com) is recommended to use and develop LPF.
-- :penguin: Linux distros are tested and recommended to use and develop LPF.
+See [INSTALL.md](INSTALL.md) for the full installation guide, which covers:
 
-### Anaconda virtual environment
-
-After installing anaconda, create a conda virtual environment for LPF.
-In the following command, you can change the Python version
-(e.g.,`python=3.7` or `python=3.9`).
-
-```
-conda create -n lpf python=3.9
-```
-
-Now, we can activate our virtual environment for LPF as follows.
-
-```
-conda activate lpf
-```
-
-### Package installation
-
-See [INSTALL.md](INSTALL.md) for the full installation guide (pre-built CUDA
-wheels, `uv sync` from source, PyTorch backend, AOT kernel build).
-
-Quick paths:
-
-```bash
-# Pre-built CUDA wheel (replace cu132 with your CUDA version)
-pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu132-py3-none-linux_x86_64.whl
-
-# From source with uv (recommended for development)
-git clone https://github.com/cxinsys/lpf.git
-cd lpf
-uv sync --extra cu130 --extra evosearch
-```
-
-#### 3. Install PyGMO
-
-Install PyGMO as follows.
-
-```
-conda install pygmo -c conda-forge
-```
+- Pre-built CUDA wheels (Linux / Windows, CUDA 12.6 – 13.2)
+- From source with `uv` for development
+- Optional PyTorch and JAX backends
+- Conda-based setup for evolutionary search (pygmo)
+- AOT kernel build
 
 ## Getting Started
 - [Tutorials](https://github.com/cxinsys/lpf/tree/main/tutorials).
