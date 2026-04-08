@@ -9,8 +9,8 @@ same things with `uv` if you prefer that toolchain.
 | You want to… | Go to |
 |---|---|
 | Use LPF as a library | [Quick Install (conda + wheel)](#quick-install-conda--wheel) |
-| Install every backend + evosearch in one env | [Full install (everything, user path)](#full-install-everything-user-path) |
 | Run evolutionary search (`lpf.search.evosearch`) | [Evolutionary search](#evolutionary-search) |
+| Install every backend + evosearch in one env | [Full install (everything, user path)](#full-install-everything-user-path) |
 | Edit / develop LPF source | [Editable Source Install (conda + `pip install -e`)](#editable-source-install-conda--pip-install--e) |
 | Use `uv` instead of conda | [Using uv instead of conda](#using-uv-instead-of-conda) |
 
@@ -107,47 +107,6 @@ All wheels: [GitHub Releases](https://github.com/cxinsys/lpf/releases/tag/v0.2.0
 
 ---
 
-## Full install (everything, user path)
-
-The maximal user setup: every optional backend (PyTorch, JAX) plus
-the full evolutionary-search stack, all in one conda env, on top of
-the pre-built LPF wheel. Use this when you want to exercise every
-feature without building from source. If you do not need evosearch
-or one of the backends, skip the matching step — each block is
-independent.
-
-See [Evolutionary search](#evolutionary-search) below for why the
-pygmo step uses conda instead of pip, and what the perceptual
-objectives are for.
-
-```bash
-# 1. conda env
-conda create -n lpf python=3.12
-conda activate lpf
-
-# 2. pygmo (evolutionary search optimizer, conda-forge only)
-conda install -c conda-forge pygmo
-
-# 3. CUDA PyTorch backend (device="torch:cuda:0")
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
-
-# 4. CUDA JAX backend (device="jax:gpu:0")
-#    cu13x drivers → jax[cuda13]; cu12x drivers → jax[cuda12]
-pip install "jax[cuda13]"
-
-# 5. Evolutionary-search fitness objectives
-pip install lpips torchmetrics[image] opencv-python
-
-# 6. LPF wheel (pulls in CuPy automatically; CUDA 13.0 example)
-pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu130-py3-none-linux_x86_64.whl
-```
-
-Replace `cu130` / `cuda13` with the variant matching your CUDA driver.
-The CUDA 13.2 PyTorch fallback note in the previous section still
-applies (keep the PyTorch index on cu130 but use the cu132 LPF wheel).
-
----
-
 ## Evolutionary search
 
 `lpf.search.evosearch` drives the optimizer through `pygmo`, and the
@@ -157,9 +116,9 @@ uneven across OS / Python combinations, while conda-forge ships
 maintained binaries for Linux, Windows, and macOS — so the
 evolutionary-search stack is **only** supported inside a conda env.
 
-This is the minimal variant of the full install above: same conda env
-shape, but without the optional JAX step, since most evolutionary
-search runs use the default CuPy backend.
+This extends the Quick Install conda env with two extra steps before
+the LPF wheel: pygmo from conda-forge, then the perceptual objectives
+via pip.
 
 ```bash
 # 1. Create a conda env and activate it
@@ -184,8 +143,57 @@ Replace `cu130` with the variant matching your CUDA driver (`cu126`,
 applies here too.
 
 If you want an editable source install instead of the wheel, replace
-step 5 with the developer recipe in the next section
-(`pip install -e ".[cu130]"` after `git clone` and `cd lpf`).
+step 5 with the developer recipe further below (`pip install -e
+".[cu130]"` after `git clone` and `cd lpf`).
+
+---
+
+## Full install (everything, user path)
+
+The maximal user setup: every optional backend (PyTorch, JAX) plus
+the full evolutionary-search stack, all in one conda env, on top of
+the pre-built LPF wheel. Use this when you want to exercise every
+feature without building from source. If you do not need one of the
+blocks, skip that step — each block is independent.
+
+This is a superset of the [Evolutionary search](#evolutionary-search)
+recipe above, with CUDA JAX added as step 4.
+
+```bash
+# 1. conda env
+conda create -n lpf python=3.12
+conda activate lpf
+
+# 2. pygmo (evolutionary search optimizer, conda-forge only)
+conda install -c conda-forge pygmo
+
+# 3. CUDA PyTorch backend (device="torch:cuda:0")
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
+
+# 4. CUDA JAX backend (device="jax:gpu:0")
+#    cu13x drivers → jax[cuda13]; cu12x drivers → jax[cuda12]
+#    LINUX ONLY — skip this step on Windows (see note below)
+pip install "jax[cuda13]"
+
+# 5. Evolutionary-search fitness objectives
+pip install lpips torchmetrics[image] opencv-python
+
+# 6. LPF wheel (pulls in CuPy automatically; CUDA 13.0 example)
+pip install https://github.com/cxinsys/lpf/releases/download/v0.2.0/lpf-0.2.0+cu130-py3-none-linux_x86_64.whl
+```
+
+Replace `cu130` / `cuda13` with the variant matching your CUDA driver.
+The CUDA 13.2 PyTorch fallback note in the Quick Install section
+still applies (keep the PyTorch index on cu130 but use the cu132 LPF
+wheel).
+
+> ⚠️ **Windows users**: skip step 4. JAX CUDA wheels
+> (`jax[cuda12]` / `jax[cuda13]`) are published only for Linux
+> x86_64 — Windows has no matching `jaxlib` / `jax-cudaXX-plugin`
+> distributions, so `pip install jax[cuda13]` will fail with a
+> resolver error. If you want JAX on Windows, either install the
+> CPU-only build (`pip install jax`, `device="jax:cpu"`) or run the
+> full install inside WSL2.
 
 ---
 
@@ -280,7 +288,7 @@ pip install lpips torchmetrics[image] opencv-python
 git clone https://github.com/cxinsys/lpf.git ~/repos/lpf
 cd ~/repos/lpf
 
-# 6. LPF editable + CuPy + JAX (CUDA 13.0 example)
+# 6. LPF editable + CuPy + JAX (CUDA 13.0 example; Linux only)
 pip install -e ".[cu130,jax-cu130]"
 ```
 
@@ -293,6 +301,11 @@ Notes:
   (`cu126` / `jax-cu126`, `cu128` / `jax-cu128`, `cu132` / `jax-cu132`).
 - Edits to `~/repos/lpf/...` are picked up immediately by anything
   that runs in the `lpf-dev` env, from any working directory.
+- ⚠️ **Windows**: drop `jax-cu130` from the extras (→ `pip install -e
+  ".[cu130]"`). The JAX CUDA plugin has no Windows wheel, so any
+  `[jax-cuXXX]` extra will fail to resolve. Use `[jax]` for CPU-only
+  JAX, or run the install inside WSL2 if you need JAX GPU on a
+  Windows machine.
 
 ---
 
@@ -417,9 +430,14 @@ a bit-identical environment.
 | `cu126` / `cu128` / `cu130` / `cu132` | Matching CuPy (`cupy-cuda12x` for cu12x, `cupy-cuda13x` for cu13x) |
 | `torch-cu126` / `torch-cu128` / `torch-cu130` / `torch-cu132` | PyTorch + torchvision from the matching `download.pytorch.org/whl/cuXXX` index. **Only effective with `uv sync`** — see notes above. |
 | `jax` | JAX (CPU only) — for `device="jax:cpu"` |
-| `jax-cu126` / `jax-cu128` | `jax[cuda12]` — pulls `jax-cuda12-plugin` + `jax-cuda12-pjrt` |
-| `jax-cu130` / `jax-cu132` | `jax[cuda13]` — pulls `jax-cuda13-plugin` + `jax-cuda13-pjrt` |
+| `jax-cu126` / `jax-cu128` | `jax[cuda12]` — pulls `jax-cuda12-plugin` + `jax-cuda12-pjrt`. **Linux only.** |
+| `jax-cu130` / `jax-cu132` | `jax[cuda13]` — pulls `jax-cuda13-plugin` + `jax-cuda13-pjrt`. **Linux only.** |
 | `jax-tpu` | `jax[tpu]` — for `device="jax:tpu:0"` |
+
+> ⚠️ **JAX GPU on Windows is not supported.** JAX publishes CUDA wheels
+> only for Linux x86_64 (and TPU wheels for Google Cloud), so all
+> `[jax-cuXXX]` extras fail to resolve on Windows. Use `[jax]` for
+> CPU JAX, or run the install inside WSL2.
 
 CUDA extras are mutually exclusive — pick exactly one per family
 (`cu*`, `torch-cu*`, `jax*`). CUDA 13.2 has no dedicated PyTorch wheel,
