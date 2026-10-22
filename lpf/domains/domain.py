@@ -13,7 +13,10 @@ embedded boundary. For an active cell i,
 where k_i is the fraction of cell i covered by the domain and a_f the
 fraction of face f that lies inside it (both in [0, 1]). Faces shared with an
 inactive cell are closed (w_f = 0). Since a_f is the same for the two cells
-of a face, diffusion conserves sum_i k_i * u_i.
+of a face, diffusion conserves sum_i k_i * u_i. Where a ragged boundary
+would make sum_f w_f exceed 4 (the full grid's value), the faces around that
+cell are narrowed symmetrically, so the explicit time-step limit of the
+square grid holds on every domain.
 
 Coordinates: grid cell (row r, column c) is the unit square
 [c, c+1] x [r, r+1] in (x, y); x runs along the width and y along the height,
@@ -81,6 +84,19 @@ class Domain:
         open_x = active[:, :-1] & active[:, 1:]
         a_x[:, 1:-1] = np.where(open_x, ap_x[:, 1:-1], 0.0)
 
+        # Limit sum_f a_f / k_i to 4, the full grid's value, so that any
+        # explicit time step stable on the square grid stays stable on any
+        # polygon. Irregular boundaries can exceed it (e.g. a cell cut by a
+        # zig-zag); shrinking each face by the smaller factor of its two
+        # cells keeps the weights symmetric, i.e. still conservative.
+        sum_a = a_y[:-1, :] + a_y[1:, :] + a_x[:, :-1] + a_x[:, 1:]
+        crowded = active & (sum_a > 4.0 * frac)
+        if crowded.any():
+            s = np.ones((height, width))
+            s[crowded] = 4.0 * frac[crowded] / sum_a[crowded]
+            a_y[1:-1, :] *= np.minimum(s[:-1, :], s[1:, :])
+            a_x[:, 1:-1] *= np.minimum(s[:, :-1], s[:, 1:])
+
         stencil = np.zeros((5, height, width))
         stencil[STENCIL_NORTH] = a_y[:-1, :] * inv_frac
         stencil[STENCIL_SOUTH] = a_y[1:, :] * inv_frac
@@ -92,6 +108,14 @@ class Domain:
     def mask(self, height, width):
         """Boolean (H, W) array of the active cells."""
         return self.stencil(height, width)[STENCIL_ACTIVE] > 0
+
+    def coverage(self, height, width):
+        """Covered fraction k_i of every active cell, 0 elsewhere (H, W).
+
+        Diffusion conserves sum_i k_i * u_i, the total amount in the domain.
+        """
+        frac = self._geometry(height, width)[0]
+        return np.where(self.mask(height, width), frac, 0.0)
 
     def contains(self, points, height, width):
         """Whether each (row, col) point is an active cell of the grid."""
@@ -131,8 +155,7 @@ class PolygonDomain(Domain):
             between grid lines. ``"staircase"`` keeps the cells whose
             centers are inside and treats them as full cells.
         min_fraction: For ``"cut_cell"``, cells covered less than this are
-            dropped. It bounds 1 / k_i, which keeps the explicit time step
-            limit within a factor of 2 of the full-grid one at 0.5.
+            dropped (tiny cut cells are inaccurate and stiff).
         n_sub: Number of sub-scanlines per cell row used to integrate the
             covered fraction of each cell.
     """
