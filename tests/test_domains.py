@@ -363,9 +363,220 @@ class TestCUDA:
 
 # ---------- JAX ----------
 
-def test_jax_rejects_domain():
-    pytest.importorskip("jax")
-    from lpf.solvers import EulerSolver
-    model = _make_model(PolygonDomain(STAR), device="jax:cpu")
-    with pytest.raises(NotImplementedError):
-        EulerSolver().solve(model=model, dt=0.01, n_iters=10)
+# ---------- arbitrary polygons ----------
+
+def _polygon_cases():
+    rng = np.random.default_rng(11)
+    th = np.sort(rng.uniform(0, 2 * np.pi, 40))
+    blob = np.stack([16 + rng.uniform(5, 14, 40) * np.cos(th),
+                     16 + rng.uniform(5, 14, 40) * np.sin(th)], axis=1)
+    pentagram = np.array([(16 + 14 * np.sin(a), 16 - 14 * np.cos(a))
+                          for a in np.arange(5) * 4 * np.pi / 5])
+    return {
+        "random 40-gon": (blob, ()),
+        "self-intersecting pentagram": (pentagram, ()),
+        "crosses the grid border": ([(-6, 4), (20, -5), (38, 18), (12, 40)], ()),
+        "tiny triangle": ([(10.2, 10.1), (13.7, 10.4), (11.1, 13.9)], ()),
+        "duplicate and collinear vertices": (
+            [(4, 4), (16, 4), (16, 4), (28, 4), (28, 28), (16, 28), (4, 28)], ()),
+        "nested holes": ([(1, 1), (31, 1), (31, 31), (1, 31)],
+                         [[(6, 6), (26, 6), (26, 26), (6, 26)],
+                          [(11, 11), (21, 11), (21, 21), (11, 21)]]),
+    }
+
+
+class TestArbitraryPolygons:
+
+    @pytest.mark.parametrize("name", list(_polygon_cases()))
+    @pytest.mark.parametrize("method", ["cut_cell", "staircase"])
+    def test_operator_is_conservative(self, name, method):
+        verts, holes = _polygon_cases()[name]
+        dom = PolygonDomain(verts, holes=holes, method=method)
+        st = dom.stencil(32, 32)
+        frac = (dom._geometry(32, 32)[0] if method == "cut_cell"
+                else st[4]) * (st[4] > 0)
+        np.testing.assert_allclose(frac[:-1] * st[1][:-1], frac[1:] * st[0][1:],
+                                   atol=1e-12)
+        np.testing.assert_allclose(frac[:, :-1] * st[3][:, :-1],
+                                   frac[:, 1:] * st[2][:, 1:], atol=1e-12)
+        assert st[:4].sum(axis=0).max() <= 4.0 + 1e-9
+
+    def test_even_odd_fill_of_pentagram(self):
+        verts = _polygon_cases()["self-intersecting pentagram"][0]
+        mask = PolygonDomain(verts).mask(32, 32)
+        assert not mask[16, 16]           # the inner pentagon is a hole
+        assert mask[5, 16]                # the top point is filled
+
+    @pytest.mark.parametrize("name", list(_polygon_cases()))
+    def test_simulation_conserves_and_stays_finite(self, name):
+        verts, holes = _polygon_cases()[name]
+        dom = PolygonDomain(verts, holes=holes)
+        dicts = _liaw_dicts(dom, 32, 32, batch_size=1, n_pts=3)
+        for key in ("ru", "rv", "k", "su", "sv", "mu"):
+            dicts[0][key] = 0.0
+        dicts[0]["Du"] = dicts[0]["Dv"] = 0.02
+        model = _make_model(dom, model_dicts=dicts, dtype=np.float64)
+        model.initialize()
+        frac = dom._geometry(32, 32)[0] * dom.mask(32, 32)
+        mass0 = (frac * _get_numpy(model.u)[0]).sum()
+        from lpf.solvers import EulerSolver
+        EulerSolver().solve(model=model, dt=0.01, n_iters=500, init_model=False)
+        u = _get_numpy(model.u)[0]
+        assert np.isfinite(u).all()
+        assert (frac * u).sum() == pytest.approx(mass0, rel=1e-12)
+
+
+# ---------- one domain per model ----------
+
+HEXAGON = np.stack([16 + 13 * np.cos(np.arange(6) * np.pi / 3),
+                    16 + 13 * np.sin(np.arange(6) * np.pi / 3)], axis=1)
+
+
+def _per_model_setup():
+    doms = [PolygonDomain(STAR), PolygonDomain(HEXAGON)]
+    dicts = []
+    for dom in doms:
+        dicts += _liaw_dicts(dom, 32, 32, batch_size=1)
+    return doms, dicts
+
+
+class TestPerModelDomains:
+
+    def test_each_model_follows_its_domain(self):
+        doms, dicts = _per_model_setup()
+        model = _make_model(doms, model_dicts=dicts)
+        model.initialize()
+        y0 = _get_numpy(model.y_mesh).copy()
+        from lpf.solvers import EulerSolver
+        EulerSolver().solve(model=model, dt=0.01, n_iters=300, init_model=False)
+        y = _get_numpy(model.y_mesh)
+        for b, dom in enumerate(doms):
+            outside = ~dom.mask(32, 32)
+            np.testing.assert_array_equal(y[:, b][:, outside], y0[:, b][:, outside])
+        color = model.colorize()
+        for b, dom in enumerate(doms):
+            assert (color[b][~dom.mask(32, 32)] == 255).all()
+
+    def test_matches_separate_runs(self):
+        doms, dicts = _per_model_setup()
+        from lpf.solvers import EulerSolver
+        batch = _make_model(doms, model_dicts=dicts)
+        EulerSolver().solve(model=batch, dt=0.01, n_iters=300)
+        for b, dom in enumerate(doms):
+            single = _make_model(dom, model_dicts=[dicts[b]])
+            EulerSolver().solve(model=single, dt=0.01, n_iters=300)
+            np.testing.assert_allclose(_get_numpy(batch.y_mesh)[:, b],
+                                       _get_numpy(single.y_mesh)[:, 0],
+                                       rtol=1e-6, atol=1e-7)
+
+    def test_to_dict_and_parse_geometry(self):
+        doms, dicts = _per_model_setup()
+        model = _make_model(doms, model_dicts=dicts)
+        model.initialize()
+        saved = [model.to_dict(index=b, initializer=model.initializer)
+                 for b in range(2)]
+        geometry = LiawModel.parse_geometry(saved)
+        assert len(geometry["domain"]) == 2
+        for dom, parsed in zip(doms, geometry["domain"]):
+            np.testing.assert_array_equal(parsed.stencil(32, 32),
+                                          dom.stencil(32, 32))
+        shared = LiawModel.parse_geometry([saved[0], dict(saved[0])])
+        assert isinstance(shared["domain"], PolygonDomain)
+
+    @pytest.mark.parametrize("solver_name", ALL_SOLVERS)
+    def test_cuda_matches_cpu(self, solver_name):
+        cupy = pytest.importorskip("cupy")
+        if cupy.cuda.runtime.getDeviceCount() == 0:
+            pytest.skip("no CUDA device")
+        import lpf.solvers as S
+        doms, dicts = _per_model_setup()
+        out = []
+        for device in ("cpu", "cuda:0"):
+            model = _make_model(doms, device=device, model_dicts=dicts)
+            getattr(S, solver_name)().solve(model=model, dt=0.01, n_iters=300)
+            out.append(_get_numpy(model.y_mesh))
+        np.testing.assert_allclose(out[1], out[0], rtol=1e-4, atol=1e-6)
+
+    def test_wrong_number_of_domains(self):
+        doms, dicts = _per_model_setup()
+        model = _make_model(doms[:1] * 3, model_dicts=dicts)
+        with pytest.raises(ValueError):
+            model.initialize()
+
+
+# ---------- models, files and other backends ----------
+
+class TestModelFeatures:
+
+    def test_file_output_and_reload(self, tmp_path):
+        from lpf.solvers import EulerSolver
+        import json
+        import os
+        dom = PolygonDomain(STAR)
+        model = _make_model(dom)
+        EulerSolver().solve(model=model, dt=0.01, n_iters=100,
+                            period_output=100, dpath_model=str(tmp_path),
+                            dpath_pattern=str(tmp_path))
+        assert os.path.isfile(tmp_path / "model_1" / "pattern_100.png")
+        dicts = [json.load(open(tmp_path / "models" / f))
+                 for f in sorted(os.listdir(tmp_path / "models"))]
+        initializer = LiawInitializer()
+        initializer.update(dicts)
+        reloaded = LiawModel(initializer=initializer,
+                             params=LiawModel.parse_params(dicts),
+                             width=32, height=32, dx=0.1,
+                             **LiawModel.parse_geometry(dicts))
+        EulerSolver().solve(model=reloaded, dt=0.01, n_iters=100)
+        np.testing.assert_array_equal(_get_numpy(reloaded.y_mesh),
+                                      _get_numpy(model.y_mesh))
+
+    def test_diploid(self):
+        from lpf.models import TwoComponentDiploidModel
+        from lpf.solvers import EulerSolver
+        dom = PolygonDomain(STAR)
+        dicts = _liaw_dicts(dom, 32, 32, batch_size=1)
+        pa = _make_model(dom, model_dicts=dicts)
+        ma = _make_model(dom, model_dicts=[dict(dicts[0], k=0.1)])
+        d = TwoComponentDiploidModel(
+            paternal_model=pa, maternal_model=ma, alpha=0.5, beta=0.5,
+            params=pa.params, initializer=pa.initializer,
+            width=32, height=32, dx=0.1)
+        EulerSolver().solve(model=d, dt=0.01, n_iters=100)
+        assert np.isfinite(_get_numpy(d.y_mesh)).all()
+        assert (d.colorize()[0][~dom.mask(32, 32)] == 255).all()
+
+
+def _backend_devices():
+    devices = []
+    try:
+        import torch
+        devices.append("torch:cpu")
+        if torch.cuda.is_available():
+            devices.append("torch:cuda:0")
+    except ImportError:
+        pass
+    try:
+        import jax
+        devices.append("jax:cpu")
+        if any(d.platform == "gpu" for d in jax.devices()):
+            devices.append("jax:gpu:0")
+    except Exception:
+        pass
+    return devices or [pytest.param("none", marks=pytest.mark.skip(
+        reason="neither PyTorch nor JAX installed"))]
+
+
+@pytest.mark.parametrize("device", _backend_devices())
+@pytest.mark.parametrize("solver_name", ["EulerSolver", "RungeKuttaSolver",
+                                         "AdamsBashforth2Solver",
+                                         "DOPRI5Solver"])
+def test_backend_matches_numpy(device, solver_name):
+    import lpf.solvers as S
+    doms, dicts = _per_model_setup()
+    out = []
+    for dev in ("cpu", device):
+        model = _make_model(doms, device=dev, model_dicts=dicts)
+        res = getattr(S, solver_name)().solve(model=model, dt=0.01,
+                                              n_iters=300, trj_waypoints=[1, 300])
+        out.append(_get_numpy(res["trj"]))
+    np.testing.assert_allclose(out[1], out[0], rtol=1e-5, atol=1e-6)

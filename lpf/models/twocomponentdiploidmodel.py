@@ -19,6 +19,15 @@ class TwoComponentDiploidModel(Diploidy, TwoComponentModel):
         # Set the name of model.
         self._name = "TwoComponentDiploidModel"
 
+        # The geometry (lpf.domains / lpf.surfaces) is that of the haploid
+        # models, which solve the equations; they must share it.
+        pa, ma = self._paternal_model, self._maternal_model
+        if pa.mesh is not ma.mesh or (pa.domain is None) != (ma.domain is None):
+            raise ValueError("paternal_model and maternal_model must have the "
+                             "same domain or mesh.")
+        self._domain = pa.domain
+        self._mesh = pa.mesh
+
     def initialize(self):
         super().initialize()
 
@@ -55,8 +64,8 @@ class TwoComponentDiploidModel(Diploidy, TwoComponentModel):
             alpha = self.alpha
             beta = self.beta            
             
-            dydt_mesh_pa = pa_model.pdefunc(t, y_mesh=y_mesh[:2, :, : ,:])
-            dydt_mesh_ma = ma_model.pdefunc(t, y_mesh=y_mesh[2:, :, : ,:])
+            dydt_mesh_pa = pa_model.pdefunc(t, y_mesh=y_mesh[:2])
+            dydt_mesh_ma = ma_model.pdefunc(t, y_mesh=y_mesh[2:])
 
             dydt_mesh = self._dydt_mesh
             dydt_mesh = self.am.set(dydt_mesh, 0, dydt_mesh_pa[0, :])

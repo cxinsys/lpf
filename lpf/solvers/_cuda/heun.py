@@ -17,9 +17,7 @@ class CuHeunSolver(CuSolverBase):
             self._k1 = cp.empty(shape, dtype=dtype)
             self._k2 = cp.empty(shape, dtype=dtype)
             self._y_temp = cp.empty(shape, dtype=dtype)
-        B, H, W = model.batch_size, model.height, model.width
-        self._N = 2 * B * H * W
-        self._dx2_inv = 1.0 / (model.dx ** 2)
+        self._N = int(np.prod(model.shape_grid))
         self._cached_shape = shape
         self._bufs_ready = True
 
@@ -27,13 +25,12 @@ class CuHeunSolver(CuSolverBase):
         return [self._k1, self._k2, self._y_temp]
 
     def _fast_step(self, model, t, dt, y_cur, y_next):
-        km, p = self._km, model.params
-        B, H, W = model.batch_size, model.height, model.width
-        N, dx2i = self._N, self._dx2_inv
+        km = self._km
+        N = self._N
 
-        km.launch_pdefunc(y_cur, self._k1, p, B, H, W, dx2i, model.stencil)
+        km.launch_model_pdefunc(model, y_cur, self._k1)
         km.launch_rk_stage(y_cur, self._k1, self._y_temp, dt, N)
-        km.launch_pdefunc(self._y_temp, self._k2, p, B, H, W, dx2i, model.stencil)
+        km.launch_model_pdefunc(model, self._y_temp, self._k2)
         # y_next = y_cur + 0.5*dt*(k1 + k2)  →  y_next = y_cur + delta
         km.launch_linear_combine2(
             self._k1, self._k2, self._y_temp,   # reuse y_temp as delta
@@ -46,11 +43,10 @@ class CuHeunSolver(CuSolverBase):
             self._alloc_buffers(model)
         import cupy as cp
         delta = cp.empty_like(y_mesh)
-        km, p = self._km, model.params
-        B, H, W = model.batch_size, model.height, model.width
-        N, dx2i = self._N, self._dx2_inv
-        km.launch_pdefunc(y_mesh, self._k1, p, B, H, W, dx2i, model.stencil)
+        km = self._km
+        N = self._N
+        km.launch_model_pdefunc(model, y_mesh, self._k1)
         km.launch_rk_stage(y_mesh, self._k1, self._y_temp, dt, N)
-        km.launch_pdefunc(self._y_temp, self._k2, p, B, H, W, dx2i, model.stencil)
+        km.launch_model_pdefunc(model, self._y_temp, self._k2)
         km.launch_linear_combine2(self._k1, self._k2, delta, 0.5*dt, 0.5*dt, N)
         return delta

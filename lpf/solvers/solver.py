@@ -6,6 +6,17 @@ import time
 import numpy as np
 
 
+# Stable interval [-c, 0] of dt * lambda on the negative real axis for the
+# fixed-step methods; it sets the explicit time-step limit on a mesh.
+_STABILITY_INTERVAL = {
+    "EulerSolver": 2.0,
+    "HeunSolver": 2.0,
+    "RungeKuttaSolver": 2.785,
+    "RK23Solver": 2.512,
+    "AdamsBashforth2Solver": 1.0,
+}
+
+
 class Solver:
 
     def __init__(self,
@@ -70,6 +81,8 @@ class Solver:
             if self._model is None:
                 raise ValueError("model should be defined.")
             model = self._model
+
+        self._check_mesh_stability(model, dt if dt is not None else self._dt)
 
         # Clear stale trajectory from previous solve
         if not get_trj and trj_waypoints is None:
@@ -315,6 +328,30 @@ class Solver:
 
     def step(self, model, t, dt, y_mesh):
         raise NotImplementedError
+
+    def max_stable_dt(self, model):
+        """Largest stable time step of this fixed-step solver for pure
+        diffusion on the model's mesh (lpf.surfaces), or None."""
+        interval = _STABILITY_INTERVAL.get(self._name)
+        if model.mesh is None or interval is None:
+            return None
+        params = np.asarray(model.am.get(model.params))
+        d_max = float(np.max(params[:, :2]))
+        return interval / (d_max * model.mesh.lambda_max())
+
+    def _check_mesh_stability(self, model, dt):
+        # Explicit steps on a mesh are limited by its smallest elements
+        # (domains on the grid keep the square grid's limit).
+        if dt is None or getattr(model, "mesh", None) is None \
+                or model.params is None:
+            return
+        limit = self.max_stable_dt(model)
+        if limit is not None and dt > limit:
+            import warnings
+            warnings.warn(
+                "dt=%g exceeds the %s stability limit %.3g for this mesh; "
+                "use a smaller dt or a coarser / more regular mesh."
+                % (dt, self._name, limit))
 
     def to_dict(self):
         n2v = {}  # Mapping variable names to values.

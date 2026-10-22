@@ -126,7 +126,7 @@ class CuKernelManager:
     # ================================================================
 
     def launch_euler(self, y_in, y_out, params, B, H, W, dt, dx2_inv,
-                     stencil=None):
+                     stencil=None, stencil_stride=0):
         """Launch fused Euler step kernel.
 
         With a domain stencil (see lpf.domains) the domain kernel is used
@@ -139,7 +139,7 @@ class CuKernelManager:
             else:
                 kernel = self._get_jit_euler_domain()
             kernel(self._stencil_grid(B, H, W), (TILE_X, TILE_Y), (
-                y_in, y_out, params, stencil,
+                y_in, y_out, params, stencil, np.int32(stencil_stride),
                 np.int32(B), np.int32(H), np.int32(W),
                 np.float64(dt), np.float64(dx2_inv),
             ))
@@ -166,7 +166,7 @@ class CuKernelManager:
             ))
 
     def launch_pdefunc(self, y_in, dydt, params, B, H, W, dx2_inv,
-                       stencil=None):
+                       stencil=None, stencil_stride=0):
         """Launch fused PDE function kernel (domain-aware like launch_euler)."""
         if stencil is not None:
             if self._use_aot:
@@ -175,7 +175,7 @@ class CuKernelManager:
             else:
                 kernel = self._get_jit_pdefunc_domain()
             kernel(self._stencil_grid(B, H, W), (TILE_X, TILE_Y), (
-                y_in, dydt, params, stencil,
+                y_in, dydt, params, stencil, np.int32(stencil_stride),
                 np.int32(B), np.int32(H), np.int32(W),
                 np.float64(dx2_inv),
             ))
@@ -200,6 +200,33 @@ class CuKernelManager:
                 np.int32(B), np.int32(H), np.int32(W),
                 np.float64(dx2_inv),
             ))
+
+    def launch_model_euler(self, model, y_in, y_out, dt):
+        """Fused Euler step over the model's geometry: the full grid, a
+        domain on it (lpf.domains) or a mesh surface (lpf.surfaces)."""
+        if model.mesh is not None:
+            nbr, wts = model.kernel_operator
+            self.launch_surface_euler(
+                y_in, y_out, model.params, nbr, wts, nbr.shape[0],
+                model.batch_size, model.mesh.n_vertices, dt)
+        else:
+            self.launch_euler(
+                y_in, y_out, model.params, model.batch_size, model.height,
+                model.width, dt, 1.0 / (model.dx ** 2),
+                model.stencil, model.stencil_stride)
+
+    def launch_model_pdefunc(self, model, y_in, dydt):
+        """dy/dt over the model's geometry (see launch_model_euler)."""
+        if model.mesh is not None:
+            nbr, wts = model.kernel_operator
+            self.launch_surface_pdefunc(
+                y_in, dydt, model.params, nbr, wts, nbr.shape[0],
+                model.batch_size, model.mesh.n_vertices)
+        else:
+            self.launch_pdefunc(
+                y_in, dydt, model.params, model.batch_size, model.height,
+                model.width, 1.0 / (model.dx ** 2),
+                model.stencil, model.stencil_stride)
 
     def launch_surface_euler(self, y_in, y_out, params, nbr, wts, K, B, N, dt):
         """Launch the triangle-mesh Euler step (see lpf.surfaces).

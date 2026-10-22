@@ -39,6 +39,14 @@ def _get_native():
     return _native_solver
 
 
+def _geometry_kind(model):
+    """Native-loop kind of a model: grid, domain (lpf.domains) or surface
+    (lpf.surfaces)."""
+    if model.mesh is not None:
+        return "surface"
+    return "grid" if model.stencil is None else "domain"
+
+
 def _native_supports(native, kind):
     """Whether the native library has the solve loop for kind (grid,
     domain or surface); objects with only is_available() run the grid."""
@@ -117,8 +125,8 @@ class CuSolverBase(Solver):
         model._params = cp.from_dlpack(model._params.detach())
         if model.stencil is not None:
             model._stencil = cp.from_dlpack(model._stencil.detach())
-        model._u = model._y_mesh[0, :, :, :]
-        model._v = model._y_mesh[1, :, :, :]
+        model._u = model._y_mesh[0]
+        model._v = model._y_mesh[1]
 
         return saved
 
@@ -133,8 +141,8 @@ class CuSolverBase(Solver):
         model._params = saved['params']
         if saved['stencil'] is not None:
             model._stencil = saved['stencil']
-        model._u = saved['y_mesh'][0, :, :, :]
-        model._v = saved['y_mesh'][1, :, :, :]
+        model._u = saved['y_mesh'][0]
+        model._v = saved['y_mesh'][1]
 
     # ---- subclass hooks ----
     def _alloc_buffers(self, model):
@@ -294,7 +302,7 @@ class CuSolverBase(Solver):
 
         native = _get_native()
         can_native = (
-            _native_supports(native, "grid" if model.stencil is None else "domain")
+            _native_supports(native, _geometry_kind(model))
             and self._name in _SOLVER_CODES
         )
 
@@ -386,7 +394,7 @@ class CuSolverBase(Solver):
             model_name=model.name,
             dtype=model.dtype,
             y_a=y_a, y_b=y_b, params=model.params,
-            B=B, H=H, W=W, dt=dt, dx2_inv=dx2_inv,
+            dt=dt,
             n_iters=n_iters,
             work_bufs=self._get_work_bufs(),
             trj_buf=trj_y,
@@ -394,17 +402,25 @@ class CuSolverBase(Solver):
             rtol=rtol if rtol else 0.0,
             rtol_period=1000,
         )
-        if model.stencil is None:
-            res = native.solve(**loop)
+        kind = _geometry_kind(model)
+        if kind == "surface":
+            nbr, wts = model.kernel_operator
+            res = native.solve_surface(
+                nbr=nbr, wts=wts, K=nbr.shape[0], B=B,
+                N=model.mesh.n_vertices, **loop)
+        elif kind == "domain":
+            res = native.solve_domain(
+                stencil=model.stencil, stencil_stride=model.stencil_stride,
+                B=B, H=H, W=W, dx2_inv=dx2_inv, **loop)
         else:
-            res = native.solve_domain(stencil=model.stencil, **loop)
+            res = native.solve(B=B, H=H, W=W, dx2_inv=dx2_inv, **loop)
 
         final = y_a if res['result_buf'] == 0 else y_b
         cp.cuda.Stream.null.synchronize()
         with model.am:
             model._y_mesh[...] = final
-            model._u = model._y_mesh[0, :, :, :]
-            model._v = model._y_mesh[1, :, :, :]
+            model._u = model._y_mesh[0]
+            model._v = model._y_mesh[1]
 
         return res
 
@@ -453,8 +469,8 @@ class CuSolverBase(Solver):
         cp.cuda.Stream.null.synchronize()
         with model.am:
             model._y_mesh[...] = y_cur
-            model._u = model._y_mesh[0, :, :, :]
-            model._v = model._y_mesh[1, :, :, :]
+            model._u = model._y_mesh[0]
+            model._v = model._y_mesh[1]
 
         return None, ix_trj
 

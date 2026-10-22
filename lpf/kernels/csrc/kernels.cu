@@ -102,19 +102,19 @@ INST_ALL_MODELS(double,  f64, 32, 8)
 extern "C" __global__ void euler_domain_##MODEL##_##SUFFIX( \
     const DTYPE* __restrict__ y_in, DTYPE* __restrict__ y_out, \
     const DTYPE* __restrict__ params, const DTYPE* __restrict__ stencil, \
-    int B, int H, int W, double dt_d, double dx2_inv_d \
+    int stencil_stride, int B, int H, int W, double dt_d, double dx2_inv_d \
 ) { \
     domain_core<DTYPE, MODEL##Reaction<DTYPE>, TX, TY, EULER_STEP>( \
-        y_in, y_out, params, stencil, B, H, W, \
+        y_in, y_out, params, stencil, stencil_stride, B, H, W, \
         make_real<DTYPE>(dt_d), make_real<DTYPE>(dx2_inv_d)); \
 } \
 extern "C" __global__ void pdefunc_domain_##MODEL##_##SUFFIX( \
     const DTYPE* __restrict__ y_in, DTYPE* __restrict__ dydt, \
     const DTYPE* __restrict__ params, const DTYPE* __restrict__ stencil, \
-    int B, int H, int W, double dx2_inv_d \
+    int stencil_stride, int B, int H, int W, double dx2_inv_d \
 ) { \
     domain_core<DTYPE, MODEL##Reaction<DTYPE>, TX, TY, PDEFUNC>( \
-        y_in, dydt, params, stencil, B, H, W, \
+        y_in, dydt, params, stencil, stencil_stride, B, H, W, \
         make_real<DTYPE>(0.0), make_real<DTYPE>(dx2_inv_d)); \
 }
 

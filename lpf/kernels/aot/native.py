@@ -135,13 +135,16 @@ class NativeSolver:
                      y_a, y_b, params, stencil,
                      B, H, W, dt, dx2_inv, n_iters,
                      work_bufs=None, trj_buf=None, trj_iters=None,
-                     rtol=0.0, rtol_period=1000):
+                     rtol=0.0, rtol_period=1000, stencil_stride=0):
         """Like solve(), restricted to a domain (lpf.domains).
 
-        stencil : cupy array of shape (5, H, W), dtype of the state.
+        stencil : cupy array of shape (5, H, W) per batch element, dtype of
+            the state; element b uses stencil + b * stencil_stride
+            (0: one domain shared by the batch).
         """
         head = (
             _ptr(y_a), _ptr(y_b), _ptr(params), _ptr(stencil),
+            ctypes.c_int(stencil_stride),
             ctypes.c_int(B), ctypes.c_int(H), ctypes.c_int(W),
             ctypes.c_double(dt), ctypes.c_double(dx2_inv),
         )

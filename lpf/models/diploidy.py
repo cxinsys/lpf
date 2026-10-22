@@ -104,8 +104,7 @@ class Diploidy(ABC):
         with self.am:
             self._shape_grid = (2 * self.n_states,
                                 self.batch_size,
-                                self.height,
-                                self.width)
+                                *pa_model.spatial_shape)
 
             self._y_mesh = self.am.zeros(self._shape_grid,
                                          dtype=pa_model.dtype)

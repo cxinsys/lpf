@@ -48,8 +48,16 @@ class ReactionDiffusionModel(ABC):
         return getattr(self, "_domain", None)
 
     @property
-    def stencil(self):  # Domain stencil (5, H, W) on the model's device, or None
+    def stencil(self):  # Domain stencil(s) (B or 1, 5, H, W) on the model's device
         return getattr(self, "_stencil", None)
+
+    @property
+    def stencil_stride(self):  # 0: one domain for the batch, 5*H*W: one each
+        return getattr(self, "_stencil_stride", 0)
+
+    @property
+    def mesh(self):  # lpf.surfaces.SurfaceMesh, or None for the grid
+        return getattr(self, "_mesh", None)
 
     @property
     def initializer(self):

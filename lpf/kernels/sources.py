@@ -209,7 +209,8 @@ void fused_pdefunc(
 # =============================================================================
 # Domain variants (lpf.domains): the PDE is solved only on the domain's
 # active cells, with face-weighted diffusion and a zero-flux boundary.
-# `stencil` has shape (5, H, W), shared by the batch:
+# `stencil` has shape (5, H, W) per batch element, at a stride of
+# stencil_stride elements (0: one domain shared by the batch):
 #   [w_north, w_south, w_west, w_east, active]
 # Inactive cells keep their values (dydt = 0). Unlike the full-grid kernels,
 # the outermost grid cells are solved like any other cell; their missing
@@ -244,11 +245,12 @@ _DOMAIN_STENCIL_BODY = r"""
 
     if (!valid) return;
 
+    const REAL* __restrict__ st = stencil + (long long)b * stencil_stride;
     const int cidx = gy * W + gx;
-    const int is_active = stencil[4*HW + cidx] != REAL_CONST(0.0);
+    const int is_active = st[4*HW + cidx] != REAL_CONST(0.0);
     if (is_active) {
-        const REAL wn = stencil[cidx],        ws = stencil[HW + cidx];
-        const REAL ww = stencil[2*HW + cidx], we = stencil[3*HW + cidx];
+        const REAL wn = st[cidx],        ws = st[HW + cidx];
+        const REAL ww = st[2*HW + cidx], we = st[3*HW + cidx];
 
         const REAL u_c = s_u[si], v_c = s_v[si];
         const REAL lap_u = (wn * (s_u[si-SW] - u_c) + ws * (s_u[si+SW] - u_c)
@@ -295,6 +297,7 @@ void fused_euler_step_domain(
     REAL* __restrict__ y_out,
     const REAL* __restrict__ params,
     const REAL* __restrict__ stencil,
+    const int stencil_stride,
     const int B,
     const int H,
     const int W,
@@ -324,6 +327,7 @@ void fused_pdefunc_domain(
     REAL* __restrict__ dydt,
     const REAL* __restrict__ params,
     const REAL* __restrict__ stencil,
+    const int stencil_stride,
     const int B,
     const int H,
     const int W,

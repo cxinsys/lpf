@@ -1,4 +1,5 @@
 import json
+import os.path as osp
 from collections.abc import Sequence
 from collections.abc import Mapping
 
@@ -31,7 +32,8 @@ class TwoComponentModel(ReactionDiffusionModel):
                  device=None,
                  species=None,
                  dtype=None,
-                 domain=None):
+                 domain=None,
+                 mesh=None):
 
         # Set the device.
         super().__init__(device, dtype)
@@ -96,17 +98,46 @@ class TwoComponentModel(ReactionDiffusionModel):
         self._fpath_template = get_template_fpath(species)
         self._fpath_mask = get_mask_fpath(species)
 
-        # Optional spatial domain (lpf.domains). None solves on the full
-        # grid with the outermost cells held fixed; otherwise only the
-        # domain's cells are solved, with a zero-flux boundary.
+        # Optional geometry. By default the model is solved on the full
+        # grid with the outermost cells held fixed.
+        #   domain: an lpf.domains.Domain (or one per batch element) that
+        #           restricts the grid to a region with a zero-flux boundary.
+        #   mesh:   an lpf.surfaces.SurfaceMesh; the state lives on its
+        #           vertices, shape (2, batch, n_vertices), and width,
+        #           height and dx are not used.
+        if domain is not None and mesh is not None:
+            raise ValueError("domain and mesh cannot be used together.")
         self._domain = domain
+        self._mesh = mesh
         self._stencil = None
+        self._stencil_stride = 0
+        self._ell = None
+        self._kernel_operator = None
         self._color_bg = np.array((255, 255, 255), dtype=np.uint8)
+
+    @property
+    def spatial_shape(self):  # (H, W) on the grid, (n_vertices,) on a mesh
+        if self._mesh is not None:
+            return (self._mesh.n_vertices,)
+        return (self._height, self._width)
+
+    @property
+    def kernel_operator(self):
+        """Mesh operator (nbr, wts) as CuPy arrays for the CUDA kernels."""
+        if self._mesh is None:
+            return None
+        if self._kernel_operator is None:
+            import cupy as cp
+            nbr, wts = self._mesh.ell()
+            self._kernel_operator = (
+                cp.asarray(nbr, dtype=cp.int32),
+                cp.asarray(wts, dtype=np.dtype(self._dtype)))
+        return self._kernel_operator
 
     @property
     def u(self):
         if self._y_mesh is not None:
-            return self._y_mesh[0, :, :, :]
+            return self._y_mesh[0]
         return self._u
 
     @u.setter
@@ -114,8 +145,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         with self.am:
             if hasattr(self, '_y_mesh') and self._y_mesh is not None:
                 self._y_mesh = self.am.set(
-                    self._y_mesh,
-                    (0, slice(None), slice(None), slice(None)),
+                    self._y_mesh, (0, ...),
                     self.am.array(obj, dtype=self._dtype))
             else:
                 self._u = obj
@@ -123,7 +153,7 @@ class TwoComponentModel(ReactionDiffusionModel):
     @property
     def v(self):
         if self._y_mesh is not None:
-            return self._y_mesh[1, :, :, :]
+            return self._y_mesh[1]
         return self._v
 
     @v.setter
@@ -131,8 +161,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         with self.am:
             if hasattr(self, '_y_mesh') and self._y_mesh is not None:
                 self._y_mesh = self.am.set(
-                    self._y_mesh,
-                    (1, slice(None), slice(None), slice(None)),
+                    self._y_mesh, (1, ...),
                     self.am.array(obj, dtype=self._dtype))
             else:
                 self._v = obj
@@ -141,14 +170,13 @@ class TwoComponentModel(ReactionDiffusionModel):
         with self.am:
             self._shape_grid = (self._n_states,
                                 self._batch_size,
-                                self._height,
-                                self._width)
+                                *self.spatial_shape)
 
             self._y_mesh = self.am.zeros(self._shape_grid,
                                          dtype=self._dtype)
 
-            self._u = self._y_mesh[0, :, :, :]
-            self._v = self._y_mesh[1, :, :, :]
+            self._u = self._y_mesh[0]
+            self._v = self._y_mesh[1]
 
             # self._y_linear = self._y_mesh.ravel()
 
@@ -163,12 +191,42 @@ class TwoComponentModel(ReactionDiffusionModel):
         # On JAX, slices are copies (not views), so the initializer's
         # updates to _y_mesh must be re-read here.
         with self.am:
-            self._u = self._y_mesh[0, :, :, :]
-            self._v = self._y_mesh[1, :, :, :]
+            self._u = self._y_mesh[0]
+            self._v = self._y_mesh[1]
 
             if self.domain is not None:
-                stencil = self.domain.stencil(self._height, self._width)
+                stencil = self.domain_stencil()
                 self._stencil = self.am.array(stencil, dtype=self._dtype)
+                self._stencil_stride = (
+                    0 if stencil.shape[0] == 1 else stencil[0].size)
+
+            if self._mesh is not None:
+                nbr, wts = self._mesh.ell()
+                self._ell = (self.am.array(nbr, dtype=self._index_dtype()),
+                             self.am.array(wts, dtype=self._dtype))
+
+    def domain_stencil(self):
+        """Stencil(s) of the domain as a NumPy array (B or 1, 5, H, W)."""
+        domains = self.domain
+        if not isinstance(domains, (list, tuple)):
+            return self.domain.stencil(self._height, self._width)[None]
+        if len(domains) != self._batch_size:
+            raise ValueError("Got %d domains for a batch of %d."
+                             % (len(domains), self._batch_size))
+        return np.stack([d.stencil(self._height, self._width)
+                         for d in domains])
+
+    def domain_mask(self, index=None):
+        """Active cells of the domain: (H, W) for one batch element, or
+        (B or 1, H, W) for all."""
+        masks = self.domain_stencil()[:, 4] > 0
+        if index is None:
+            return masks
+        return masks[index if masks.shape[0] > 1 else 0]
+
+    def _index_dtype(self):
+        # Torch indexes with int64; the other backends accept int32.
+        return np.int64 if type(self.am).__name__ == "TorchModule" else np.int32
 
     def laplacian2d(self, a, dx):
         a_top = a[:, 0:-2, 1:-1]
@@ -182,24 +240,33 @@ class TwoComponentModel(ReactionDiffusionModel):
         """Laplacian of a (B, H, W) array over the whole grid, weighted by
         the domain stencil (see lpf.domains). Zero-flux at the domain boundary.
         """
-        st = self._stencil
+        st = self._stencil  # (B or 1, 5, H, W)
         lap = self.am.zeros(a.shape, dtype=self._dtype)
 
         # Accumulate north, south, west, east in the same order as the
         # CUDA kernel: wN*(uN - u) + wS*(uS - u) + wW*(uW - u) + wE*(uE - u).
         lap = self.am.set(
             lap, (slice(None), slice(1, None), slice(None)),
-            st[0, 1:, :] * (a[:, :-1, :] - a[:, 1:, :]))
+            st[:, 0, 1:, :] * (a[:, :-1, :] - a[:, 1:, :]))
         lap = self.am.set(
             lap, (slice(None), slice(None, -1), slice(None)),
-            lap[:, :-1, :] + st[1, :-1, :] * (a[:, 1:, :] - a[:, :-1, :]))
+            lap[:, :-1, :] + st[:, 1, :-1, :] * (a[:, 1:, :] - a[:, :-1, :]))
         lap = self.am.set(
             lap, (slice(None), slice(None), slice(1, None)),
-            lap[:, :, 1:] + st[2, :, 1:] * (a[:, :, :-1] - a[:, :, 1:]))
+            lap[:, :, 1:] + st[:, 2, :, 1:] * (a[:, :, :-1] - a[:, :, 1:]))
         lap = self.am.set(
             lap, (slice(None), slice(None), slice(None, -1)),
-            lap[:, :, :-1] + st[3, :, :-1] * (a[:, :, 1:] - a[:, :, :-1]))
+            lap[:, :, :-1] + st[:, 3, :, :-1] * (a[:, :, 1:] - a[:, :, :-1]))
         return lap / dx ** 2
+
+    def laplacian_mesh(self, a):
+        """Laplace-Beltrami operator of a (B, N) array on the mesh
+        (lpf.surfaces), summed in the same order as the CUDA kernel."""
+        nbr, wts = self._ell  # (K, N)
+        lap = wts[0] * (a[:, nbr[0]] - a)
+        for k in range(1, nbr.shape[0]):
+            lap = lap + wts[k] * (a[:, nbr[k]] - a)
+        return lap
 
     def reactions(self, t, u_c, v_c):
         raise NotImplementedError()
@@ -213,7 +280,7 @@ class TwoComponentModel(ReactionDiffusionModel):
         Dv = self.params[:, 1].reshape(batch_size, 1, 1)
 
         # Inactive cells keep their values: dydt = 0 there.
-        active = self._stencil[4]
+        active = self._stencil[:, 4]
         f, g = self.reactions(t, u, v)
         self._f = f * active
         self._g = g * active
@@ -228,9 +295,37 @@ class TwoComponentModel(ReactionDiffusionModel):
         self._dydt_mesh = dydt_mesh
         return dydt_mesh
 
+    def _pdefunc_mesh(self, t, y_mesh):
+        batch_size = self.params.shape[0]
+        n = self._mesh.n_vertices
+        u = y_mesh[0]
+        v = y_mesh[1]
+
+        Du = self.params[:, 0].reshape(batch_size, 1)
+        Dv = self.params[:, 1].reshape(batch_size, 1)
+
+        # Reactions broadcast their params as (B, 1, 1); give them (B, 1, N).
+        f, g = self.reactions(t, u.reshape(batch_size, 1, n),
+                              v.reshape(batch_size, 1, n))
+        f = f.reshape(batch_size, n)
+        g = g.reshape(batch_size, n)
+        self._f = f
+        self._g = g
+
+        dydt_mesh = self.am.set(
+            self._dydt_mesh, (0, ...), Du * self.laplacian_mesh(u) + f)
+        dydt_mesh = self.am.set(
+            dydt_mesh, (1, ...), Dv * self.laplacian_mesh(v) + g)
+
+        self._dydt_mesh = dydt_mesh
+        return dydt_mesh
+
     def pdefunc(self, t=None, y_mesh=None, y_linear=None):
         """Equation function for integration.
         """
+
+        if self._mesh is not None:
+            return self._pdefunc_mesh(t, y_mesh)
 
         if self.domain is not None:
             return self._pdefunc_domain(t, y_mesh)
@@ -301,7 +396,8 @@ class TwoComponentModel(ReactionDiffusionModel):
         adu = self.am.abs(self._f)
         adv = self.am.abs(self._g)
 
-        if self.domain is not None:  # _f/_g span the grid, zero outside
+        if self.domain is not None or self._mesh is not None:
+            # _f/_g span the whole state (zero outside a domain)
             au = self.am.abs(self.u)
             av = self.am.abs(self.v)
         else:
@@ -317,23 +413,20 @@ class TwoComponentModel(ReactionDiffusionModel):
         if arr_u is None:
             arr_u = self.u
             
-        batch_size = arr_u.shape[0]
-        color = np.zeros((batch_size, self._height, self._width, 3),
-                         dtype=np.uint8)
-
-        color[:, :, :, 0] = self._color_v[0]
-        color[:, :, :, 1] = self._color_v[1]
-        color[:, :, :, 2] = self._color_v[2]
-        
         arr_u_np = arr_u if isinstance(arr_u, np.ndarray) else self.am.get(arr_u)
+        batch_size = arr_u_np.shape[0]
+        color = np.zeros((*arr_u_np.shape, 3), dtype=np.uint8)
+        color[...] = self._color_v
+
+        if self._mesh is not None:  # (B, 1, 1) thresholds against (B, N)
+            thr_color = np.asarray(thr_color).reshape(-1, 1)
         idx = arr_u_np > thr_color
-        color[idx, 0] = self._color_u[0]
-        color[idx, 1] = self._color_u[1]
-        color[idx, 2] = self._color_u[2]
+        color[idx] = self._color_u
 
         if self.domain is not None:
-            outside = ~self.domain.mask(self._height, self._width)
-            color[:, outside, :] = self._color_bg
+            outside = ~self.domain_mask()
+            color[np.broadcast_to(outside, (batch_size, *outside.shape[1:]))] \
+                = self._color_bg
 
         return color
     
@@ -399,6 +492,17 @@ class TwoComponentModel(ReactionDiffusionModel):
                    fpath_pattern=None,
                    arr_color=None):
 
+        if self._mesh is not None:
+            # A mesh surface has no 2D picture: both outputs are written as
+            # the colored mesh (.ply, replacing the given extension).
+            if arr_color is None:
+                arr_color = self.colorize()
+            for fpath in (fpath_morph, fpath_pattern):
+                if fpath:
+                    self._mesh.save_ply(osp.splitext(fpath)[0] + ".ply",
+                                        colors=arr_color[index])
+            return
+
         morph, pattern = self.create_image(index, arr_color)
         if fpath_morph:
             morph.save(fpath_morph)
@@ -459,7 +563,13 @@ class TwoComponentModel(ReactionDiffusionModel):
         n2v["color_v"] = self._color_v.tolist()
 
         if self.domain is not None:
-            n2v["domain"] = self.domain.to_dict()
+            domain = self.domain
+            if isinstance(domain, (list, tuple)):
+                domain = domain[index or 0]
+            n2v["domain"] = domain.to_dict()
+
+        if self._mesh is not None:
+            n2v["mesh"] = self._mesh.to_dict()
        
         # Get the members of initializer: n_init_pts, init_pts, init_states
         if initializer is None and self._initializer is not None:
@@ -515,17 +625,61 @@ class TwoComponentModel(ReactionDiffusionModel):
         # if params is None:
         #     raise ValueError("params should be given.")
 
-        with open(fpath, "wt") as fout:   
-            model_dict = self.to_dict(index=index,
-                                      initializer=initializer,
-                                      params=params,
-                                      solver=solver,
-                                      generation=generation,
-                                      fitness=fitness)
+        model_dict = self.to_dict(index=index,
+                                  initializer=initializer,
+                                  params=params,
+                                  solver=solver,
+                                  generation=generation,
+                                  fitness=fitness)
 
+        if self._mesh is not None:
+            # Store the mesh once next to the model files and refer to it.
+            fname_mesh = "mesh_%s.npz" % model_dict["mesh"]["hash"][:16]
+            fpath_mesh = osp.join(osp.dirname(osp.abspath(fpath)), fname_mesh)
+            if not osp.isfile(fpath_mesh):
+                self._mesh.save(fpath_mesh)
+            model_dict["mesh"]["file"] = fname_mesh
+
+        with open(fpath, "wt") as fout:
             json.dump(model_dict, fout)
     
         return model_dict
+
+    @classmethod
+    def parse_geometry(cls, model_dicts, dpath="."):
+        """Parse the geometry from the model dictionaries.
+
+        Returns the keyword arguments for the model constructor:
+        {"domain": ...} (one Domain, or one per model if they differ),
+        {"mesh": SurfaceMesh} or {} for the full grid.
+
+        Args:
+            dpath: Directory of the model JSON files, where save_model()
+                stored the mesh file.
+        """
+        if isinstance(model_dicts, Mapping):
+            model_dicts = [model_dicts]
+
+        meshes = [n2v.get("mesh") for n2v in model_dicts]
+        domains = [n2v.get("domain") for n2v in model_dicts]
+
+        if any(m is not None for m in meshes):
+            if any(m is None or m.get("hash") != meshes[0].get("hash")
+                   for m in meshes):
+                raise ValueError("All models of a batch must share one mesh.")
+            from lpf.surfaces import SurfaceMesh
+            return {"mesh": SurfaceMesh.from_dict(meshes[0], dpath)}
+
+        if any(d is not None for d in domains):
+            if any(d is None for d in domains):
+                raise ValueError("Either all or none of the models of a batch "
+                                 "must have a domain.")
+            from lpf.domains import domain_from_dict
+            if all(d == domains[0] for d in domains):
+                return {"domain": domain_from_dict(domains[0])}
+            return {"domain": [domain_from_dict(d) for d in domains]}
+
+        return {}
 
     @classmethod
     def parse_params(cls, model_dicts, dtype=None):

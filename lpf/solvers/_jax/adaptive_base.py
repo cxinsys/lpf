@@ -17,7 +17,8 @@ from os.path import join as pjoin
 import numpy as np
 
 from lpf.solvers.solver import Solver
-from lpf.solvers._jax.rhs import (get_rhs, is_supported as rhs_supported,
+from lpf.solvers._jax.rhs import (build_geometry_rhs, geometry_params, has_geometry,
+                                   get_rhs, is_supported as rhs_supported,
                                   build_diploid_rhs, is_diploid_model,
                                   is_diploid_supported)
 from lpf.solvers._jax.adaptive_steps import (make_rkf45_outer_step,
@@ -232,7 +233,14 @@ class JaxAdaptiveBase(Solver):
 
         # ---- validate model and pick RHS ----
         is_diploid = is_diploid_model(model)
-        if is_diploid:
+        if has_geometry(model):
+            if is_diploid:
+                raise ValueError("JAX solver: diploid models with a domain or "
+                                 "mesh are not supported.")
+            rhs_fn = build_geometry_rhs(model)
+            rhs_cache_key = ("mesh" if model.mesh is not None else "domain",
+                             type(model).__name__)
+        elif is_diploid:
             if not is_diploid_supported(model):
                 pa = model.paternal_model.name
                 ma = model.maternal_model.name
@@ -332,7 +340,9 @@ class JaxAdaptiveBase(Solver):
         dt_jax = np.asarray(dt, dtype=model_dtype)
 
         y0 = model.y_mesh
-        if is_diploid:
+        if has_geometry(model):
+            params = geometry_params(model)
+        elif is_diploid:
             params = (model.paternal_model.params,
                       model.maternal_model.params)
         else:
@@ -366,8 +376,8 @@ class JaxAdaptiveBase(Solver):
             model._u = alpha * y_final[0] + beta * y_final[2]
             model._v = alpha * y_final[1] + beta * y_final[3]
         else:
-            model._u = y_final[0, :, :, :]
-            model._v = y_final[1, :, :, :]
+            model._u = y_final[0]
+            model._v = y_final[1]
 
         # ---- file I/O ----
         if has_file_io and trj_y is not None and len(output_iters_sorted) > 0:

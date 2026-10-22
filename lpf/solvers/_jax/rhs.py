@@ -268,3 +268,79 @@ def is_diploid_supported(model):
     pa_name = model.paternal_model.name
     ma_name = model.maternal_model.name
     return pa_name in _RHS_BY_MODEL and ma_name in _RHS_BY_MODEL
+
+
+# ---------------------------------------------------------------------------
+# Geometry: domains on the grid (lpf.domains) and mesh surfaces (lpf.surfaces)
+# ---------------------------------------------------------------------------
+
+class _ParamsView:
+    """Stands in for a model inside reactions(), which only reads .params."""
+
+    def __init__(self, params):
+        self.params = params
+
+
+def _laplacian_domain(a, st, dx_inv2):
+    """Domain-weighted Laplacian; same accumulation order as the CUDA kernel
+    and TwoComponentModel.laplacian2d_domain. st: (B or 1, 5, H, W)."""
+    lap = jnp.zeros_like(a)
+    lap = lap.at[:, 1:, :].set(st[:, 0, 1:, :] * (a[:, :-1, :] - a[:, 1:, :]))
+    lap = lap.at[:, :-1, :].set(lap[:, :-1, :] + st[:, 1, :-1, :] * (a[:, 1:, :] - a[:, :-1, :]))
+    lap = lap.at[:, :, 1:].set(lap[:, :, 1:] + st[:, 2, :, 1:] * (a[:, :, :-1] - a[:, :, 1:]))
+    lap = lap.at[:, :, :-1].set(lap[:, :, :-1] + st[:, 3, :, :-1] * (a[:, :, 1:] - a[:, :, :-1]))
+    return lap * dx_inv2
+
+
+def _laplacian_mesh(a, nbr, wts):
+    """Laplace-Beltrami operator in ELL format (K, N); same order as the
+    CUDA kernel and TwoComponentModel.laplacian_mesh."""
+    lap = wts[0] * (a[:, nbr[0]] - a)
+    for k in range(1, nbr.shape[0]):
+        lap = lap + wts[k] * (a[:, nbr[k]] - a)
+    return lap
+
+
+def build_geometry_rhs(model):
+    """RHS for a model with a domain or a mesh, for any two-component model.
+
+    The kinetics are the model class's own reactions(), traced with JAX
+    arrays. The geometry travels in the params pytree (see geometry_params).
+    """
+    reactions = type(model).reactions
+
+    def kinetics(params, u, v):
+        return reactions(_ParamsView(params), None, u, v)
+
+    if model.mesh is not None:
+        def rhs(y, params, dx_inv2):
+            p, nbr, wts = params
+            B, N = y.shape[1], y.shape[2]
+            u, v = y[0], y[1]
+            f, g = kinetics(p, u.reshape(B, 1, N), v.reshape(B, 1, N))
+            du = p[:, 0].reshape(B, 1) * _laplacian_mesh(u, nbr, wts) + f.reshape(B, N)
+            dv = p[:, 1].reshape(B, 1) * _laplacian_mesh(v, nbr, wts) + g.reshape(B, N)
+            return jnp.stack([du, dv])
+        return rhs
+
+    def rhs(y, params, dx_inv2):
+        p, st = params
+        B = y.shape[1]
+        u, v = y[0], y[1]
+        f, g = kinetics(p, u, v)
+        active = st[:, 4]
+        du = (_reshape_param(p[:, 0], B) * _laplacian_domain(u, st, dx_inv2) + f) * active
+        dv = (_reshape_param(p[:, 1], B) * _laplacian_domain(v, st, dx_inv2) + g) * active
+        return jnp.stack([du, dv])
+    return rhs
+
+
+def geometry_params(model):
+    """params pytree for build_geometry_rhs()."""
+    if model.mesh is not None:
+        return (model.params, *model._ell)
+    return (model.params, model.stencil)
+
+
+def has_geometry(model):
+    return model.domain is not None or model.mesh is not None

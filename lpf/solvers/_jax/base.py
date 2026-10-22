@@ -27,7 +27,8 @@ from os.path import join as pjoin
 import numpy as np
 
 from lpf.solvers.solver import Solver
-from lpf.solvers._jax.rhs import (get_rhs, is_supported as rhs_supported,
+from lpf.solvers._jax.rhs import (build_geometry_rhs, geometry_params, has_geometry,
+                                   get_rhs, is_supported as rhs_supported,
                                   build_diploid_rhs, is_diploid_model,
                                   is_diploid_supported)
 from lpf.solvers._jax.steps import get_step, is_supported as step_supported
@@ -223,11 +224,6 @@ class JaxSolverBase(Solver):
                 raise ValueError("model should be defined.")
             model = self._model
 
-        if model.domain is not None:
-            raise NotImplementedError(
-                "JAX solver: spatial domains (lpf.domains) are not supported "
-                "yet. Use a NumPy, CuPy or PyTorch device.")
-
         if dt is None:
             dt = self._dt if self._dt is not None else 0.01
 
@@ -270,7 +266,14 @@ class JaxSolverBase(Solver):
             raise ValueError(f"JAX solver: unsupported solver '{self._name}'.")
 
         is_diploid = is_diploid_model(model)
-        if is_diploid:
+        if has_geometry(model):
+            if is_diploid:
+                raise ValueError("JAX solver: diploid models with a domain or "
+                                 "mesh are not supported.")
+            rhs_fn = build_geometry_rhs(model)
+            rhs_cache_key = ("mesh" if model.mesh is not None else "domain",
+                             type(model).__name__)
+        elif is_diploid:
             if not is_diploid_supported(model):
                 pa = model.paternal_model.name
                 ma = model.maternal_model.name
@@ -377,7 +380,9 @@ class JaxSolverBase(Solver):
 
         y0 = model.y_mesh  # Already a JAX array on the target device
 
-        if is_diploid:
+        if has_geometry(model):
+            params = geometry_params(model)
+        elif is_diploid:
             # Pass (pa_params, ma_params) as a pytree so jit can handle it
             params = (model.paternal_model.params,
                       model.maternal_model.params)
@@ -432,8 +437,8 @@ class JaxSolverBase(Solver):
             model._u = alpha * y_final[0] + beta * y_final[2]
             model._v = alpha * y_final[1] + beta * y_final[3]
         else:
-            model._u = y_final[0, :, :, :]
-            model._v = y_final[1, :, :, :]
+            model._u = y_final[0]
+            model._v = y_final[1]
 
         # ---- file I/O (uses host numpy) ----
         if has_file_io and trj_y is not None and len(output_iters_sorted) > 0:

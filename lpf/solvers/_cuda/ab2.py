@@ -18,9 +18,7 @@ class CuAdamsBashforth2Solver(CuSolverBase):
             self._dydt_cur = cp.empty(shape, dtype=dtype)
             self._dydt_prev = cp.empty(shape, dtype=dtype)
             self._delta = cp.empty(shape, dtype=dtype)
-        B, H, W = model.batch_size, model.height, model.width
-        self._N = 2 * B * H * W
-        self._dx2_inv = 1.0 / (model.dx ** 2)
+        self._N = int(np.prod(model.shape_grid))
         self._cached_shape = shape
         self._bufs_ready = True
 
@@ -31,11 +29,10 @@ class CuAdamsBashforth2Solver(CuSolverBase):
         self._first_step = True
 
     def _fast_step(self, model, t, dt, y_cur, y_next):
-        km, p = self._km, model.params
-        B, H, W = model.batch_size, model.height, model.width
-        N, dx2i = self._N, self._dx2_inv
+        km = self._km
+        N = self._N
 
-        km.launch_pdefunc(y_cur, self._dydt_cur, p, B, H, W, dx2i, model.stencil)
+        km.launch_model_pdefunc(model, y_cur, self._dydt_cur)
 
         if self._first_step:
             # Euler bootstrap: y_next = y_cur + dt * dydt
@@ -55,11 +52,10 @@ class CuAdamsBashforth2Solver(CuSolverBase):
         self._ensure_cuda(model)
         if not self._bufs_ready:
             self._alloc_buffers(model)
-        km, p = self._km, model.params
-        B, H, W = model.batch_size, model.height, model.width
-        N, dx2i = self._N, self._dx2_inv
+        km = self._km
+        N = self._N
 
-        km.launch_pdefunc(y_mesh, self._dydt_cur, p, B, H, W, dx2i, model.stencil)
+        km.launch_model_pdefunc(model, y_mesh, self._dydt_cur)
 
         if self._first_step:
             km.launch_scale(self._dydt_cur, self._delta, dt, N)

@@ -71,10 +71,10 @@ template<typename T, typename Reaction, int TX, int TY, KernelMode MODE>
 __global__ void domain_kernel_tpl(
     const T* __restrict__ y_in, T* __restrict__ out,
     const T* __restrict__ params, const T* __restrict__ stencil,
-    int B, int H, int W, double dt_d, double dx2_inv_d)
+    int stencil_stride, int B, int H, int W, double dt_d, double dx2_inv_d)
 {
     domain_core<T, Reaction, TX, TY, MODE>(
-        y_in, out, params, stencil, B, H, W,
+        y_in, out, params, stencil, stencil_stride, B, H, W,
         make_real<T>(dt_d), make_real<T>(dx2_inv_d));
 }
 
@@ -112,17 +112,18 @@ struct DomainOp {
     int B, H, W;
     double dx2_inv;
     const T* stencil;
+    int stencil_stride;  // 0: one domain for the batch, 5*H*W: one each
 
     int size() const { return 2*B*H*W; }
     dim3 grid() const { return dim3((W+TX-1)/TX, (H+TY-1)/TY, B); }
 
     void euler(const T* src, T* dst, const T* params, double dt, cudaStream_t s) const {
         domain_kernel_tpl<T,Reaction,TX,TY,EULER_STEP><<<grid(),dim3(TX,TY),0,s>>>(
-            src, dst, params, stencil, B, H, W, dt, dx2_inv);
+            src, dst, params, stencil, stencil_stride, B, H, W, dt, dx2_inv);
     }
     void pdefunc(const T* src, T* dydt, const T* params, cudaStream_t s) const {
         domain_kernel_tpl<T,Reaction,TX,TY,PDEFUNC><<<grid(),dim3(TX,TY),0,s>>>(
-            src, dydt, params, stencil, B, H, W, 0.0, dx2_inv);
+            src, dydt, params, stencil, stencil_stride, B, H, W, 0.0, dx2_inv);
     }
 };
 
@@ -421,9 +422,11 @@ extern "C" int lpf_native_solve(
     });
 }
 
-/* Domain on the grid (lpf.domains): stencil is (5, H, W), see domain_core. */
+/* Domain on the grid (lpf.domains): stencil is (5, H, W) per batch element
+ * at a stride of stencil_stride elements (0: shared), see domain_core. */
 extern "C" int lpf_native_solve_domain(
-    void* y_a, void* y_b, const void* params, const void* stencil,
+    void* y_a, void* y_b, const void* params,
+    const void* stencil, int stencil_stride,
     int B, int H, int W, double dt, double dx2_inv,
     LOOP_ENTRY_TAIL)
 {
@@ -434,7 +437,7 @@ extern "C" int lpf_native_solve_domain(
         return with_reaction<T>(model_type, [&](auto rtag) {
             using R = typename decltype(rtag)::type;
             return run_solver<T>(a, DomainOp<T, R, 32, 8>{
-                B, H, W, dx2_inv, (const T*)stencil});
+                B, H, W, dx2_inv, (const T*)stencil, stencil_stride});
         });
     });
 }

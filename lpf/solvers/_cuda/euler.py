@@ -11,7 +11,6 @@ class CuEulerSolver(CuSolverBase):
         self._name = "CuEulerSolver"
 
     def _alloc_buffers(self, model):
-        self._dx2_inv = 1.0 / (model.dx ** 2)
         self._cached_shape = model.shape_grid
         self._bufs_ready = True
 
@@ -19,10 +18,7 @@ class CuEulerSolver(CuSolverBase):
         return []
 
     def _fast_step(self, model, t, dt, y_cur, y_next):
-        B, H, W = model.batch_size, model.height, model.width
-        self._km.launch_euler(
-            y_cur, y_next, model.params, B, H, W, dt, self._dx2_inv,
-            model.stencil)
+        self._km.launch_model_euler(model, y_cur, y_next, dt)
 
     def step(self, model, t, dt, y_mesh):
         """Fallback step() for parent solve() (file-I/O path)."""
@@ -30,11 +26,8 @@ class CuEulerSolver(CuSolverBase):
         self._ensure_cuda(model)
         if not self._bufs_ready:
             self._alloc_buffers(model)
-        B, H, W = model.batch_size, model.height, model.width
         if not hasattr(self, '_dydt') or self._dydt is None \
                 or self._dydt.shape != y_mesh.shape:
             self._dydt = cp.empty_like(y_mesh)
-        self._km.launch_pdefunc(
-            y_mesh, self._dydt, model.params, B, H, W, self._dx2_inv,
-            model.stencil)
+        self._km.launch_model_pdefunc(model, y_mesh, self._dydt)
         return self._dydt * dt

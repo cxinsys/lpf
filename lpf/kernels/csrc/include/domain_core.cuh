@@ -5,8 +5,10 @@
 /**
  * Shared-memory tiled stencil restricted to a spatial domain (lpf.domains).
  *
- * `stencil` has shape (5, H, W) and is shared by the batch:
+ * `stencil` has shape (5, H, W) per batch element:
  *   [w_north, w_south, w_west, w_east, active]
+ * Element b uses stencil + b * stencil_stride, so stencil_stride = 0 shares
+ * one domain across the batch and 5*H*W gives every element its own.
  * Active cells:   lap = (wN*(uN-u) + wS*(uS-u) + wW*(uW-u) + wE*(uE-u)) * dx2_inv
  * Inactive cells: keep their value (EULER_STEP) / dydt = 0 (PDEFUNC).
  * Unlike stencil_core, the outermost grid cells are solved like any other
@@ -22,6 +24,7 @@ __device__ void domain_core(
     T*       __restrict__ out,
     const T* __restrict__ params,
     const T* __restrict__ stencil,
+    const int stencil_stride,
     const int B, const int H, const int W,
     const T dt, const T dx2_inv)
 {
@@ -67,15 +70,16 @@ __device__ void domain_core(
 
     if (!valid) return;
 
+    const T* __restrict__ st = stencil + (long long)b * stencil_stride;
     const int cidx = gy * W + gx;
-    if (ldg(&stencil[4*HW + cidx]) == make_real<T>(0.0)) {
+    if (ldg(&st[4*HW + cidx]) == make_real<T>(0.0)) {
         if constexpr (MODE == EULER_STEP) { out[gidx] = u_val; out[BHW+gidx] = v_val; }
         else { out[gidx] = make_real<T>(0.0); out[BHW+gidx] = make_real<T>(0.0); }
         return;
     }
 
-    const T wn = ldg(&stencil[cidx]),        ws = ldg(&stencil[HW + cidx]);
-    const T ww = ldg(&stencil[2*HW + cidx]), we = ldg(&stencil[3*HW + cidx]);
+    const T wn = ldg(&st[cidx]),        ws = ldg(&st[HW + cidx]);
+    const T ww = ldg(&st[2*HW + cidx]), we = ldg(&st[3*HW + cidx]);
 
     const T u_c = s_u[si], v_c = s_v[si];
     const T lap_u = (wn * (s_u[si-SW] - u_c) + ws * (s_u[si+SW] - u_c)

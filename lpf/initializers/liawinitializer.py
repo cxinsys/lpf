@@ -27,17 +27,20 @@ class LiawInitializer(TwoComponentInitializer):
             self._init_states[i, 0] = n2v["u0"]
             self._init_states[i, 1] = n2v["v0"]
 
+            # Grid models: (row, col). Mesh models (lpf.surfaces): a vertex
+            # index, stored as [vid] (or a bare int).
             n_init_pts = 0
             dict_init_pts = {}
             for name, val in n2v.items():
                 if name.startswith("init_pts"):
-                    dict_init_pts[name] = (int(val[0]), int(val[1]))
+                    val = np.atleast_1d(val)
+                    dict_init_pts[name] = tuple(int(x) for x in val[:2])
                     n_init_pts += 1
             # end of for
 
             coords = []
             for j, (name, coord) in enumerate(dict_init_pts.items()):
-                coords.append((coord[0], coord[1]))
+                coords.append(coord)
             # end of for
             init_pts.append(coords)
         # end of for
@@ -71,13 +74,15 @@ class LiawInitializer(TwoComponentInitializer):
 
             u0 = model.am.array(init_states[:, 0], dtype=init_states.dtype)
             v0 = model.am.array(init_states[:, 1], dtype=init_states.dtype)
-            v0 = v0.reshape(batch_size, 1, 1)
+            spatial_ones = (1,) * (model._y_mesh.ndim - 2)  # grid: (1, 1), mesh: (1,)
+            v0 = v0.reshape(batch_size, *spatial_ones)
 
             for i in range(batch_size):
-                model._y_mesh = model.am.set(
-                    model._y_mesh,
-                    (0, i, init_pts[i, :, 0], init_pts[i, :, 1]),
-                    u0[i])
+                if model.mesh is not None:  # vertex indices
+                    index = (0, i, init_pts[i, :, 0])
+                else:
+                    index = (0, i, init_pts[i, :, 0], init_pts[i, :, 1])
+                model._y_mesh = model.am.set(model._y_mesh, index, u0[i])
 
             model._y_mesh = model.am.set(model._y_mesh, (1, ...), v0)
         # end of with
@@ -93,9 +98,9 @@ class LiawInitializer(TwoComponentInitializer):
         # Save init points
         n2v["n_init_pts"] = self.init_pts[index].shape[0]
 
-        for i, (ir, ic) in enumerate(self.init_pts[index, :]):
-            # Convert int to str due to JSON format.
-            n2v["init_pts_%d"%(i)] = [int(ir), int(ic)]
+        for i, pt in enumerate(self.init_pts[index, :]):
+            # (row, col) on the grid, [vertex] on a mesh.
+            n2v["init_pts_%d"%(i)] = [int(x) for x in pt]
         # end of for
 
         return n2v
