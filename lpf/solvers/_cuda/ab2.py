@@ -35,7 +35,7 @@ class CuAdamsBashforth2Solver(CuSolverBase):
         B, H, W = model.batch_size, model.height, model.width
         N, dx2i = self._N, self._dx2_inv
 
-        km.launch_pdefunc(y_cur, self._dydt_cur, p, B, H, W, dx2i)
+        km.launch_pdefunc(y_cur, self._dydt_cur, p, B, H, W, dx2i, model.stencil)
 
         if self._first_step:
             # Euler bootstrap: y_next = y_cur + dt * dydt
@@ -59,7 +59,7 @@ class CuAdamsBashforth2Solver(CuSolverBase):
         B, H, W = model.batch_size, model.height, model.width
         N, dx2i = self._N, self._dx2_inv
 
-        km.launch_pdefunc(y_mesh, self._dydt_cur, p, B, H, W, dx2i)
+        km.launch_pdefunc(y_mesh, self._dydt_cur, p, B, H, W, dx2i, model.stencil)
 
         if self._first_step:
             km.launch_scale(self._dydt_cur, self._delta, dt, N)

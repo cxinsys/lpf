@@ -30,7 +30,8 @@ class TwoComponentModel(ReactionDiffusionModel):
                  color_v=None,
                  device=None,
                  species=None,
-                 dtype=None):
+                 dtype=None,
+                 domain=None):
 
         # Set the device.
         super().__init__(device, dtype)
@@ -95,6 +96,13 @@ class TwoComponentModel(ReactionDiffusionModel):
         self._fpath_template = get_template_fpath(species)
         self._fpath_mask = get_mask_fpath(species)
 
+        # Optional spatial domain (lpf.domains). None solves on the full
+        # grid with the outermost cells held fixed; otherwise only the
+        # domain's cells are solved, with a zero-flux boundary.
+        self._domain = domain
+        self._stencil = None
+        self._color_bg = np.array((255, 255, 255), dtype=np.uint8)
+
     @property
     def u(self):
         if self._y_mesh is not None:
@@ -158,6 +166,10 @@ class TwoComponentModel(ReactionDiffusionModel):
             self._u = self._y_mesh[0, :, :, :]
             self._v = self._y_mesh[1, :, :, :]
 
+            if self.domain is not None:
+                stencil = self.domain.stencil(self._height, self._width)
+                self._stencil = self.am.array(stencil, dtype=self._dtype)
+
     def laplacian2d(self, a, dx):
         a_top = a[:, 0:-2, 1:-1]
         a_left = a[:, 1:-1, 0:-2]
@@ -166,12 +178,62 @@ class TwoComponentModel(ReactionDiffusionModel):
         a_center = a[:, 1:-1, 1:-1]
         return (a_top + a_left + a_bottom + a_right - 4 * a_center) / dx ** 2
 
+    def laplacian2d_domain(self, a, dx):
+        """Laplacian of a (B, H, W) array over the whole grid, weighted by
+        the domain stencil (see lpf.domains). Zero-flux at the domain boundary.
+        """
+        st = self._stencil
+        lap = self.am.zeros(a.shape, dtype=self._dtype)
+
+        # Accumulate north, south, west, east in the same order as the
+        # CUDA kernel: wN*(uN - u) + wS*(uS - u) + wW*(uW - u) + wE*(uE - u).
+        lap = self.am.set(
+            lap, (slice(None), slice(1, None), slice(None)),
+            st[0, 1:, :] * (a[:, :-1, :] - a[:, 1:, :]))
+        lap = self.am.set(
+            lap, (slice(None), slice(None, -1), slice(None)),
+            lap[:, :-1, :] + st[1, :-1, :] * (a[:, 1:, :] - a[:, :-1, :]))
+        lap = self.am.set(
+            lap, (slice(None), slice(None), slice(1, None)),
+            lap[:, :, 1:] + st[2, :, 1:] * (a[:, :, :-1] - a[:, :, 1:]))
+        lap = self.am.set(
+            lap, (slice(None), slice(None), slice(None, -1)),
+            lap[:, :, :-1] + st[3, :, :-1] * (a[:, :, 1:] - a[:, :, :-1]))
+        return lap / dx ** 2
+
     def reactions(self, t, u_c, v_c):
         raise NotImplementedError()
+
+    def _pdefunc_domain(self, t, y_mesh):
+        batch_size = self.params.shape[0]
+        u = y_mesh[0, :, :, :]
+        v = y_mesh[1, :, :, :]
+
+        Du = self.params[:, 0].reshape(batch_size, 1, 1)
+        Dv = self.params[:, 1].reshape(batch_size, 1, 1)
+
+        # Inactive cells keep their values: dydt = 0 there.
+        active = self._stencil[4]
+        f, g = self.reactions(t, u, v)
+        self._f = f * active
+        self._g = g * active
+
+        dydt_mesh = self.am.set(
+            self._dydt_mesh, (0, ...),
+            (Du * self.laplacian2d_domain(u, self._dx) + f) * active)
+        dydt_mesh = self.am.set(
+            dydt_mesh, (1, ...),
+            (Dv * self.laplacian2d_domain(v, self._dx) + g) * active)
+
+        self._dydt_mesh = dydt_mesh
+        return dydt_mesh
 
     def pdefunc(self, t=None, y_mesh=None, y_linear=None):
         """Equation function for integration.
         """
+
+        if self.domain is not None:
+            return self._pdefunc_domain(t, y_mesh)
 
         batch_size = self.params.shape[0]
             
@@ -238,9 +300,13 @@ class TwoComponentModel(ReactionDiffusionModel):
                 
         adu = self.am.abs(self._f)
         adv = self.am.abs(self._g)
-        
-        au = self.am.abs(self.u[:, 1:-1, 1:-1])
-        av = self.am.abs(self.v[:, 1:-1, 1:-1])
+
+        if self.domain is not None:  # _f/_g span the grid, zero outside
+            au = self.am.abs(self.u)
+            av = self.am.abs(self.v)
+        else:
+            au = self.am.abs(self.u[:, 1:-1, 1:-1])
+            av = self.am.abs(self.v[:, 1:-1, 1:-1])
 
         return (adu <= (rtol * au)).all() and (adv <= (rtol * av)).all()
 
@@ -264,7 +330,11 @@ class TwoComponentModel(ReactionDiffusionModel):
         color[idx, 0] = self._color_u[0]
         color[idx, 1] = self._color_u[1]
         color[idx, 2] = self._color_u[2]
-        
+
+        if self.domain is not None:
+            outside = ~self.domain.mask(self._height, self._width)
+            color[:, outside, :] = self._color_bg
+
         return color
     
     def create_image(self, index=0, arr_color=None, pattern=None):
@@ -387,6 +457,9 @@ class TwoComponentModel(ReactionDiffusionModel):
         n2v["thr_color"] = float(np.asarray(self._thr_color[index]).flat[0])
         n2v["color_u"] = self._color_u.tolist()
         n2v["color_v"] = self._color_v.tolist()
+
+        if self.domain is not None:
+            n2v["domain"] = self.domain.to_dict()
        
         # Get the members of initializer: n_init_pts, init_pts, init_states
         if initializer is None and self._initializer is not None:

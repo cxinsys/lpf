@@ -34,16 +34,16 @@ class CuRungekuttaSolver(CuSolverBase):
         B, H, W = model.batch_size, model.height, model.width
         N, dx2i = self._N, self._dx2_inv
 
-        km.launch_pdefunc(y_cur, self._k1, p, B, H, W, dx2i)
+        km.launch_pdefunc(y_cur, self._k1, p, B, H, W, dx2i, model.stencil)
         km.launch_rk_stage(y_cur, self._k1, self._y_temp, 0.5 * dt, N)
 
-        km.launch_pdefunc(self._y_temp, self._k2, p, B, H, W, dx2i)
+        km.launch_pdefunc(self._y_temp, self._k2, p, B, H, W, dx2i, model.stencil)
         km.launch_rk_stage(y_cur, self._k2, self._y_temp, 0.5 * dt, N)
 
-        km.launch_pdefunc(self._y_temp, self._k3, p, B, H, W, dx2i)
+        km.launch_pdefunc(self._y_temp, self._k3, p, B, H, W, dx2i, model.stencil)
         km.launch_rk_stage(y_cur, self._k3, self._y_temp, dt, N)
 
-        km.launch_pdefunc(self._y_temp, self._k4, p, B, H, W, dx2i)
+        km.launch_pdefunc(self._y_temp, self._k4, p, B, H, W, dx2i, model.stencil)
 
         km.launch_rk4_combine(
             self._delta, self._k1, self._k2, self._k3, self._k4,
@@ -58,13 +58,13 @@ class CuRungekuttaSolver(CuSolverBase):
         B, H, W = model.batch_size, model.height, model.width
         N, dx2i = self._N, self._dx2_inv
 
-        km.launch_pdefunc(y_mesh, self._k1, p, B, H, W, dx2i)
+        km.launch_pdefunc(y_mesh, self._k1, p, B, H, W, dx2i, model.stencil)
         km.launch_rk_stage(y_mesh, self._k1, self._y_temp, 0.5 * dt, N)
-        km.launch_pdefunc(self._y_temp, self._k2, p, B, H, W, dx2i)
+        km.launch_pdefunc(self._y_temp, self._k2, p, B, H, W, dx2i, model.stencil)
         km.launch_rk_stage(y_mesh, self._k2, self._y_temp, 0.5 * dt, N)
-        km.launch_pdefunc(self._y_temp, self._k3, p, B, H, W, dx2i)
+        km.launch_pdefunc(self._y_temp, self._k3, p, B, H, W, dx2i, model.stencil)
         km.launch_rk_stage(y_mesh, self._k3, self._y_temp, dt, N)
-        km.launch_pdefunc(self._y_temp, self._k4, p, B, H, W, dx2i)
+        km.launch_pdefunc(self._y_temp, self._k4, p, B, H, W, dx2i, model.stencil)
         km.launch_rk4_combine(
             self._delta, self._k1, self._k2, self._k3, self._k4,
             dt / 6.0, N)

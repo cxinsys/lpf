@@ -223,6 +223,11 @@ class JaxSolverBase(Solver):
                 raise ValueError("model should be defined.")
             model = self._model
 
+        if model.domain is not None:
+            raise NotImplementedError(
+                "JAX solver: spatial domains (lpf.domains) are not supported "
+                "yet. Use a NumPy, CuPy or PyTorch device.")
+
         if dt is None:
             dt = self._dt if self._dt is not None else 0.01
 

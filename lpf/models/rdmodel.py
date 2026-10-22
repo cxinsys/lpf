@@ -42,7 +42,15 @@ class ReactionDiffusionModel(ABC):
     @property
     def shape_grid(self):
         return self._shape_grid
-    
+
+    @property
+    def domain(self):  # lpf.domains.Domain, or None for the full grid
+        return getattr(self, "_domain", None)
+
+    @property
+    def stencil(self):  # Domain stencil (5, H, W) on the model's device, or None
+        return getattr(self, "_stencil", None)
+
     @property
     def initializer(self):
         return self._initializer

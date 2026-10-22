@@ -27,7 +27,7 @@ class CupyPdefuncMixin:
             self._km.launch_pdefunc(
                 y_mesh, out, model.params,
                 model.batch_size, model.height, model.width,
-                1.0 / (model.dx ** 2))
+                1.0 / (model.dx ** 2), model.stencil)
             return out
         # pdefunc() returns an internal buffer that is overwritten on the
         # next call, so the result must be copied. Use clone() for torch

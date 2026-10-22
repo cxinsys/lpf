@@ -92,6 +92,73 @@ INST_ALL_MODELS(double,  f64, 32, 8)
 
 
 // ============================================================
+// Spatial domains (lpf.domains) and triangle-mesh surfaces (lpf.surfaces)
+// ============================================================
+
+#include "include/domain_core.cuh"
+#include "include/surface_core.cuh"
+
+#define INST_DOMAIN(MODEL, DTYPE, SUFFIX, TX, TY) \
+extern "C" __global__ void euler_domain_##MODEL##_##SUFFIX( \
+    const DTYPE* __restrict__ y_in, DTYPE* __restrict__ y_out, \
+    const DTYPE* __restrict__ params, const DTYPE* __restrict__ stencil, \
+    int B, int H, int W, double dt_d, double dx2_inv_d \
+) { \
+    domain_core<DTYPE, MODEL##Reaction<DTYPE>, TX, TY, EULER_STEP>( \
+        y_in, y_out, params, stencil, B, H, W, \
+        make_real<DTYPE>(dt_d), make_real<DTYPE>(dx2_inv_d)); \
+} \
+extern "C" __global__ void pdefunc_domain_##MODEL##_##SUFFIX( \
+    const DTYPE* __restrict__ y_in, DTYPE* __restrict__ dydt, \
+    const DTYPE* __restrict__ params, const DTYPE* __restrict__ stencil, \
+    int B, int H, int W, double dx2_inv_d \
+) { \
+    domain_core<DTYPE, MODEL##Reaction<DTYPE>, TX, TY, PDEFUNC>( \
+        y_in, dydt, params, stencil, B, H, W, \
+        make_real<DTYPE>(0.0), make_real<DTYPE>(dx2_inv_d)); \
+}
+
+#define INST_SURFACE(MODEL, DTYPE, SUFFIX) \
+extern "C" __global__ void euler_surface_##MODEL##_##SUFFIX( \
+    const DTYPE* __restrict__ y_in, DTYPE* __restrict__ y_out, \
+    const DTYPE* __restrict__ params, \
+    const int* __restrict__ nbr, const DTYPE* __restrict__ wts, \
+    int K, int B, int N, double dt_d \
+) { \
+    surface_core<DTYPE, MODEL##Reaction<DTYPE>, EULER_STEP>( \
+        y_in, y_out, params, nbr, wts, K, B, N, make_real<DTYPE>(dt_d)); \
+} \
+extern "C" __global__ void pdefunc_surface_##MODEL##_##SUFFIX( \
+    const DTYPE* __restrict__ y_in, DTYPE* __restrict__ dydt, \
+    const DTYPE* __restrict__ params, \
+    const int* __restrict__ nbr, const DTYPE* __restrict__ wts, \
+    int K, int B, int N \
+) { \
+    surface_core<DTYPE, MODEL##Reaction<DTYPE>, PDEFUNC>( \
+        y_in, dydt, params, nbr, wts, K, B, N, make_real<DTYPE>(0.0)); \
+}
+
+#define INST_GEOMETRY_MODEL(MODEL, DTYPE, SUFFIX) \
+    INST_DOMAIN(MODEL, DTYPE, SUFFIX, 32, 8) \
+    INST_SURFACE(MODEL, DTYPE, SUFFIX)
+
+#define INST_GEOMETRY_ALL_MODELS(DTYPE, SUFFIX) \
+    INST_GEOMETRY_MODEL(GrayScott,       DTYPE, SUFFIX) \
+    INST_GEOMETRY_MODEL(Liaw,            DTYPE, SUFFIX) \
+    INST_GEOMETRY_MODEL(Schnakenberg,    DTYPE, SUFFIX) \
+    INST_GEOMETRY_MODEL(GiererMeinhardt, DTYPE, SUFFIX) \
+    INST_GEOMETRY_MODEL(Brusselator,     DTYPE, SUFFIX) \
+    INST_GEOMETRY_MODEL(FitzHughNagumo,  DTYPE, SUFFIX) \
+    INST_GEOMETRY_MODEL(LengyelEpstein,  DTYPE, SUFFIX) \
+    INST_GEOMETRY_MODEL(Thomas,          DTYPE, SUFFIX) \
+    INST_GEOMETRY_MODEL(Barkley,         DTYPE, SUFFIX)
+
+INST_GEOMETRY_ALL_MODELS(__half, f16)
+INST_GEOMETRY_ALL_MODELS(float,  f32)
+INST_GEOMETRY_ALL_MODELS(double, f64)
+
+
+// ============================================================
 // Vectorised RK utility kernels
 // ============================================================
 

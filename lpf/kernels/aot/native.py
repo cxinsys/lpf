@@ -53,11 +53,12 @@ _WORK_COUNT = {
 
 
 class NativeSolver:
-    """Thin ctypes wrapper around the lpf_native_solve C function."""
+    """Thin ctypes wrapper around the lpf_native_solve* C functions."""
 
     def __init__(self):
         self._lib = None
         self._available = False
+        self._entry = {}
         self._try_load()
 
     def _try_load(self):
@@ -65,15 +66,24 @@ class NativeSolver:
             return
         try:
             self._lib = ctypes.CDLL(_LIB_PATH)
-            fn = self._lib.lpf_native_solve
-            fn.restype = ctypes.c_int
-            # argtypes set loosely — we marshal manually
-            self._available = True
+            for kind, name in (("grid", "lpf_native_solve"),
+                               ("domain", "lpf_native_solve_domain"),
+                               ("surface", "lpf_native_solve_surface")):
+                fn = getattr(self._lib, name, None)
+                if fn is not None:
+                    fn.restype = ctypes.c_int
+                    # argtypes set loosely — we marshal manually
+                    self._entry[kind] = fn
+            self._available = "grid" in self._entry
         except Exception:
             self._available = False
 
     def is_available(self):
         return self._available
+
+    def supports(self, kind):
+        """Whether the library has the loop for kind: grid, domain, surface."""
+        return self._available and kind in self._entry
 
     def solve(self, solver_type, model_name, dtype,
               y_a, y_b, params,
@@ -112,6 +122,59 @@ class NativeSolver:
             'result_buf': 0 if final state in y_a, 1 if in y_b
             'stopped_at': iteration where stopped, -1 if completed
         """
+        head = (
+            _ptr(y_a), _ptr(y_b), _ptr(params),
+            ctypes.c_int(B), ctypes.c_int(H), ctypes.c_int(W),
+            ctypes.c_double(dt), ctypes.c_double(dx2_inv),
+        )
+        return self._call("grid", head, solver_type, model_name, dtype,
+                          n_iters, work_bufs, trj_buf, trj_iters,
+                          rtol, rtol_period)
+
+    def solve_domain(self, solver_type, model_name, dtype,
+                     y_a, y_b, params, stencil,
+                     B, H, W, dt, dx2_inv, n_iters,
+                     work_bufs=None, trj_buf=None, trj_iters=None,
+                     rtol=0.0, rtol_period=1000):
+        """Like solve(), restricted to a domain (lpf.domains).
+
+        stencil : cupy array of shape (5, H, W), dtype of the state.
+        """
+        head = (
+            _ptr(y_a), _ptr(y_b), _ptr(params), _ptr(stencil),
+            ctypes.c_int(B), ctypes.c_int(H), ctypes.c_int(W),
+            ctypes.c_double(dt), ctypes.c_double(dx2_inv),
+        )
+        return self._call("domain", head, solver_type, model_name, dtype,
+                          n_iters, work_bufs, trj_buf, trj_iters,
+                          rtol, rtol_period)
+
+    def solve_surface(self, solver_type, model_name, dtype,
+                      y_a, y_b, params, nbr, wts, K, B, N, dt, n_iters,
+                      work_bufs=None, trj_buf=None, trj_iters=None,
+                      rtol=0.0, rtol_period=1000):
+        """Like solve(), on a triangle-mesh surface (lpf.surfaces).
+
+        nbr, wts : cupy arrays of shape (K, N) (int32 / state dtype), the
+            Laplace-Beltrami operator in transposed ELL format.
+        The state y_a/y_b has shape (2, B, N).
+        """
+        head = (
+            _ptr(y_a), _ptr(y_b), _ptr(params), _ptr(nbr), _ptr(wts),
+            ctypes.c_int(K), ctypes.c_int(B), ctypes.c_int(N),
+            ctypes.c_double(dt),
+        )
+        return self._call("surface", head, solver_type, model_name, dtype,
+                          n_iters, work_bufs, trj_buf, trj_iters,
+                          rtol, rtol_period)
+
+    def _call(self, kind, head, solver_type, model_name, dtype, n_iters,
+              work_bufs, trj_buf, trj_iters, rtol, rtol_period):
+        if not self.supports(kind):
+            raise RuntimeError(
+                "libsolver has no %s solve loop; rebuild it with "
+                "`python -m lpf.kernels.aot.build`." % kind)
+
         model_code = _MODEL_CODES[model_name]
         dtype_code = _DTYPE_CODES[np.dtype(dtype)]
 
@@ -136,12 +199,8 @@ class NativeSolver:
         # Output
         stopped_at = ctypes.c_int(-1)
 
-        result_buf = self._lib.lpf_native_solve(
-            ctypes.c_void_p(y_a.data.ptr),
-            ctypes.c_void_p(y_b.data.ptr),
-            ctypes.c_void_p(params.data.ptr),
-            ctypes.c_int(B), ctypes.c_int(H), ctypes.c_int(W),
-            ctypes.c_double(dt), ctypes.c_double(dx2_inv),
+        result_buf = self._entry[kind](
+            *head,
             ctypes.c_int(n_iters),
             ctypes.c_int(solver_type), ctypes.c_int(model_code),
             ctypes.c_int(dtype_code),
@@ -158,3 +217,7 @@ class NativeSolver:
             'result_buf': result_buf,
             'stopped_at': stopped_at.value,
         }
+
+
+def _ptr(arr):
+    return ctypes.c_void_p(arr.data.ptr)

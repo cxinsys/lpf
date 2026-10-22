@@ -39,6 +39,15 @@ def _get_native():
     return _native_solver
 
 
+def _native_supports(native, kind):
+    """Whether the native library has the solve loop for kind (grid,
+    domain or surface); objects with only is_available() run the grid."""
+    supports = getattr(native, "supports", None)
+    if supports is None:
+        return kind == "grid" and native.is_available()
+    return supports(kind)
+
+
 _SOLVER_CODES = {
     "CuEulerSolver": 0,
     "CuHeunSolver": 1,
@@ -101,10 +110,13 @@ class CuSolverBase(Solver):
             'params': model._params,
             'u': model._u,
             'v': model._v,
+            'stencil': model.stencil,
         }
 
         model._y_mesh = cp.from_dlpack(model._y_mesh.detach())
         model._params = cp.from_dlpack(model._params.detach())
+        if model.stencil is not None:
+            model._stencil = cp.from_dlpack(model._stencil.detach())
         model._u = model._y_mesh[0, :, :, :]
         model._v = model._y_mesh[1, :, :, :]
 
@@ -119,6 +131,8 @@ class CuSolverBase(Solver):
         # Just restore the PyTorch tensor references.
         model._y_mesh = saved['y_mesh']
         model._params = saved['params']
+        if saved['stencil'] is not None:
+            model._stencil = saved['stencil']
         model._u = saved['y_mesh'][0, :, :, :]
         model._v = saved['y_mesh'][1, :, :, :]
 
@@ -280,7 +294,7 @@ class CuSolverBase(Solver):
 
         native = _get_native()
         can_native = (
-            native.is_available()
+            _native_supports(native, "grid" if model.stencil is None else "domain")
             and self._name in _SOLVER_CODES
         )
 
@@ -367,7 +381,7 @@ class CuSolverBase(Solver):
         if output_iters_sorted:
             trj_iters_np = np.array(output_iters_sorted, dtype=np.int32)
 
-        res = native.solve(
+        loop = dict(
             solver_type=solver_code,
             model_name=model.name,
             dtype=model.dtype,
@@ -380,6 +394,10 @@ class CuSolverBase(Solver):
             rtol=rtol if rtol else 0.0,
             rtol_period=1000,
         )
+        if model.stencil is None:
+            res = native.solve(**loop)
+        else:
+            res = native.solve_domain(stencil=model.stencil, **loop)
 
         final = y_a if res['result_buf'] == 0 else y_b
         cp.cuda.Stream.null.synchronize()

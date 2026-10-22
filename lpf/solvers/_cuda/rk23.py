@@ -33,13 +33,13 @@ class CuRK23Solver(CuSolverBase):
         B, H, W = model.batch_size, model.height, model.width
         N, dx2i = self._N, self._dx2_inv
 
-        km.launch_pdefunc(y_cur, self._k1, p, B, H, W, dx2i)
+        km.launch_pdefunc(y_cur, self._k1, p, B, H, W, dx2i, model.stencil)
         km.launch_rk_stage(y_cur, self._k1, self._y_temp, 0.5 * dt, N)
 
-        km.launch_pdefunc(self._y_temp, self._k2, p, B, H, W, dx2i)
+        km.launch_pdefunc(self._y_temp, self._k2, p, B, H, W, dx2i, model.stencil)
         km.launch_rk_stage(y_cur, self._k2, self._y_temp, 0.75 * dt, N)
 
-        km.launch_pdefunc(self._y_temp, self._k3, p, B, H, W, dx2i)
+        km.launch_pdefunc(self._y_temp, self._k3, p, B, H, W, dx2i, model.stencil)
 
         # delta = dt*(2/9*k1 + 1/3*k2 + 4/9*k3)
         km.launch_linear_combine3(
@@ -55,11 +55,11 @@ class CuRK23Solver(CuSolverBase):
         B, H, W = model.batch_size, model.height, model.width
         N, dx2i = self._N, self._dx2_inv
 
-        km.launch_pdefunc(y_mesh, self._k1, p, B, H, W, dx2i)
+        km.launch_pdefunc(y_mesh, self._k1, p, B, H, W, dx2i, model.stencil)
         km.launch_rk_stage(y_mesh, self._k1, self._y_temp, 0.5 * dt, N)
-        km.launch_pdefunc(self._y_temp, self._k2, p, B, H, W, dx2i)
+        km.launch_pdefunc(self._y_temp, self._k2, p, B, H, W, dx2i, model.stencil)
         km.launch_rk_stage(y_mesh, self._k2, self._y_temp, 0.75 * dt, N)
-        km.launch_pdefunc(self._y_temp, self._k3, p, B, H, W, dx2i)
+        km.launch_pdefunc(self._y_temp, self._k3, p, B, H, W, dx2i, model.stencil)
         km.launch_linear_combine3(
             self._k1, self._k2, self._k3, self._delta,
             dt * (2.0 / 9.0), dt * (1.0 / 3.0), dt * (4.0 / 9.0), N)

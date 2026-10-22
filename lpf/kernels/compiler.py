@@ -14,6 +14,10 @@ from lpf.kernels.reactions import REACTION_REGISTRY
 from lpf.kernels.sources import (
     FUSED_EULER_STEP_TEMPLATE,
     FUSED_PDEFUNC_TEMPLATE,
+    FUSED_EULER_STEP_DOMAIN_TEMPLATE,
+    FUSED_PDEFUNC_DOMAIN_TEMPLATE,
+    SURFACE_EULER_STEP_TEMPLATE,
+    SURFACE_PDEFUNC_TEMPLATE,
     RK_STAGE_UPDATE_SOURCE,
     RK4_COMBINE_SOURCE,
     HEUN_COMBINE_SOURCE,
@@ -78,6 +82,10 @@ class CuKernelManager:
         # Lazily compiled JIT kernels
         self._jit_euler = None
         self._jit_pdefunc = None
+        self._jit_euler_domain = None
+        self._jit_pdefunc_domain = None
+        self._jit_surface_euler = None
+        self._jit_surface_pdefunc = None
         self._jit_stage = None
         self._jit_rk4_combine = None
         self._jit_heun_combine = None
@@ -117,9 +125,25 @@ class CuKernelManager:
     # Unified launch methods
     # ================================================================
 
-    def launch_euler(self, y_in, y_out, params, B, H, W, dt, dx2_inv):
-        """Launch fused Euler step kernel."""
-        if self._use_aot:
+    def launch_euler(self, y_in, y_out, params, B, H, W, dt, dx2_inv,
+                     stencil=None):
+        """Launch fused Euler step kernel.
+
+        With a domain stencil (see lpf.domains) the domain kernel is used
+        (AOT when available, like the full-grid kernel, otherwise JIT).
+        """
+        if stencil is not None:
+            if self._use_aot:
+                kernel = self._aot.get_euler_domain_kernel(
+                    self._model_name, self._dtype)
+            else:
+                kernel = self._get_jit_euler_domain()
+            kernel(self._stencil_grid(B, H, W), (TILE_X, TILE_Y), (
+                y_in, y_out, params, stencil,
+                np.int32(B), np.int32(H), np.int32(W),
+                np.float64(dt), np.float64(dx2_inv),
+            ))
+        elif self._use_aot:
             kernel = self._aot.get_euler_kernel(self._model_name, self._dtype)
             grid, block = self._aot.stencil_grid_block(B, H, W)
             kernel(grid, block, (
@@ -141,9 +165,21 @@ class CuKernelManager:
                 np.float64(dt), np.float64(dx2_inv),
             ))
 
-    def launch_pdefunc(self, y_in, dydt, params, B, H, W, dx2_inv):
-        """Launch fused PDE function kernel."""
-        if self._use_aot:
+    def launch_pdefunc(self, y_in, dydt, params, B, H, W, dx2_inv,
+                       stencil=None):
+        """Launch fused PDE function kernel (domain-aware like launch_euler)."""
+        if stencil is not None:
+            if self._use_aot:
+                kernel = self._aot.get_pdefunc_domain_kernel(
+                    self._model_name, self._dtype)
+            else:
+                kernel = self._get_jit_pdefunc_domain()
+            kernel(self._stencil_grid(B, H, W), (TILE_X, TILE_Y), (
+                y_in, dydt, params, stencil,
+                np.int32(B), np.int32(H), np.int32(W),
+                np.float64(dx2_inv),
+            ))
+        elif self._use_aot:
             kernel = self._aot.get_pdefunc_kernel(self._model_name, self._dtype)
             grid, block = self._aot.stencil_grid_block(B, H, W)
             kernel(grid, block, (
@@ -164,6 +200,40 @@ class CuKernelManager:
                 np.int32(B), np.int32(H), np.int32(W),
                 np.float64(dx2_inv),
             ))
+
+    def launch_surface_euler(self, y_in, y_out, params, nbr, wts, K, B, N, dt):
+        """Launch the triangle-mesh Euler step (see lpf.surfaces).
+
+        nbr/wts hold the Laplace-Beltrami operator in transposed ELL format,
+        shape (K, N).
+        """
+        if self._use_aot:
+            kernel = self._aot.get_euler_surface_kernel(self._model_name, self._dtype)
+        else:
+            kernel = self._get_jit_surface_euler()
+        kernel(*self._surface_grid(B, N), (
+            y_in, y_out, params, nbr, wts,
+            np.int32(K), np.int32(B), np.int32(N), np.float64(dt),
+        ))
+
+    def launch_surface_pdefunc(self, y_in, dydt, params, nbr, wts, K, B, N):
+        """Launch the triangle-mesh dy/dt kernel (see launch_surface_euler)."""
+        if self._use_aot:
+            kernel = self._aot.get_pdefunc_surface_kernel(self._model_name, self._dtype)
+        else:
+            kernel = self._get_jit_surface_pdefunc()
+        kernel(*self._surface_grid(B, N), (
+            y_in, dydt, params, nbr, wts,
+            np.int32(K), np.int32(B), np.int32(N),
+        ))
+
+    @staticmethod
+    def _surface_grid(B, N, block=256):
+        return ((N + block - 1) // block, B), (block,)
+
+    @staticmethod
+    def _stencil_grid(B, H, W):
+        return ((W + TILE_X - 1) // TILE_X, (H + TILE_Y - 1) // TILE_Y, B)
 
     def launch_rk_stage(self, y, k, y_out, alpha, N):
         """Launch RK stage update: y_out = y + alpha * k."""
@@ -297,6 +367,30 @@ class CuKernelManager:
             self._jit_pdefunc = self._compile(
                 FUSED_PDEFUNC_TEMPLATE, 'fused_pdefunc')
         return self._jit_pdefunc
+
+    def _get_jit_euler_domain(self):
+        if self._jit_euler_domain is None:
+            self._jit_euler_domain = self._compile(
+                FUSED_EULER_STEP_DOMAIN_TEMPLATE, 'fused_euler_step_domain')
+        return self._jit_euler_domain
+
+    def _get_jit_pdefunc_domain(self):
+        if self._jit_pdefunc_domain is None:
+            self._jit_pdefunc_domain = self._compile(
+                FUSED_PDEFUNC_DOMAIN_TEMPLATE, 'fused_pdefunc_domain')
+        return self._jit_pdefunc_domain
+
+    def _get_jit_surface_euler(self):
+        if self._jit_surface_euler is None:
+            self._jit_surface_euler = self._compile(
+                SURFACE_EULER_STEP_TEMPLATE, 'surface_euler_step')
+        return self._jit_surface_euler
+
+    def _get_jit_surface_pdefunc(self):
+        if self._jit_surface_pdefunc is None:
+            self._jit_surface_pdefunc = self._compile(
+                SURFACE_PDEFUNC_TEMPLATE, 'surface_pdefunc')
+        return self._jit_surface_pdefunc
 
     def _get_jit_stage(self):
         if self._jit_stage is None:

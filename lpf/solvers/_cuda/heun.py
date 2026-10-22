@@ -31,9 +31,9 @@ class CuHeunSolver(CuSolverBase):
         B, H, W = model.batch_size, model.height, model.width
         N, dx2i = self._N, self._dx2_inv
 
-        km.launch_pdefunc(y_cur, self._k1, p, B, H, W, dx2i)
+        km.launch_pdefunc(y_cur, self._k1, p, B, H, W, dx2i, model.stencil)
         km.launch_rk_stage(y_cur, self._k1, self._y_temp, dt, N)
-        km.launch_pdefunc(self._y_temp, self._k2, p, B, H, W, dx2i)
+        km.launch_pdefunc(self._y_temp, self._k2, p, B, H, W, dx2i, model.stencil)
         # y_next = y_cur + 0.5*dt*(k1 + k2)  →  y_next = y_cur + delta
         km.launch_linear_combine2(
             self._k1, self._k2, self._y_temp,   # reuse y_temp as delta
@@ -49,8 +49,8 @@ class CuHeunSolver(CuSolverBase):
         km, p = self._km, model.params
         B, H, W = model.batch_size, model.height, model.width
         N, dx2i = self._N, self._dx2_inv
-        km.launch_pdefunc(y_mesh, self._k1, p, B, H, W, dx2i)
+        km.launch_pdefunc(y_mesh, self._k1, p, B, H, W, dx2i, model.stencil)
         km.launch_rk_stage(y_mesh, self._k1, self._y_temp, dt, N)
-        km.launch_pdefunc(self._y_temp, self._k2, p, B, H, W, dx2i)
+        km.launch_pdefunc(self._y_temp, self._k2, p, B, H, W, dx2i, model.stencil)
         km.launch_linear_combine2(self._k1, self._k2, delta, 0.5*dt, 0.5*dt, N)
         return delta

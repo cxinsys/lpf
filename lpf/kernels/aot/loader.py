@@ -95,6 +95,20 @@ class AOTKernelLoader:
     def get_pdefunc_kernel(self, model_name, dtype):
         return self._get(self._resolve("pdefunc", model_name, dtype))
 
+    # ---- domain (lpf.domains) and surface (lpf.surfaces) kernels ----
+
+    def get_euler_domain_kernel(self, model_name, dtype):
+        return self._get(self._resolve("euler_domain", model_name, dtype))
+
+    def get_pdefunc_domain_kernel(self, model_name, dtype):
+        return self._get(self._resolve("pdefunc_domain", model_name, dtype))
+
+    def get_euler_surface_kernel(self, model_name, dtype):
+        return self._get(self._resolve("euler_surface", model_name, dtype))
+
+    def get_pdefunc_surface_kernel(self, model_name, dtype):
+        return self._get(self._resolve("pdefunc_surface", model_name, dtype))
+
     # ---- utility kernels ----
 
     def get_rk_stage_kernel(self, dtype):
@@ -133,6 +147,11 @@ class AOTKernelLoader:
         )
         block = (TILE_X, TILE_Y, 1)
         return grid, block
+
+    @staticmethod
+    def surface_grid_block(B, N, block=256):
+        """Return (grid, block) for surface kernels (one thread per vertex)."""
+        return ((N + block - 1) // block, B), (block,)
 
     @staticmethod
     def util_grid_block(N, dtype):

@@ -21,7 +21,8 @@ class CuEulerSolver(CuSolverBase):
     def _fast_step(self, model, t, dt, y_cur, y_next):
         B, H, W = model.batch_size, model.height, model.width
         self._km.launch_euler(
-            y_cur, y_next, model.params, B, H, W, dt, self._dx2_inv)
+            y_cur, y_next, model.params, B, H, W, dt, self._dx2_inv,
+            model.stencil)
 
     def step(self, model, t, dt, y_mesh):
         """Fallback step() for parent solve() (file-I/O path)."""
@@ -34,5 +35,6 @@ class CuEulerSolver(CuSolverBase):
                 or self._dydt.shape != y_mesh.shape:
             self._dydt = cp.empty_like(y_mesh)
         self._km.launch_pdefunc(
-            y_mesh, self._dydt, model.params, B, H, W, self._dx2_inv)
+            y_mesh, self._dydt, model.params, B, H, W, self._dx2_inv,
+            model.stencil)
         return self._dydt * dt
