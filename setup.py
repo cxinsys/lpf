@@ -55,14 +55,14 @@ def _detect_cuda_version():
 
 
 # ---------------------------------------------------------------------------
-# Version: 0.2.0  (editable installs)  or  0.2.0+cu132 / 0.2.0+cpu  (wheels)
+# Version: 0.3.0.dev0  (editable installs)  or  0.3.0.dev0+cu132 / 0.3.0.dev0+cpu  (wheels)
 # ---------------------------------------------------------------------------
 # The +cuXXX local segment is only applied when actually building a wheel
 # (build_wheel.py sets LPF_BUILD_VARIANT, or bdist_wheel is invoked
 # directly). For `pip install -e .` and `uv sync` we keep the plain
-# "0.2.0" version so the lockfile stays portable across machines.
+# "0.3.0.dev0" version so the lockfile stays portable across machines.
 
-_BASE_VERSION = "0.2.0"
+_BASE_VERSION = "0.3.0.dev0"
 
 import sys as _sys
 _is_wheel_build = (
