@@ -1,6 +1,6 @@
 # LPF benchmarks
 
-Three focused benchmark scripts and one results document.  Each script
+Four focused benchmark scripts and their results documents.  Each script
 answers exactly one question; pick the one that matches what you want
 to know.
 
@@ -9,6 +9,7 @@ to know.
 | [`bench_backends.py`](bench_backends.py) | How do all of LPF's array backends (NumPy / JAX (CUDA) / PyTorch CPU+CUDA / CuPy CUDA) compare on the same solver loop, across grid sizes, batch sizes, and solver families? |
 | [`bench_kernel_vs_python.py`](bench_kernel_vs_python.py) | How much does LPF's hand-written **fused CUDA kernel** beat a generic Python loop driving CuPy element-wise ops on the *same* GPU memory? |
 | [`bench_jax_optimizations.py`](bench_jax_optimizations.py) | What does each layer of JAX optimization buy on **GPU**? Compares eager → `@jit` → `@jit + lax.scan` against NumPy and LPF's fused CUDA paths. |
+| [`bench_geometry.py`](bench_geometry.py) | How fast are the fused CUDA kernels per solver on the full grid, on polygon domains and on mesh surfaces (native loop and Python loop)? Results: [`benchmark_results_geometry.md`](benchmark_results_geometry.md). |
 
 The most up-to-date numbers and the full discussion of when each
 backend wins live in [`benchmark_results_backends.md`](benchmark_results_backends.md).
@@ -38,4 +39,7 @@ conda run -n lpf python benchmarks/bench_kernel_vs_python.py
 
 # What does each JAX optimization layer buy?
 conda run -n lpf python benchmarks/bench_jax_optimizations.py
+
+# Fused kernels on grids, polygon domains and meshes
+conda run -n lpf python benchmarks/bench_geometry.py
 ```
