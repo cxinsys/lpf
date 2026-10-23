@@ -19,6 +19,7 @@
 - Reaction-diffusion PDE models for the color pattern formation of ladybird beetles.
 - Evolutionary search based on [PyGMO](https://esa.github.io/pygmo2/) providing the concept of [island](https://esa.github.io/pygmo2/tutorials/using_island.html) and [archipelago](https://esa.github.io/pygmo2/tutorials/using_archipelago.html).
 - GPU optimization of the reaction-diffusion PDE solver for a batch of parameter sets based on [CuPy](https://cupy.dev/).
+- Reaction-diffusion on arbitrary 2D polygons (`LiawModel(domain=PolygonDomain(...))`, cut-cell finite volumes) and on 3D triangle/quad meshes (`LiawModel(mesh=SurfaceMesh(...))`, cotangent Laplacian) with the same solvers and backends.
 
 ## Installation
 
