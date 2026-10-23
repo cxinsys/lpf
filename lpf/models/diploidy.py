@@ -128,6 +128,12 @@ class Diploidy(ABC):
         return self._paternal_model.has_initializer() \
                and self._maternal_model.has_initializer()
 
+    def max_diffusivity(self):
+        values = [m.max_diffusivity()
+                  for m in (self._paternal_model, self._maternal_model)]
+        values = [d for d in values if d is not None]
+        return max(values) if values else None
+
     def pdefunc(self, t=None, y_mesh=None, y_linear=None):
         raise NotImplementedError()
 

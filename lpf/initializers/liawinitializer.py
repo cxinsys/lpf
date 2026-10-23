@@ -74,14 +74,17 @@ class LiawInitializer(TwoComponentInitializer):
 
             u0 = model.am.array(init_states[:, 0], dtype=init_states.dtype)
             v0 = model.am.array(init_states[:, 1], dtype=init_states.dtype)
-            spatial_ones = (1,) * (model._y_mesh.ndim - 2)  # grid: (1, 1), mesh: (1,)
-            v0 = v0.reshape(batch_size, *spatial_ones)
+            n_dims = len(model.spatial_shape)  # grid: (row, col), mesh: (vertex,)
+            v0 = v0.reshape(batch_size, *(1,) * n_dims)
+
+            if init_pts.ndim != 3 or init_pts.shape[-1] != n_dims:
+                raise ValueError(
+                    "init_pts have %d coordinates, the model's space needs %d "
+                    "(%s)." % (init_pts.shape[-1], n_dims,
+                               type(model.geometry).__name__))
 
             for i in range(batch_size):
-                if model.mesh is not None:  # vertex indices
-                    index = (0, i, init_pts[i, :, 0])
-                else:
-                    index = (0, i, init_pts[i, :, 0], init_pts[i, :, 1])
+                index = (0, i, *(init_pts[i, :, k] for k in range(n_dims)))
                 model._y_mesh = model.am.set(model._y_mesh, index, u0[i])
 
             model._y_mesh = model.am.set(model._y_mesh, (1, ...), v0)

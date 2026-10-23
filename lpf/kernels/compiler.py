@@ -1,32 +1,40 @@
 """
-CUDA kernel compilation and management using CuPy RawKernel (JIT)
-with optional AOT fatbin acceleration.
+CUDA kernels of the reaction-diffusion models for CuPy: from the AOT fatbin
+when it is installed, otherwise compiled at run time with NVRTC (JIT).
 
-CuKernelManager provides unified launch methods that transparently
-dispatch to AOT (shared-memory tiled, vectorised) or JIT (1-D grid)
-kernels.  AOT is preferred when the pre-compiled fatbin exists;
-otherwise NVRTC JIT compilation is used as fallback.
+Both come from one C++ source, csrc/include/rd_kernels.cuh: fused kernels in
+which a space (grid, domain or mesh) evaluates dy/dt and an epilogue writes
+the solver's update (an Euler step, dy/dt, a Runge-Kutta stage, ...).
+kernels.cu instantiates them for every model and dtype into the fatbin; the
+JIT path compiles the same extern "C" entry points for one model and one
+space. Kernel names are
+
+    lpf_<epilogue>_<space>_<Model>_<dtype>, e.g. lpf_stage_mesh_Liaw_f32,
+
+so AOT and JIT run identical code. lpf.kernels.operators launches them.
 """
+
+import hashlib
+import os.path as osp
 
 import numpy as np
 
-from lpf.kernels.reactions import REACTION_REGISTRY
-from lpf.kernels.sources import (
-    FUSED_EULER_STEP_TEMPLATE,
-    FUSED_PDEFUNC_TEMPLATE,
-    FUSED_EULER_STEP_DOMAIN_TEMPLATE,
-    FUSED_PDEFUNC_DOMAIN_TEMPLATE,
-    SURFACE_EULER_STEP_TEMPLATE,
-    SURFACE_PDEFUNC_TEMPLATE,
-    RK_STAGE_UPDATE_SOURCE,
-    RK4_COMBINE_SOURCE,
-    HEUN_COMBINE_SOURCE,
-    SCALE_SOURCE,
-    LINEAR_COMBINE2_SOURCE,
-    LINEAR_COMBINE3_SOURCE,
-    TILE_X,
-    TILE_Y,
-)
+from lpf.kernels.aot.loader import _MODEL_SHORT, _DTYPE_SUFFIX, TILE_X, TILE_Y
+
+_INCLUDE_DIR = osp.join(osp.dirname(osp.abspath(__file__)), "csrc", "include")
+
+EPILOGUES = ("euler", "rhs", "stage", "heun", "rk23", "rk4", "ab2")
+SPACES = ("grid", "domain", "mesh")
+
+_CTYPE = {
+    np.dtype(np.float16): "__half",
+    np.dtype(np.float32): "float",
+    np.dtype(np.float64): "double",
+}
+
+# NVRTC options. --fmad=false keeps the bit-exact arithmetic of the
+# reference path (see csrc/kernels.cu); fast math is never used.
+_OPTIONS = ("--fmad=false", "-std=c++17", "-I" + _INCLUDE_DIR)
 
 # Module-level cache: (model_name, dtype_str, fast_math) -> CuKernelManager
 _KERNEL_CACHE = {}
@@ -40,60 +48,48 @@ def get_kernel_manager(model_name, dtype=np.float32, fast_math=False):
     return _KERNEL_CACHE[key]
 
 
+def _headers_digest():
+    """Digest of the kernel headers: CuPy's compile cache is keyed by the
+    source text, which only #includes them."""
+    h = hashlib.sha1()
+    for name in ("types.cuh", "reactions.cuh", "spaces.cuh", "epilogues.cuh",
+                 "rd_kernels.cuh"):
+        with open(osp.join(_INCLUDE_DIR, name), "rb") as f:
+            h.update(f.read())
+    return h.hexdigest()
+
+
 class CuKernelManager:
-    """Unified kernel manager with AOT / JIT fallback.
+    """Kernels of one model and dtype, AOT when available, else JIT.
 
     Parameters
     ----------
     model_name : str
-        Reaction-diffusion model name (key in REACTION_REGISTRY).
+        Reaction-diffusion model name, e.g. "LiawModel".
     dtype : numpy dtype
         Floating-point precision (float16, float32, float64).
     fast_math : bool
-        Use --use_fast_math for JIT compilation.
+        Kept for API compatibility; never applied (it breaks IEEE-754
+        reproducibility).
     """
 
     def __init__(self, model_name, dtype=np.float32, fast_math=False):
         import cupy as cp
         self._cp = cp
 
-        if model_name not in REACTION_REGISTRY:
+        if model_name not in _MODEL_SHORT:
             raise ValueError(
                 f"Unsupported model '{model_name}'. "
-                f"Supported: {list(REACTION_REGISTRY.keys())}"
-            )
+                f"Supported: {list(_MODEL_SHORT.keys())}")
 
         self._model_name = model_name
         self._dtype = np.dtype(dtype)
+        if self._dtype not in _CTYPE:
+            raise ValueError(f"Unsupported dtype for CUDA kernels: {self._dtype}")
         self._fast_math = fast_math
-        self._reaction_info = REACTION_REGISTRY[model_name]
+        self._kernels = {}      # (name, using AOT) -> kernel function
+        self._jit_modules = {}  # space -> NVRTC module
 
-        # NVRTC compile options.
-        #   --fmad=false  : disable automatic FMA contraction so the fused
-        #                   stencil/reaction kernel reproduces the bit-exact
-        #                   behaviour of the historical PyTorch-eager path
-        #                   (verified against ladybirdmnist).
-        # fast_math is intentionally never applied — it relaxes IEEE-754
-        # (FTZ/DAZ, approximate div/sqrt) and breaks reproducibility. The
-        # fast_math kwarg on the solver API is kept for backward compat but
-        # is a no-op.
-        self._options = ('--fmad=false',)
-
-        # Lazily compiled JIT kernels
-        self._jit_euler = None
-        self._jit_pdefunc = None
-        self._jit_euler_domain = None
-        self._jit_pdefunc_domain = None
-        self._jit_surface_euler = None
-        self._jit_surface_pdefunc = None
-        self._jit_stage = None
-        self._jit_rk4_combine = None
-        self._jit_heun_combine = None
-        self._jit_scale = None
-        self._jit_lc2 = None
-        self._jit_lc3 = None
-
-        # Try to load AOT fatbin.
         # Policy: if no fatbin is present (e.g. source/editable install without
         # an AOT build), silently use JIT — that is a legitimate path. But if
         # a fatbin *is* present and we fail to load or validate it, raise:
@@ -103,387 +99,66 @@ class CuKernelManager:
         from lpf.kernels.aot.loader import AOTKernelLoader
         loader = AOTKernelLoader()
         if loader.is_available():
-            # Validate that the required kernels exist. Any failure here is a
-            # hard error — the binaries are present but unusable.
-            loader.get_euler_kernel(model_name, dtype)
+            loader.get_function(self.kernel_name("euler", "grid"))
             self._aot = loader
             self._use_aot = True
 
-    # ================================================================
-    # Properties
-    # ================================================================
+    @property
+    def model_name(self):
+        return self._model_name
 
     @property
-    def n_params(self):
-        return self._reaction_info["n_params"]
+    def dtype(self):
+        return self._dtype
 
     @property
     def using_aot(self):
         return self._use_aot
 
-    # ================================================================
-    # Unified launch methods
-    # ================================================================
+    def kernel_name(self, epilogue, space):
+        return "lpf_%s_%s_%s_%s" % (epilogue, space,
+                                    _MODEL_SHORT[self._model_name],
+                                    _DTYPE_SUFFIX[self._dtype])
 
-    def launch_euler(self, y_in, y_out, params, B, H, W, dt, dx2_inv,
-                     stencil=None, stencil_stride=0):
-        """Launch fused Euler step kernel.
-
-        With a domain stencil (see lpf.domains) the domain kernel is used
-        (AOT when available, like the full-grid kernel, otherwise JIT).
-        """
-        if stencil is not None:
+    def kernel(self, epilogue, space):
+        """The fused kernel lpf_<epilogue>_<space>_<Model>_<dtype>."""
+        name = self.kernel_name(epilogue, space)
+        key = (name, self._use_aot)
+        if key not in self._kernels:
             if self._use_aot:
-                kernel = self._aot.get_euler_domain_kernel(
-                    self._model_name, self._dtype)
+                self._kernels[key] = self._aot.get_function(name)
             else:
-                kernel = self._get_jit_euler_domain()
-            kernel(self._stencil_grid(B, H, W), (TILE_X, TILE_Y), (
-                y_in, y_out, params, stencil, np.int32(stencil_stride),
-                np.int32(B), np.int32(H), np.int32(W),
-                np.float64(dt), np.float64(dx2_inv),
-            ))
-        elif self._use_aot:
-            kernel = self._aot.get_euler_kernel(self._model_name, self._dtype)
-            grid, block = self._aot.stencil_grid_block(B, H, W)
-            kernel(grid, block, (
-                y_in, y_out, params,
-                np.int32(B), np.int32(H), np.int32(W),
-                np.float64(dt), np.float64(dx2_inv),
-            ))
-        else:
-            kernel = self._get_jit_euler()
-            grid = (
-                (W + TILE_X - 1) // TILE_X,
-                (H + TILE_Y - 1) // TILE_Y,
-                B,
-            )
-            block = (TILE_X, TILE_Y)
-            kernel(grid, block, (
-                y_in, y_out, params,
-                np.int32(B), np.int32(H), np.int32(W),
-                np.float64(dt), np.float64(dx2_inv),
-            ))
+                self._kernels[key] = self._jit_module(space).get_function(name)
+        return self._kernels[key]
 
-    def launch_pdefunc(self, y_in, dydt, params, B, H, W, dx2_inv,
-                       stencil=None, stencil_stride=0):
-        """Launch fused PDE function kernel (domain-aware like launch_euler)."""
-        if stencil is not None:
-            if self._use_aot:
-                kernel = self._aot.get_pdefunc_domain_kernel(
-                    self._model_name, self._dtype)
-            else:
-                kernel = self._get_jit_pdefunc_domain()
-            kernel(self._stencil_grid(B, H, W), (TILE_X, TILE_Y), (
-                y_in, dydt, params, stencil, np.int32(stencil_stride),
-                np.int32(B), np.int32(H), np.int32(W),
-                np.float64(dx2_inv),
-            ))
-        elif self._use_aot:
-            kernel = self._aot.get_pdefunc_kernel(self._model_name, self._dtype)
-            grid, block = self._aot.stencil_grid_block(B, H, W)
-            kernel(grid, block, (
-                y_in, dydt, params,
-                np.int32(B), np.int32(H), np.int32(W),
-                np.float64(dx2_inv),
-            ))
-        else:
-            kernel = self._get_jit_pdefunc()
-            grid = (
-                (W + TILE_X - 1) // TILE_X,
-                (H + TILE_Y - 1) // TILE_Y,
-                B,
-            )
-            block = (TILE_X, TILE_Y)
-            kernel(grid, block, (
-                y_in, dydt, params,
-                np.int32(B), np.int32(H), np.int32(W),
-                np.float64(dx2_inv),
-            ))
-
-    def launch_model_euler(self, model, y_in, y_out, dt):
-        """Fused Euler step over the model's geometry: the full grid, a
-        domain on it (lpf.domains) or a mesh surface (lpf.surfaces)."""
-        if model.mesh is not None:
-            nbr, wts = model.kernel_operator
-            self.launch_surface_euler(
-                y_in, y_out, model.params, nbr, wts, nbr.shape[0],
-                model.batch_size, model.mesh.n_vertices, dt)
-        else:
-            self.launch_euler(
-                y_in, y_out, model.params, model.batch_size, model.height,
-                model.width, dt, 1.0 / (model.dx ** 2),
-                model.stencil, model.stencil_stride)
-
-    def launch_model_pdefunc(self, model, y_in, dydt):
-        """dy/dt over the model's geometry (see launch_model_euler)."""
-        if model.mesh is not None:
-            nbr, wts = model.kernel_operator
-            self.launch_surface_pdefunc(
-                y_in, dydt, model.params, nbr, wts, nbr.shape[0],
-                model.batch_size, model.mesh.n_vertices)
-        else:
-            self.launch_pdefunc(
-                y_in, dydt, model.params, model.batch_size, model.height,
-                model.width, 1.0 / (model.dx ** 2),
-                model.stencil, model.stencil_stride)
-
-    def launch_surface_euler(self, y_in, y_out, params, nbr, wts, K, B, N, dt):
-        """Launch the triangle-mesh Euler step (see lpf.surfaces).
-
-        nbr/wts hold the Laplace-Beltrami operator in transposed ELL format,
-        shape (K, N).
-        """
-        if self._use_aot:
-            kernel = self._aot.get_euler_surface_kernel(self._model_name, self._dtype)
-        else:
-            kernel = self._get_jit_surface_euler()
-        kernel(*self._surface_grid(B, N), (
-            y_in, y_out, params, nbr, wts,
-            np.int32(K), np.int32(B), np.int32(N), np.float64(dt),
-        ))
-
-    def launch_surface_pdefunc(self, y_in, dydt, params, nbr, wts, K, B, N):
-        """Launch the triangle-mesh dy/dt kernel (see launch_surface_euler)."""
-        if self._use_aot:
-            kernel = self._aot.get_pdefunc_surface_kernel(self._model_name, self._dtype)
-        else:
-            kernel = self._get_jit_surface_pdefunc()
-        kernel(*self._surface_grid(B, N), (
-            y_in, dydt, params, nbr, wts,
-            np.int32(K), np.int32(B), np.int32(N),
-        ))
-
-    @staticmethod
-    def _surface_grid(B, N, block=256):
-        return ((N + block - 1) // block, B), (block,)
-
-    @staticmethod
-    def _stencil_grid(B, H, W):
-        return ((W + TILE_X - 1) // TILE_X, (H + TILE_Y - 1) // TILE_Y, B)
-
-    def launch_rk_stage(self, y, k, y_out, alpha, N):
-        """Launch RK stage update: y_out = y + alpha * k."""
-        if self._use_aot:
-            kernel = self._aot.get_rk_stage_kernel(self._dtype)
-            grid, block = self._aot.util_grid_block(N, self._dtype)
-            kernel(grid, block, (
-                y, k, y_out, np.float64(alpha), np.int32(N),
-            ))
-        else:
-            kernel = self._get_jit_stage()
-            block = 256
-            grid = ((N + block - 1) // block,)
-            kernel(grid, (block,), (
-                y, k, y_out, np.float64(alpha), np.int32(N),
-            ))
-
-    def launch_rk4_combine(self, delta, k1, k2, k3, k4, dt_over_6, N):
-        """Launch RK4 combine: delta = (dt/6)*(k1 + 2*k2 + 2*k3 + k4)."""
-        if self._use_aot:
-            kernel = self._aot.get_rk4_combine_kernel(self._dtype)
-            grid, block = self._aot.util_grid_block(N, self._dtype)
-            kernel(grid, block, (
-                delta, k1, k2, k3, k4,
-                np.float64(dt_over_6), np.int32(N),
-            ))
-        else:
-            kernel = self._get_jit_rk4_combine()
-            block = 256
-            grid = ((N + block - 1) // block,)
-            kernel(grid, (block,), (
-                delta, k1, k2, k3, k4,
-                np.float64(dt_over_6), np.int32(N),
-            ))
-
-    def launch_heun_combine(self, delta, k1, k2, N):
-        """Launch Heun combine: delta = 0.5 * (k1 + k2)."""
-        if self._use_aot:
-            kernel = self._aot.get_heun_combine_kernel(self._dtype)
-            grid, block = self._aot.util_grid_block(N, self._dtype)
-            kernel(grid, block, (delta, k1, k2, np.int32(N)))
-        else:
-            kernel = self._get_jit_heun_combine()
-            block = 256
-            grid = ((N + block - 1) // block,)
-            kernel(grid, (block,), (delta, k1, k2, np.int32(N)))
-
-    def launch_scale(self, x, out, alpha, N):
-        """Launch scale: out = alpha * x."""
-        if self._use_aot:
-            kernel = self._aot.get_scale_kernel(self._dtype)
-            grid, block = self._aot.util_grid_block(N, self._dtype)
-            kernel(grid, block, (x, out, np.float64(alpha), np.int32(N)))
-        else:
-            kernel = self._get_jit_scale()
-            block = 256
-            grid = ((N + block - 1) // block,)
-            kernel(grid, (block,), (x, out, np.float64(alpha), np.int32(N)))
-
-    def launch_linear_combine2(self, x, y, out, a, b, N):
-        """Launch linear combine: out = a*x + b*y."""
-        if self._use_aot:
-            kernel = self._aot.get_linear_combine2_kernel(self._dtype)
-            grid, block = self._aot.util_grid_block(N, self._dtype)
-            kernel(grid, block, (
-                x, y, out, np.float64(a), np.float64(b), np.int32(N)))
-        else:
-            kernel = self._get_jit_lc2()
-            block = 256
-            grid = ((N + block - 1) // block,)
-            kernel(grid, (block,), (x, y, out, np.float64(a), np.float64(b), np.int32(N)))
-
-    def launch_linear_combine3(self, x, y, z, out, a, b, c, N):
-        """Launch linear combine: out = a*x + b*y + c*z."""
-        if self._use_aot:
-            kernel = self._aot.get_linear_combine3_kernel(self._dtype)
-            grid, block = self._aot.util_grid_block(N, self._dtype)
-            kernel(grid, block, (
-                x, y, z, out,
-                np.float64(a), np.float64(b), np.float64(c), np.int32(N)))
-        else:
-            kernel = self._get_jit_lc3()
-            block = 256
-            grid = ((N + block - 1) // block,)
-            kernel(grid, (block,), (
-                x, y, z, out, np.float64(a), np.float64(b), np.float64(c), np.int32(N)))
+    def _jit_module(self, space):
+        """The entry points of one space for this model, compiled with NVRTC."""
+        if space not in self._jit_modules:
+            source = ("// lpf kernel headers %s\n"
+                      '#include "rd_kernels.cuh"\n'
+                      "LPF_SPACE_ENTRY_POINTS(%s, %s, %s, %s)\n"
+                      % (_headers_digest(), space,
+                         _MODEL_SHORT[self._model_name], _CTYPE[self._dtype],
+                         _DTYPE_SUFFIX[self._dtype]))
+            self._jit_modules[space] = self._cp.RawModule(
+                code=source, options=_OPTIONS)
+        return self._jit_modules[space]
 
     # ================================================================
-    # JIT kernel compilation (lazy)
+    # Full-grid launches (the 0.2 API; see lpf.kernels.operators for the
+    # solvers' launches on any geometry)
     # ================================================================
 
-    def _build_preamble(self):
-        lines = []
-        if self._dtype == np.float16:
-            lines.append("#include <cuda_fp16.h>")
-            lines.append("#define REAL __half")
-            lines.append("#define REAL_CONST(x) __float2half(x##f)")
-            lines.append("#define MAKE_REAL(x) __float2half((float)(x))")
-        elif self._dtype == np.float32:
-            lines.append("#define REAL float")
-            lines.append("#define REAL_CONST(x) x##f")
-            lines.append("#define MAKE_REAL(x) ((float)(x))")
-        elif self._dtype == np.float64:
-            lines.append("#define REAL double")
-            lines.append("#define REAL_CONST(x) x")
-            lines.append("#define MAKE_REAL(x) ((double)(x))")
-        else:
-            raise ValueError(f"Unsupported dtype for JIT compilation: {self._dtype}")
-        lines.append(f"#define N_PARAMS {self._reaction_info['n_params']}")
-        return "\n".join(lines) + "\n"
+    def launch_euler(self, y_in, y_out, params, B, H, W, dt, dx2_inv):
+        """Fused Euler step on the full grid: y_out = y_in + dt * dy/dt."""
+        self._launch_grid("euler", B, H, W, dx2_inv,
+                          (y_in, params, y_out, np.float64(dt)))
 
-    def _inject_reaction(self, template):
-        return template.replace("${REACTION_CODE}", self._reaction_info["code"])
+    def launch_pdefunc(self, y_in, dydt, params, B, H, W, dx2_inv):
+        """dy/dt on the full grid."""
+        self._launch_grid("rhs", B, H, W, dx2_inv, (y_in, params, dydt))
 
-    def _compile(self, template, kernel_name):
-        source = self._build_preamble() + self._inject_reaction(template)
-        return self._cp.RawKernel(source, kernel_name, options=self._options)
-
-    def _compile_utility(self, source, kernel_name):
-        full_source = self._build_preamble() + source
-        return self._cp.RawKernel(full_source, kernel_name, options=self._options)
-
-    def _get_jit_euler(self):
-        if self._jit_euler is None:
-            self._jit_euler = self._compile(
-                FUSED_EULER_STEP_TEMPLATE, 'fused_euler_step')
-        return self._jit_euler
-
-    def _get_jit_pdefunc(self):
-        if self._jit_pdefunc is None:
-            self._jit_pdefunc = self._compile(
-                FUSED_PDEFUNC_TEMPLATE, 'fused_pdefunc')
-        return self._jit_pdefunc
-
-    def _get_jit_euler_domain(self):
-        if self._jit_euler_domain is None:
-            self._jit_euler_domain = self._compile(
-                FUSED_EULER_STEP_DOMAIN_TEMPLATE, 'fused_euler_step_domain')
-        return self._jit_euler_domain
-
-    def _get_jit_pdefunc_domain(self):
-        if self._jit_pdefunc_domain is None:
-            self._jit_pdefunc_domain = self._compile(
-                FUSED_PDEFUNC_DOMAIN_TEMPLATE, 'fused_pdefunc_domain')
-        return self._jit_pdefunc_domain
-
-    def _get_jit_surface_euler(self):
-        if self._jit_surface_euler is None:
-            self._jit_surface_euler = self._compile(
-                SURFACE_EULER_STEP_TEMPLATE, 'surface_euler_step')
-        return self._jit_surface_euler
-
-    def _get_jit_surface_pdefunc(self):
-        if self._jit_surface_pdefunc is None:
-            self._jit_surface_pdefunc = self._compile(
-                SURFACE_PDEFUNC_TEMPLATE, 'surface_pdefunc')
-        return self._jit_surface_pdefunc
-
-    def _get_jit_stage(self):
-        if self._jit_stage is None:
-            self._jit_stage = self._compile_utility(
-                RK_STAGE_UPDATE_SOURCE, 'rk_stage_update')
-        return self._jit_stage
-
-    def _get_jit_rk4_combine(self):
-        if self._jit_rk4_combine is None:
-            self._jit_rk4_combine = self._compile_utility(
-                RK4_COMBINE_SOURCE, 'rk4_combine')
-        return self._jit_rk4_combine
-
-    def _get_jit_heun_combine(self):
-        if self._jit_heun_combine is None:
-            self._jit_heun_combine = self._compile_utility(
-                HEUN_COMBINE_SOURCE, 'heun_combine')
-        return self._jit_heun_combine
-
-    def _get_jit_scale(self):
-        if self._jit_scale is None:
-            self._jit_scale = self._compile_utility(SCALE_SOURCE, 'scale')
-        return self._jit_scale
-
-    def _get_jit_lc2(self):
-        if self._jit_lc2 is None:
-            self._jit_lc2 = self._compile_utility(
-                LINEAR_COMBINE2_SOURCE, 'linear_combine2')
-        return self._jit_lc2
-
-    def _get_jit_lc3(self):
-        if self._jit_lc3 is None:
-            self._jit_lc3 = self._compile_utility(
-                LINEAR_COMBINE3_SOURCE, 'linear_combine3')
-        return self._jit_lc3
-
-    # ================================================================
-    # Legacy property API (kept for backward compat)
-    # ================================================================
-
-    @property
-    def euler_kernel(self):
-        if self._use_aot:
-            return self._aot.get_euler_kernel(self._model_name, self._dtype)
-        return self._get_jit_euler()
-
-    @property
-    def pdefunc_kernel(self):
-        if self._use_aot:
-            return self._aot.get_pdefunc_kernel(self._model_name, self._dtype)
-        return self._get_jit_pdefunc()
-
-    @property
-    def stage_kernel(self):
-        if self._use_aot:
-            return self._aot.get_rk_stage_kernel(self._dtype)
-        return self._get_jit_stage()
-
-    @property
-    def rk4_combine_kernel(self):
-        if self._use_aot:
-            return self._aot.get_rk4_combine_kernel(self._dtype)
-        return self._get_jit_rk4_combine()
-
-    @property
-    def heun_combine_kernel(self):
-        if self._use_aot:
-            return self._aot.get_heun_combine_kernel(self._dtype)
-        return self._get_jit_heun_combine()
+    def _launch_grid(self, epilogue, B, H, W, dx2_inv, args):
+        grid = ((W + TILE_X - 1) // TILE_X, (H + TILE_Y - 1) // TILE_Y, B)
+        self.kernel(epilogue, "grid")(grid, (TILE_X, TILE_Y), (
+            np.int32(B), np.int32(H), np.int32(W), np.float64(dx2_inv), *args))

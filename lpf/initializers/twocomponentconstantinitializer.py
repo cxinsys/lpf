@@ -48,7 +48,7 @@ class TwoComponentConstantInitializer(TwoComponentInitializer):
             u0 = init_states[:, 0]
             v0 = init_states[:, 1]
 
-            spatial_ones = (1,) * (model._y_mesh.ndim - 2)  # grid: (1, 1), mesh: (1,)
+            spatial_ones = (1,) * len(model.spatial_shape)  # grid: (1, 1), mesh: (1,)
             u0 = u0.reshape(batch_size, *spatial_ones)
             v0 = v0.reshape(batch_size, *spatial_ones)
 

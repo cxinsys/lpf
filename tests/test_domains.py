@@ -266,11 +266,13 @@ class TestModelCPU:
         assert model.is_early_stopping(1e30)
 
     def test_full_grid_unchanged_without_domain(self):
+        from lpf.geometry import DomainGeometry, GridGeometry
         model = _make_model(PolygonDomain(STAR))
-        assert model.stencil is None  # built on initialize()
+        assert type(model.geometry) is DomainGeometry
         plain = LiawModel(initializer=model.initializer, params=model.params,
                           width=32, height=32, dx=0.1)
-        assert plain.domain is None and plain.stencil is None
+        assert plain.domain is None and plain.mesh is None
+        assert type(plain.geometry) is GridGeometry
 
 
 # ---------- CUDA ----------

@@ -39,14 +39,6 @@ def _get_native():
     return _native_solver
 
 
-def _geometry_kind(model):
-    """Native-loop kind of a model: grid, domain (lpf.domains) or surface
-    (lpf.surfaces)."""
-    if model.mesh is not None:
-        return "surface"
-    return "grid" if model.stencil is None else "domain"
-
-
 def _native_supports(native, kind):
     """Whether the native library has the solve loop for kind (grid,
     domain or surface); objects with only is_available() run the grid."""
@@ -72,6 +64,9 @@ class CuSolverBase(Solver):
         _alloc_buffers(model)
         _fast_step(model, t, dt, y_cur, y_next)
         _get_work_bufs()
+
+    The kernels of the model's space are launched through self._op, the
+    geometry's KernelOp (lpf.kernels.operators), set by _ensure_cuda().
     """
 
     def __init__(self, *args, fast_math=False, block_size=256, **kwargs):
@@ -97,6 +92,8 @@ class CuSolverBase(Solver):
             if self._cached_shape != model.shape_grid:
                 self._bufs_ready = False
 
+        self._op = model.geometry.kernel_op(self._km)
+
     # ---- PyTorch ↔ CuPy zero-copy bridge ----
 
     @staticmethod
@@ -118,13 +115,10 @@ class CuSolverBase(Solver):
             'params': model._params,
             'u': model._u,
             'v': model._v,
-            'stencil': model.stencil,
         }
 
         model._y_mesh = cp.from_dlpack(model._y_mesh.detach())
         model._params = cp.from_dlpack(model._params.detach())
-        if model.stencil is not None:
-            model._stencil = cp.from_dlpack(model._stencil.detach())
         model._u = model._y_mesh[0]
         model._v = model._y_mesh[1]
 
@@ -139,8 +133,6 @@ class CuSolverBase(Solver):
         # Just restore the PyTorch tensor references.
         model._y_mesh = saved['y_mesh']
         model._params = saved['params']
-        if saved['stencil'] is not None:
-            model._stencil = saved['stencil']
         model._u = saved['y_mesh'][0]
         model._v = saved['y_mesh'][1]
 
@@ -153,6 +145,25 @@ class CuSolverBase(Solver):
         pass
     def _get_work_bufs(self):
         return []
+
+    @staticmethod
+    def _empty_like_state(model, n):
+        """n work buffers of the state's shape and dtype."""
+        import cupy as cp
+        with model.am:
+            return [cp.empty(model.shape_grid, dtype=model.y_mesh.dtype)
+                    for _ in range(n)]
+
+    def step(self, model, t, dt, y_mesh):
+        """One step as an increment (the Solver.step contract). The solve
+        loops step with _fast_step / the native loop instead."""
+        import cupy as cp
+        self._ensure_cuda(model)
+        if not self._bufs_ready:
+            self._alloc_buffers(model)
+        y_next = cp.empty_like(y_mesh)
+        self._fast_step(model, t, dt, y_mesh, y_next)
+        return y_next - y_mesh
 
     # ==================================================================
     # Unified solve
@@ -297,12 +308,9 @@ class CuSolverBase(Solver):
                                  dtype=model.y_mesh.dtype)
 
         # ---- run the CUDA solve loop ----
-        B, H, W = model.batch_size, model.height, model.width
-        dx2_inv = 1.0 / (model.dx ** 2)
-
         native = _get_native()
         can_native = (
-            _native_supports(native, _geometry_kind(model))
+            _native_supports(native, self._op.native_kind)
             and self._name in _SOLVER_CODES
         )
 
@@ -314,8 +322,7 @@ class CuSolverBase(Solver):
             # Convert absolute waypoints to local offsets.
             native_iters = [x - iter_begin for x in output_iters_sorted]
             result = self._solve_native(
-                model, dt, dx2_inv, actual_iters, B, H, W,
-                trj_y, native_iters, rtol)
+                model, dt, actual_iters, trj_y, native_iters, rtol)
             # Compute how many waypoints were actually captured
             stopped = result.get('stopped_at', -1) if isinstance(result, dict) else -1
             if stopped > 0:
@@ -324,11 +331,10 @@ class CuSolverBase(Solver):
                 n_captured = n_output
         elif can_native and n_output == 0:
             result = self._solve_native(
-                model, dt, dx2_inv, actual_iters, B, H, W,
-                None, None, rtol)
+                model, dt, actual_iters, None, None, rtol)
         else:
             result, n_captured = self._solve_python_loop(
-                model, dt, dx2_inv, iter_begin, iter_end,
+                model, dt, iter_begin, iter_end,
                 output_iters_sorted, trj_y, rtol, verbose)
 
         # ---- trim trajectory buffer to actual captured count ----
@@ -375,7 +381,7 @@ class CuSolverBase(Solver):
     # Native .so path
     # ==================================================================
 
-    def _solve_native(self, model, dt, dx2_inv, n_iters, B, H, W,
+    def _solve_native(self, model, dt, n_iters,
                       trj_y, output_iters_sorted, rtol):
         import cupy as cp
 
@@ -389,7 +395,8 @@ class CuSolverBase(Solver):
         if output_iters_sorted:
             trj_iters_np = np.array(output_iters_sorted, dtype=np.int32)
 
-        loop = dict(
+        res = self._op.native_solve(
+            native,
             solver_type=solver_code,
             model_name=model.name,
             dtype=model.dtype,
@@ -402,18 +409,6 @@ class CuSolverBase(Solver):
             rtol=rtol if rtol else 0.0,
             rtol_period=1000,
         )
-        kind = _geometry_kind(model)
-        if kind == "surface":
-            nbr, wts = model.kernel_operator
-            res = native.solve_surface(
-                nbr=nbr, wts=wts, K=nbr.shape[0], B=B,
-                N=model.mesh.n_vertices, **loop)
-        elif kind == "domain":
-            res = native.solve_domain(
-                stencil=model.stencil, stencil_stride=model.stencil_stride,
-                B=B, H=H, W=W, dx2_inv=dx2_inv, **loop)
-        else:
-            res = native.solve(B=B, H=H, W=W, dx2_inv=dx2_inv, **loop)
 
         final = y_a if res['result_buf'] == 0 else y_b
         cp.cuda.Stream.null.synchronize()
@@ -428,7 +423,7 @@ class CuSolverBase(Solver):
     # Python fast-path loop (fallback when .so not available)
     # ==================================================================
 
-    def _solve_python_loop(self, model, dt, dx2_inv,
+    def _solve_python_loop(self, model, dt,
                            iter_begin, iter_end,
                            output_iters_sorted, trj_y, rtol, verbose):
         import cupy as cp

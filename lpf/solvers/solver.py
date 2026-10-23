@@ -7,7 +7,7 @@ import numpy as np
 
 
 # Stable interval [-c, 0] of dt * lambda on the negative real axis for the
-# fixed-step methods; it sets the explicit time-step limit on a mesh.
+# fixed-step methods; it sets their explicit time-step limit.
 _STABILITY_INTERVAL = {
     "EulerSolver": 2.0,
     "HeunSolver": 2.0,
@@ -82,7 +82,7 @@ class Solver:
                 raise ValueError("model should be defined.")
             model = self._model
 
-        self._check_mesh_stability(model, dt if dt is not None else self._dt)
+        self._check_stability(model, dt if dt is not None else self._dt)
 
         # Clear stale trajectory from previous solve
         if not get_trj and trj_waypoints is None:
@@ -330,27 +330,30 @@ class Solver:
         raise NotImplementedError
 
     def max_stable_dt(self, model):
-        """Largest stable time step of this fixed-step solver for pure
-        diffusion on the model's mesh (lpf.surfaces), or None."""
+        """Largest stable time step of this fixed-step solver for the
+        diffusion of the model on its geometry (grid, domain or mesh), or
+        None for adaptive solvers and models without diffusion."""
         interval = _STABILITY_INTERVAL.get(self._name)
-        if model.mesh is None or interval is None:
+        if interval is None:
             return None
-        params = np.asarray(model.am.get(model.params))
-        d_max = float(np.max(params[:, :2]))
-        return interval / (d_max * model.mesh.lambda_max())
+        d_max = model.max_diffusivity()
+        lam = model.geometry.lambda_max()
+        if not d_max or not lam:
+            return None
+        return interval / (d_max * lam)
 
-    def _check_mesh_stability(self, model, dt):
-        # Explicit steps on a mesh are limited by its smallest elements
-        # (domains on the grid keep the square grid's limit).
-        if dt is None or getattr(model, "mesh", None) is None \
-                or model.params is None:
+    def _check_stability(self, model, dt):
+        # Explicit steps are limited by the stiffest diffusion mode; the
+        # geometry decides whether that is worth a warning (lpf.geometry).
+        if dt is None or model is None or model.geometry is None \
+                or not model.geometry.warns_unstable_dt:
             return
         limit = self.max_stable_dt(model)
         if limit is not None and dt > limit:
             import warnings
             warnings.warn(
-                "dt=%g exceeds the %s stability limit %.3g for this mesh; "
-                "use a smaller dt or a coarser / more regular mesh."
+                "dt=%g exceeds the %s stability limit %.3g of this model; "
+                "use a smaller dt (or a coarser / more regular mesh)."
                 % (dt, self._name, limit))
 
     def to_dict(self):

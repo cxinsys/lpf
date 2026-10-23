@@ -11,6 +11,11 @@
  *   - Early stopping (convergence check every N iters)
  *   - Ping-pong buffers
  *
+ * Every launch is a fused kernel (rd_kernels.cuh): a space evaluates dy/dt
+ * and an epilogue applies the solver's update in the same pass, so e.g. an
+ * RK4 step is 4 kernels instead of 9 and reads/writes the state ~1.5x less.
+ * The results are bit-identical to the unfused sequences.
+ *
  * Compile:
  *   nvcc -shared -Xcompiler -fPIC -std=c++17 -O3 --fmad=false \
  *        -I include/ solver_loop.cu -o libsolver.so
@@ -20,15 +25,39 @@
  * the full rationale and benchmark numbers.
  */
 
-#include "include/stencil_core.cuh"
-#include "include/domain_core.cuh"
-#include "include/surface_core.cuh"
-#include "include/utility_tpl.cuh"
-#include <cstdio>
+#include "include/rd_kernels.cuh"
+#include <algorithm>
+#include <utility>
 
 // ============================================================
-// Convergence helper
+// Convergence check (single-block reduction)
 // ============================================================
+template<typename T>
+__global__ void convergence_reduce(
+    const T* __restrict__ cur, const T* __restrict__ prev,
+    double* __restrict__ out, int N)
+{
+    __shared__ double sd[1024], ss[1024];
+    int tid = threadIdx.x;
+    double md = 0.0, ms = 0.0;
+    for (int i = tid; i < N; i += 1024) {
+        double d = fabs((double)cur[i] - (double)prev[i]);
+        double s = fabs((double)prev[i]);
+        if (d > md) md = d;
+        if (s > ms) ms = s;
+    }
+    sd[tid] = md; ss[tid] = ms;
+    __syncthreads();
+    for (int s = 512; s > 0; s >>= 1) {
+        if (tid < s) {
+            if (sd[tid+s] > sd[tid]) sd[tid] = sd[tid+s];
+            if (ss[tid+s] > ss[tid]) ss[tid] = ss[tid+s];
+        }
+        __syncthreads();
+    }
+    if (tid == 0) { out[0] = sd[0]; out[1] = ss[0]; }
+}
+
 template<typename T>
 static bool check_convergence(
     const T* cur, const T* prev, int N, double rtol,
@@ -43,267 +72,218 @@ static bool check_convergence(
 }
 
 // ============================================================
-// Trajectory helper — device-to-device async copy
+// Operator: one space of one model with its launch shape
 // ============================================================
+// op(y, params, epi, s) launches the fused kernel that evaluates dy/dt at y
+// and applies epi. size is the number of elements of the state (2 * B * ...).
+template<typename T, typename R, typename Space>
+struct Operator {
+    Space space;
+    dim3 grid, block;
+    int size;
+
+    template<typename Epi>
+    void operator()(const T* y, const T* params, const Epi& epi,
+                    cudaStream_t s) const {
+        rd_kernel<T, R, Space, Epi><<<grid, block, 0, s>>>(space, y, params, epi);
+    }
+};
+
+// ============================================================
+// CUDA graphs of consecutive steps
+// ============================================================
+// Small problems are bound by the launch rate. A step's launches depend on
+// the step only through its parity (the ping-pong buffers), so STEPS
+// consecutive steps (an even number) are captured once per parity and
+// replayed. If graphs are unavailable the steps are launched directly.
+struct StepGraphs {
+    static constexpr int STEPS = 64;
+    cudaGraphExec_t exec[2] = {nullptr, nullptr};
+    bool off = false;
+
+    ~StepGraphs() {
+        for (cudaGraphExec_t e : exec) if (e) cudaGraphExecDestroy(e);
+    }
+
+    // Runs steps [i, end); returns end.
+    template<typename Step>
+    int run(int i, int end, Step& step, cudaStream_t s) {
+        while (!off && end - i >= STEPS) {
+            const int p = i % 2;
+            if (!exec[p] && !capture(p, i, step, s)) break;
+            cudaGraphLaunch(exec[p], s);
+            i += STEPS;
+        }
+        for (; i < end; ++i) step(i);
+        return end;
+    }
+
+    template<typename Step>
+    bool capture(int p, int i, Step& step, cudaStream_t s) {
+        cudaGraph_t g = nullptr;
+        if (cudaStreamBeginCapture(s, cudaStreamCaptureModeThreadLocal) != cudaSuccess) {
+            cudaGetLastError();
+            off = true;
+            return false;
+        }
+        for (int k = 0; k < STEPS; ++k) step(i + k);  // recorded, not run
+        cudaError_t err = cudaStreamEndCapture(s, &g);
+        if (err == cudaSuccess) err = cudaGraphInstantiate(&exec[p], g, 0);
+        if (g) cudaGraphDestroy(g);
+        if (err != cudaSuccess) {
+            cudaGetLastError();
+            exec[p] = nullptr;
+            off = true;
+            return false;
+        }
+        return true;
+    }
+};
+
+// ============================================================
+// Loop: trajectory capture and early stopping around the steps
+// ============================================================
+// run(step) performs step(0) .. step(n_iters - 1), where step i reads y_a
+// (even i) or y_b (odd i) and writes the other. After step i, the state is
+// copied to the trajectory if i + 1 is the next waypoint, and every
+// rtol_period steps the relative change is checked against rtol. From step
+// first_graph on, step(i) may depend on i only through i % 2.
+// Returns the buffer holding the final state (0: y_a, 1: y_b).
 template<typename T>
-static inline void try_capture_trj(
-    T* trj_buf, const int* trj_iters, int n_trj, int& trj_idx,
-    const T* state, int elem_count, int iter_1based, cudaStream_t s)
-{
-    if (!trj_buf || trj_idx >= n_trj) return;
-    if (trj_iters[trj_idx] != iter_1based) return;
-    cudaMemcpyAsync(trj_buf + (long long)trj_idx * elem_count,
-                    state, elem_count * sizeof(T),
-                    cudaMemcpyDeviceToDevice, s);
-    trj_idx++;
-}
+struct Loop {
+    T* y_a; T* y_b; int N; int n_iters;
+    T* trj_buf; const int* trj_iters; int n_trj;
+    double rtol; int rtol_period; int* stopped_at;
+    double* d_conv; double* h_conv; cudaStream_t s;
 
-// ============================================================
-// Spatial operators
-// ============================================================
-// An operator launches one fused Euler step (euler) or one dy/dt
-// evaluation (pdefunc) over the whole state of size(). The solve loops
-// below are written against this interface, so every solver runs on the
-// full grid, on a domain and on a mesh surface. GridOp launches exactly
-// the kernels (and arguments) the full-grid loops always launched.
+    template<typename Step>
+    int run(Step&& step, int first_graph = 0) const {
+        StepGraphs graphs;
+        const bool check = rtol > 0 && rtol_period > 0;
+        int trj_idx = 0, i = 0;
+        while (i < n_iters) {
+            while (trj_buf && trj_idx < n_trj && trj_iters[trj_idx] <= i) ++trj_idx;
+            int end = n_iters;
+            if (trj_buf && trj_idx < n_trj) end = std::min(end, trj_iters[trj_idx]);
+            if (check) end = std::min(end, (i / rtol_period + 1) * rtol_period);
 
-template<typename T, typename Reaction, int TX, int TY, KernelMode MODE>
-__global__ void domain_kernel_tpl(
-    const T* __restrict__ y_in, T* __restrict__ out,
-    const T* __restrict__ params, const T* __restrict__ stencil,
-    int stencil_stride, int B, int H, int W, double dt_d, double dx2_inv_d)
-{
-    domain_core<T, Reaction, TX, TY, MODE>(
-        y_in, out, params, stencil, stencil_stride, B, H, W,
-        make_real<T>(dt_d), make_real<T>(dx2_inv_d));
-}
+            for (; i < end && i < first_graph; ++i) step(i);
+            i = graphs.run(i, end, step, s);
 
-template<typename T, typename Reaction, KernelMode MODE>
-__global__ void surface_kernel_tpl(
-    const T* __restrict__ y_in, T* __restrict__ out,
-    const T* __restrict__ params,
-    const int* __restrict__ nbr, const T* __restrict__ wts,
-    int K, int B, int N, double dt_d)
-{
-    surface_core<T, Reaction, MODE>(
-        y_in, out, params, nbr, wts, K, B, N, make_real<T>(dt_d));
-}
-
-template<typename T, typename Reaction, int TX, int TY>
-struct GridOp {
-    int B, H, W;
-    double dx2_inv;
-
-    int size() const { return 2*B*H*W; }
-    dim3 grid() const { return dim3((W+TX-1)/TX, (H+TY-1)/TY, B); }
-
-    void euler(const T* src, T* dst, const T* params, double dt, cudaStream_t s) const {
-        euler_kernel_tpl<T,Reaction,TX,TY><<<grid(),dim3(TX,TY),0,s>>>(
-            src, dst, params, B, H, W, dt, dx2_inv);
-    }
-    void pdefunc(const T* src, T* dydt, const T* params, cudaStream_t s) const {
-        pdefunc_kernel_tpl<T,Reaction,TX,TY><<<grid(),dim3(TX,TY),0,s>>>(
-            src, dydt, params, B, H, W, dx2_inv);
+            // After step end - 1:
+            T* dst = (end % 2 == 1) ? y_b : y_a;
+            T* src = (end % 2 == 1) ? y_a : y_b;
+            if (trj_buf && trj_idx < n_trj && trj_iters[trj_idx] == end) {
+                cudaMemcpyAsync(trj_buf + (long long)trj_idx * N, dst,
+                                (size_t)N * sizeof(T), cudaMemcpyDeviceToDevice, s);
+                ++trj_idx;
+            }
+            if (check && end % rtol_period == 0
+                    && check_convergence(dst, src, N, rtol, d_conv, h_conv, s)) {
+                *stopped_at = end;
+                cudaStreamSynchronize(s);
+                return end % 2;
+            }
+        }
+        *stopped_at = -1;
+        cudaStreamSynchronize(s);
+        return n_iters % 2;
     }
 };
 
-template<typename T, typename Reaction, int TX, int TY>
-struct DomainOp {
-    int B, H, W;
-    double dx2_inv;
-    const T* stencil;
-    int stencil_stride;  // 0: one domain for the batch, 5*H*W: one each
-
-    int size() const { return 2*B*H*W; }
-    dim3 grid() const { return dim3((W+TX-1)/TX, (H+TY-1)/TY, B); }
-
-    void euler(const T* src, T* dst, const T* params, double dt, cudaStream_t s) const {
-        domain_kernel_tpl<T,Reaction,TX,TY,EULER_STEP><<<grid(),dim3(TX,TY),0,s>>>(
-            src, dst, params, stencil, stencil_stride, B, H, W, dt, dx2_inv);
-    }
-    void pdefunc(const T* src, T* dydt, const T* params, cudaStream_t s) const {
-        domain_kernel_tpl<T,Reaction,TX,TY,PDEFUNC><<<grid(),dim3(TX,TY),0,s>>>(
-            src, dydt, params, stencil, stencil_stride, B, H, W, 0.0, dx2_inv);
-    }
-};
-
-template<typename T, typename Reaction, int BLOCK = 256>
-struct SurfaceOp {
-    int B, N, K;
-    const int* nbr;
-    const T* wts;
-
-    int size() const { return 2*B*N; }
-    dim3 grid() const { return dim3((N+BLOCK-1)/BLOCK, B); }
-
-    void euler(const T* src, T* dst, const T* params, double dt, cudaStream_t s) const {
-        surface_kernel_tpl<T,Reaction,EULER_STEP><<<grid(),BLOCK,0,s>>>(
-            src, dst, params, nbr, wts, K, B, N, dt);
-    }
-    void pdefunc(const T* src, T* dydt, const T* params, cudaStream_t s) const {
-        surface_kernel_tpl<T,Reaction,PDEFUNC><<<grid(),BLOCK,0,s>>>(
-            src, dydt, params, nbr, wts, K, B, N, 0.0);
-    }
-};
-
-// Arguments shared by every solve loop (after the operator-specific ones).
-#define LOOP_TAIL_PARAMS \
-    T* trj_buf, const int* trj_iters, int n_trj, \
-    double rtol, int rtol_period, int* stopped_at, \
-    double* d_conv, double h_conv[2], cudaStream_t s
-
-#define CHECK_STOP(i) \
-    if (rtol>0 && rtol_period>0 && (i+1)%rtol_period==0) \
-        if (check_convergence(dst,src,N,rtol,d_conv,h_conv,s)) \
-            { *stopped_at=i+1; cudaStreamSynchronize(s); return (i+1)%2; }
+#define SRC_DST(i) T* src = ((i) % 2 == 0) ? L.y_a : L.y_b; \
+                   T* dst = ((i) % 2 == 0) ? L.y_b : L.y_a
 
 // ============================================================
-// EULER solve loop
+// EULER: y1 = y + dt f(y)
 // ============================================================
 template<typename T, typename Op>
-static int solve_euler(
-    T* y_a, T* y_b, const T* params, const Op& op, double dt, int n_iters,
-    LOOP_TAIL_PARAMS)
+static int solve_euler(const Loop<T>& L, const T* p, const Op& op, double dt)
 {
-    int N = op.size(), trj_idx = 0;
-
-    for (int i = 0; i < n_iters; i++) {
-        T *src = (i%2==0)?y_a:y_b, *dst = (i%2==0)?y_b:y_a;
-        op.euler(src, dst, params, dt, s);
-
-        try_capture_trj(trj_buf, trj_iters, n_trj, trj_idx, dst, N, i+1, s);
-        CHECK_STOP(i)
-    }
-    *stopped_at = -1; cudaStreamSynchronize(s); return n_iters%2;
+    return L.run([&](int i) {
+        SRC_DST(i);
+        op(src, p, EulerEpi<T>{dst, dt}, L.s);
+    });
 }
 
 // ============================================================
-// HEUN solve loop
+// HEUN: k1 = f(y), y1 = y + dt/2 (k1 + f(y + dt k1))
 // ============================================================
 template<typename T, typename Op>
-static int solve_heun(
-    T* y_a, T* y_b, const T* params, const Op& op, double dt, int n_iters,
-    T* k1, T* k2, T* y_temp,
-    LOOP_TAIL_PARAMS)
+static int solve_heun(const Loop<T>& L, const T* p, const Op& op, double dt,
+                      T* k1, T* y_temp)
 {
-    int N = op.size(), ub = 256, ug = (N+ub-1)/ub, trj_idx = 0;
-
-    for (int i = 0; i < n_iters; i++) {
-        T *src=(i%2==0)?y_a:y_b, *dst=(i%2==0)?y_b:y_a;
-        op.pdefunc(src,k1,params,s);
-        rk_stage_tpl<T><<<ug,ub,0,s>>>(src,k1,y_temp,dt,N);
-        op.pdefunc(y_temp,k2,params,s);
-        linear_combine2_tpl<T><<<ug,ub,0,s>>>(k1,k2,y_temp,0.5*dt,0.5*dt,N);
-        rk_stage_tpl<T><<<ug,ub,0,s>>>(src,y_temp,dst,1.0,N);
-
-        try_capture_trj(trj_buf, trj_iters, n_trj, trj_idx, dst, N, i+1, s);
-        CHECK_STOP(i)
-    }
-    *stopped_at=-1; cudaStreamSynchronize(s); return n_iters%2;
+    return L.run([&](int i) {
+        SRC_DST(i);
+        op(src, p, StageEpi<T>{k1, y_temp, src, true, dt}, L.s);
+        op(y_temp, p, HeunEpi<T>{dst, src, k1, 0.5*dt, 0.5*dt}, L.s);
+    });
 }
 
 // ============================================================
-// RK4 solve loop
+// RK4 (the stage inputs alternate between two buffers)
 // ============================================================
 template<typename T, typename Op>
-static int solve_rk4(
-    T* y_a, T* y_b, const T* params, const Op& op, double dt, int n_iters,
-    T* k1, T* k2, T* k3, T* k4, T* y_temp, T* delta,
-    LOOP_TAIL_PARAMS)
+static int solve_rk4(const Loop<T>& L, const T* p, const Op& op, double dt,
+                     T* k1, T* k2, T* k3, T* y_t1, T* y_t2)
 {
-    int N=op.size(), ub=256, ug=(N+ub-1)/ub, trj_idx=0;
-
-    for (int i = 0; i < n_iters; i++) {
-        T *src=(i%2==0)?y_a:y_b, *dst=(i%2==0)?y_b:y_a;
-        op.pdefunc(src,k1,params,s);
-        rk_stage_tpl<T><<<ug,ub,0,s>>>(src,k1,y_temp,0.5*dt,N);
-        op.pdefunc(y_temp,k2,params,s);
-        rk_stage_tpl<T><<<ug,ub,0,s>>>(src,k2,y_temp,0.5*dt,N);
-        op.pdefunc(y_temp,k3,params,s);
-        rk_stage_tpl<T><<<ug,ub,0,s>>>(src,k3,y_temp,dt,N);
-        op.pdefunc(y_temp,k4,params,s);
-        rk4_combine_tpl<T><<<ug,ub,0,s>>>(delta,k1,k2,k3,k4,dt/6.0,N);
-        rk_stage_tpl<T><<<ug,ub,0,s>>>(src,delta,dst,1.0,N);
-
-        try_capture_trj(trj_buf, trj_iters, n_trj, trj_idx, dst, N, i+1, s);
-        CHECK_STOP(i)
-    }
-    *stopped_at=-1; cudaStreamSynchronize(s); return n_iters%2;
+    return L.run([&](int i) {
+        SRC_DST(i);
+        op(src,  p, StageEpi<T>{k1, y_t1, src, true,  0.5*dt}, L.s);
+        op(y_t1, p, StageEpi<T>{k2, y_t2, src, false, 0.5*dt}, L.s);
+        op(y_t2, p, StageEpi<T>{k3, y_t1, src, false, dt}, L.s);
+        op(y_t1, p, RK4Epi<T>{dst, src, k1, k2, k3, dt/6.0}, L.s);
+    });
 }
 
 // ============================================================
-// RK23 solve loop
+// RK23 (Bogacki-Shampine, third-order solution)
 // ============================================================
 template<typename T, typename Op>
-static int solve_rk23(
-    T* y_a, T* y_b, const T* params, const Op& op, double dt, int n_iters,
-    T* k1, T* k2, T* k3, T* y_temp, T* delta,
-    LOOP_TAIL_PARAMS)
+static int solve_rk23(const Loop<T>& L, const T* p, const Op& op, double dt,
+                      T* k1, T* k2, T* y_t1, T* y_t2)
 {
-    int N=op.size(), ub=256, ug=(N+ub-1)/ub, trj_idx=0;
-
-    for (int i = 0; i < n_iters; i++) {
-        T *src=(i%2==0)?y_a:y_b, *dst=(i%2==0)?y_b:y_a;
-        op.pdefunc(src,k1,params,s);
-        rk_stage_tpl<T><<<ug,ub,0,s>>>(src,k1,y_temp,0.5*dt,N);
-        op.pdefunc(y_temp,k2,params,s);
-        rk_stage_tpl<T><<<ug,ub,0,s>>>(src,k2,y_temp,0.75*dt,N);
-        op.pdefunc(y_temp,k3,params,s);
-        linear_combine3_tpl<T><<<ug,ub,0,s>>>(k1,k2,k3,delta,
-            dt*(2.0/9.0), dt*(1.0/3.0), dt*(4.0/9.0), N);
-        rk_stage_tpl<T><<<ug,ub,0,s>>>(src,delta,dst,1.0,N);
-
-        try_capture_trj(trj_buf, trj_iters, n_trj, trj_idx, dst, N, i+1, s);
-        CHECK_STOP(i)
-    }
-    *stopped_at=-1; cudaStreamSynchronize(s); return n_iters%2;
+    return L.run([&](int i) {
+        SRC_DST(i);
+        op(src,  p, StageEpi<T>{k1, y_t1, src, true,  0.5*dt}, L.s);
+        op(y_t1, p, StageEpi<T>{k2, y_t2, src, false, 0.75*dt}, L.s);
+        op(y_t2, p, RK23Epi<T>{dst, src, k1, k2,
+                               dt*(2.0/9.0), dt*(1.0/3.0), dt*(4.0/9.0)}, L.s);
+    });
 }
 
 // ============================================================
-// AB2 solve loop
+// AB2 (the first step is an Euler step; f(y) alternates between buffers)
 // ============================================================
 template<typename T, typename Op>
-static int solve_ab2(
-    T* y_a, T* y_b, const T* params, const Op& op, double dt, int n_iters,
-    T* dydt_a, T* dydt_b, T* delta,
-    LOOP_TAIL_PARAMS)
+static int solve_ab2(const Loop<T>& L, const T* p, const Op& op, double dt,
+                     T* dydt_a, T* dydt_b)
 {
-    int N=op.size(), ub=256, ug=(N+ub-1)/ub, trj_idx=0;
     T* dydt_cur = dydt_a;
     T* dydt_prev = dydt_b;
-
-    for (int i = 0; i < n_iters; i++) {
-        T *src=(i%2==0)?y_a:y_b, *dst=(i%2==0)?y_b:y_a;
-        op.pdefunc(src,dydt_cur,params,s);
-
-        if (i == 0) {
-            rk_stage_tpl<T><<<ug,ub,0,s>>>(src,dydt_cur,dst,dt,N);
-        } else {
-            linear_combine2_tpl<T><<<ug,ub,0,s>>>(dydt_cur,dydt_prev,delta,1.5*dt,-0.5*dt,N);
-            rk_stage_tpl<T><<<ug,ub,0,s>>>(src,delta,dst,1.0,N);
-        }
-        T* tmp = dydt_cur; dydt_cur = dydt_prev; dydt_prev = tmp;
-
-        try_capture_trj(trj_buf, trj_iters, n_trj, trj_idx, dst, N, i+1, s);
-        CHECK_STOP(i)
-    }
-    *stopped_at=-1; cudaStreamSynchronize(s); return n_iters%2;
+    return L.run([&](int i) {
+        SRC_DST(i);
+        if (i == 0)
+            op(src, p, StageEpi<T>{dydt_cur, dst, src, true, dt}, L.s);
+        else
+            op(src, p, AB2Epi<T>{dydt_cur, dst, dydt_prev, 1.5*dt, -0.5*dt}, L.s);
+        std::swap(dydt_cur, dydt_prev);
+    }, /*first_graph=*/1);
 }
 
-#undef CHECK_STOP
-#undef LOOP_TAIL_PARAMS
+#undef SRC_DST
 
 // ============================================================
 // Dispatch
 // ============================================================
 
 /*
- * work[] provides solver-specific buffers:
+ * work[] provides solver-specific buffers, each the size of the state:
  *   Euler: (none needed)
- *   Heun:  work[0]=k1, [1]=k2, [2]=y_temp
- *   RK4:   work[0]=k1, [1]=k2, [2]=k3, [3]=k4, [4]=y_temp, [5]=delta
- *   RK23:  work[0]=k1, [1]=k2, [2]=k3, [3]=y_temp, [4]=delta
- *   AB2:   work[0]=dydt_a, [1]=dydt_b, [2]=delta
+ *   Heun:  work[0]=k1, [1]=y_temp
+ *   RK4:   work[0]=k1, [1]=k2, [2]=k3, [3]=y_t1, [4]=y_t2
+ *   RK23:  work[0]=k1, [1]=k2, [2]=y_t1, [3]=y_t2
+ *   AB2:   work[0]=dydt_a, [1]=dydt_b
  * Solver type: 0=Euler, 1=Heun, 2=RK4, 3=RK23, 4=AB2.
  * Each entry point returns the buffer holding the final state (0: y_a, 1: y_b).
  */
@@ -320,24 +300,19 @@ struct LoopArgs {
 template<typename T, typename Op>
 static int run_solver(const LoopArgs& a, const Op& op)
 {
-    T* y_a = (T*)a.y_a;
-    T* y_b = (T*)a.y_b;
+    const Loop<T> L{(T*)a.y_a, (T*)a.y_b, op.size, a.n_iters,
+                    (T*)a.trj_buf, a.trj_iters, a.n_trj,
+                    a.rtol, a.rtol_period, a.stopped_at,
+                    a.d_conv, a.h_conv, a.stream};
     const T* p = (const T*)a.params;
     #define WK(k) ((T*)a.work[k])
-    #define TAIL (T*)a.trj_buf, a.trj_iters, a.n_trj, a.rtol, a.rtol_period, \
-                 a.stopped_at, a.d_conv, a.h_conv, a.stream
     switch (a.solver_type) {
-        case 0: return solve_euler<T>(y_a, y_b, p, op, a.dt, a.n_iters, TAIL);
-        case 1: return solve_heun<T>(y_a, y_b, p, op, a.dt, a.n_iters,
-                                     WK(0), WK(1), WK(2), TAIL);
-        case 2: return solve_rk4<T>(y_a, y_b, p, op, a.dt, a.n_iters,
-                                    WK(0), WK(1), WK(2), WK(3), WK(4), WK(5), TAIL);
-        case 3: return solve_rk23<T>(y_a, y_b, p, op, a.dt, a.n_iters,
-                                     WK(0), WK(1), WK(2), WK(3), WK(4), TAIL);
-        case 4: return solve_ab2<T>(y_a, y_b, p, op, a.dt, a.n_iters,
-                                    WK(0), WK(1), WK(2), TAIL);
+        case 0: return solve_euler<T>(L, p, op, a.dt);
+        case 1: return solve_heun<T>(L, p, op, a.dt, WK(0), WK(1));
+        case 2: return solve_rk4<T>(L, p, op, a.dt, WK(0), WK(1), WK(2), WK(3), WK(4));
+        case 3: return solve_rk23<T>(L, p, op, a.dt, WK(0), WK(1), WK(2), WK(3));
+        case 4: return solve_ab2<T>(L, p, op, a.dt, WK(0), WK(1));
     }
-    #undef TAIL
     #undef WK
     return 0;
 }
@@ -405,6 +380,21 @@ struct LoopContext {
     trj_buf, trj_iters, n_trj, rtol, rtol_period, stopped_at, \
     ctx.d_conv, ctx.h_conv, ctx.stream}
 
+// Runs the solver for the dtype and model codes with the operator that
+// make_op<T, R>() builds.
+#define DISPATCH(ctx, make_op) \
+    with_dtype(dtype_code, [&](auto dtag) { \
+        using T = typename decltype(dtag)::type; \
+        return with_reaction<T>(model_type, [&](auto rtag) { \
+            using R = typename decltype(rtag)::type; \
+            return run_solver<T>(MAKE_LOOP_ARGS(ctx), make_op); \
+        }); \
+    })
+
+static dim3 tiled_grid(int B, int H, int W) {
+    return dim3((W + 31) / 32, (H + 7) / 8, B);
+}
+
 /* Full rectangular grid; the outermost cells are held fixed. */
 extern "C" int lpf_native_solve(
     void* y_a, void* y_b, const void* params,
@@ -412,50 +402,39 @@ extern "C" int lpf_native_solve(
     LOOP_ENTRY_TAIL)
 {
     LoopContext ctx(rtol);
-    const LoopArgs a = MAKE_LOOP_ARGS(ctx);
-    return with_dtype(dtype_code, [&](auto dtag) {
-        using T = typename decltype(dtag)::type;
-        return with_reaction<T>(model_type, [&](auto rtag) {
-            using R = typename decltype(rtag)::type;
-            return run_solver<T>(a, GridOp<T, R, 32, 8>{B, H, W, dx2_inv});
-        });
-    });
+    return DISPATCH(ctx, (Operator<T, R, GridSpace<T>>{
+        GridSpace<T>{B, H, W, dx2_inv},
+        tiled_grid(B, H, W), dim3(32, 8), 2 * B * H * W}));
 }
 
 /* Domain on the grid (lpf.domains): stencil is (5, H, W) per batch element
- * at a stride of stencil_stride elements (0: shared), see domain_core. */
+ * at a stride of stencil_stride elements (0: shared), flags the (H, W) cell
+ * classes at the same sharing, see DomainSpace. */
 extern "C" int lpf_native_solve_domain(
     void* y_a, void* y_b, const void* params,
-    const void* stencil, int stencil_stride,
+    const void* stencil, int stencil_stride, const unsigned char* flags,
     int B, int H, int W, double dt, double dx2_inv,
     LOOP_ENTRY_TAIL)
 {
     LoopContext ctx(rtol);
-    const LoopArgs a = MAKE_LOOP_ARGS(ctx);
-    return with_dtype(dtype_code, [&](auto dtag) {
-        using T = typename decltype(dtag)::type;
-        return with_reaction<T>(model_type, [&](auto rtag) {
-            using R = typename decltype(rtag)::type;
-            return run_solver<T>(a, DomainOp<T, R, 32, 8>{
-                B, H, W, dx2_inv, (const T*)stencil, stencil_stride});
-        });
-    });
+    return DISPATCH(ctx, (Operator<T, R, DomainSpace<T>>{
+        DomainSpace<T>{B, H, W, dx2_inv, (const T*)stencil, stencil_stride, flags},
+        tiled_grid(B, H, W), dim3(32, 8), 2 * B * H * W}));
 }
 
 /* Triangle-mesh surface (lpf.surfaces): transposed ELL operator nbr/wts of
- * shape (K, N), see surface_core. The state is (2, B, N). */
+ * shape (K, N), see MeshSpace. The state is (2, B, N). A batch of several
+ * models is processed four per thread. */
 extern "C" int lpf_native_solve_surface(
     void* y_a, void* y_b, const void* params,
     const int* nbr, const void* wts, int K, int B, int N, double dt,
     LOOP_ENTRY_TAIL)
 {
     LoopContext ctx(rtol);
-    const LoopArgs a = MAKE_LOOP_ARGS(ctx);
-    return with_dtype(dtype_code, [&](auto dtag) {
-        using T = typename decltype(dtag)::type;
-        return with_reaction<T>(model_type, [&](auto rtag) {
-            using R = typename decltype(rtag)::type;
-            return run_solver<T>(a, SurfaceOp<T, R>{B, N, K, nbr, (const T*)wts});
-        });
-    });
+    const dim3 block(256), grid1((N + 255) / 256, B), grid4((N + 255) / 256, (B + 3) / 4);
+    if (B == 1)
+        return DISPATCH(ctx, (Operator<T, R, MeshSpace<T>>{
+            MeshSpace<T>{B, N, K, nbr, (const T*)wts}, grid1, block, 2 * B * N}));
+    return DISPATCH(ctx, (Operator<T, R, MeshSpace<T, 256, 4>>{
+        MeshSpace<T, 256, 4>{B, N, K, nbr, (const T*)wts}, grid4, block, 2 * B * N}));
 }

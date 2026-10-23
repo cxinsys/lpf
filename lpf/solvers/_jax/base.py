@@ -27,10 +27,7 @@ from os.path import join as pjoin
 import numpy as np
 
 from lpf.solvers.solver import Solver
-from lpf.solvers._jax.rhs import (build_geometry_rhs, geometry_params, has_geometry,
-                                   get_rhs, is_supported as rhs_supported,
-                                  build_diploid_rhs, is_diploid_model,
-                                  is_diploid_supported)
+from lpf.solvers._jax.rhs import is_diploid_model, select_rhs
 from lpf.solvers._jax.steps import get_step, is_supported as step_supported
 
 
@@ -266,31 +263,7 @@ class JaxSolverBase(Solver):
             raise ValueError(f"JAX solver: unsupported solver '{self._name}'.")
 
         is_diploid = is_diploid_model(model)
-        if has_geometry(model):
-            if is_diploid:
-                raise ValueError("JAX solver: diploid models with a domain or "
-                                 "mesh are not supported.")
-            rhs_fn = build_geometry_rhs(model)
-            rhs_cache_key = ("mesh" if model.mesh is not None else "domain",
-                             type(model).__name__)
-        elif is_diploid:
-            if not is_diploid_supported(model):
-                pa = model.paternal_model.name
-                ma = model.maternal_model.name
-                raise ValueError(
-                    f"JAX solver: unsupported diploid sub-models "
-                    f"(paternal={pa}, maternal={ma}).")
-            pa_name = model.paternal_model.name
-            ma_name = model.maternal_model.name
-            rhs_fn = build_diploid_rhs(pa_name, ma_name)
-            rhs_cache_key = ("diploid", pa_name, ma_name)
-        else:
-            if not rhs_supported(model.name):
-                raise ValueError(
-                    f"JAX solver: unsupported model '{model.name}'. "
-                    f"Use device='cpu' for models without JAX kernel support.")
-            rhs_fn = get_rhs(model.name)
-            rhs_cache_key = model.name
+        rhs_fn, rhs_cache_key, params = select_rhs(model)
 
         batch_size = model.batch_size
 
@@ -380,14 +353,6 @@ class JaxSolverBase(Solver):
 
         y0 = model.y_mesh  # Already a JAX array on the target device
 
-        if has_geometry(model):
-            params = geometry_params(model)
-        elif is_diploid:
-            # Pass (pa_params, ma_params) as a pytree so jit can handle it
-            params = (model.paternal_model.params,
-                      model.maternal_model.params)
-        else:
-            params = model.params
 
         # solver-local state (e.g. AB2 prev_dydt)
         _, state_init_fn = get_step(self._name)

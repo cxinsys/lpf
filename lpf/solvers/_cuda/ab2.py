@@ -1,6 +1,5 @@
-"""CUDA Adams-Bashforth 2-step solver — all kernel launches, zero CuPy array ops."""
+"""CUDA Adams-Bashforth 2-step solver — one fused launch per step."""
 
-import numpy as np
 from lpf.solvers._cuda.base import CuSolverBase
 
 
@@ -12,58 +11,25 @@ class CuAdamsBashforth2Solver(CuSolverBase):
         self._first_step = True
 
     def _alloc_buffers(self, model):
-        import cupy as cp
-        shape, dtype = model.shape_grid, model.y_mesh.dtype
-        with model.am:
-            self._dydt_cur = cp.empty(shape, dtype=dtype)
-            self._dydt_prev = cp.empty(shape, dtype=dtype)
-            self._delta = cp.empty(shape, dtype=dtype)
-        self._N = int(np.prod(model.shape_grid))
-        self._cached_shape = shape
+        self._dydt_cur, self._dydt_prev = self._empty_like_state(model, 2)
+        self._cached_shape = model.shape_grid
         self._bufs_ready = True
 
     def _get_work_bufs(self):
-        return [self._dydt_cur, self._dydt_prev, self._delta]
+        return [self._dydt_cur, self._dydt_prev]
 
     def _on_solve_begin(self):
         self._first_step = True
 
     def _fast_step(self, model, t, dt, y_cur, y_next):
-        km = self._km
-        N = self._N
-
-        km.launch_model_pdefunc(model, y_cur, self._dydt_cur)
-
+        op, p = self._op, model.params
         if self._first_step:
             # Euler bootstrap: y_next = y_cur + dt * dydt
-            km.launch_rk_stage(y_cur, self._dydt_cur, y_next, dt, N)
+            op.stage(y_cur, y_cur, self._dydt_cur, y_next, p, dt)
             self._first_step = False
         else:
-            # AB2: delta = dt*(1.5*fn - 0.5*fnm1), y_next = y_cur + delta
-            km.launch_linear_combine2(
-                self._dydt_cur, self._dydt_prev, self._delta,
-                1.5 * dt, -0.5 * dt, N)
-            km.launch_rk_stage(y_cur, self._delta, y_next, 1.0, N)
-
+            # y_next = y_cur + dt*(1.5*f_n - 0.5*f_(n-1))
+            op.ab2(y_cur, self._dydt_prev, self._dydt_cur, y_next, p,
+                   1.5 * dt, -0.5 * dt)
         # Swap: current → previous for next step
         self._dydt_cur, self._dydt_prev = self._dydt_prev, self._dydt_cur
-
-    def step(self, model, t, dt, y_mesh):
-        self._ensure_cuda(model)
-        if not self._bufs_ready:
-            self._alloc_buffers(model)
-        km = self._km
-        N = self._N
-
-        km.launch_model_pdefunc(model, y_mesh, self._dydt_cur)
-
-        if self._first_step:
-            km.launch_scale(self._dydt_cur, self._delta, dt, N)
-            self._first_step = False
-        else:
-            km.launch_linear_combine2(
-                self._dydt_cur, self._dydt_prev, self._delta,
-                1.5 * dt, -0.5 * dt, N)
-
-        self._dydt_cur, self._dydt_prev = self._dydt_prev, self._dydt_cur
-        return self._delta

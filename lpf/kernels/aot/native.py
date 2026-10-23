@@ -42,13 +42,13 @@ _DTYPE_CODES = {
     np.dtype(np.float64): 2,
 }
 
-# Number of work buffers per solver
+# Number of work buffers per solver (each the size of the state)
 _WORK_COUNT = {
     SOLVER_EULER: 0,
-    SOLVER_HEUN: 3,   # k1, k2, y_temp
-    SOLVER_RK4: 6,    # k1, k2, k3, k4, y_temp, delta
-    SOLVER_RK23: 5,   # k1, k2, k3, y_temp, delta
-    SOLVER_AB2: 3,     # dydt_a, dydt_b, delta
+    SOLVER_HEUN: 2,   # k1, y_temp
+    SOLVER_RK4: 5,    # k1, k2, k3, y_t1, y_t2
+    SOLVER_RK23: 4,   # k1, k2, y_t1, y_t2
+    SOLVER_AB2: 2,    # dydt_a, dydt_b
 }
 
 
@@ -132,7 +132,7 @@ class NativeSolver:
                           rtol, rtol_period)
 
     def solve_domain(self, solver_type, model_name, dtype,
-                     y_a, y_b, params, stencil,
+                     y_a, y_b, params, stencil, flags,
                      B, H, W, dt, dx2_inv, n_iters,
                      work_bufs=None, trj_buf=None, trj_iters=None,
                      rtol=0.0, rtol_period=1000, stencil_stride=0):
@@ -141,10 +141,12 @@ class NativeSolver:
         stencil : cupy array of shape (5, H, W) per batch element, dtype of
             the state; element b uses stencil + b * stencil_stride
             (0: one domain shared by the batch).
+        flags : cupy uint8 array of shape (H, W) per batch element (shared
+            like the stencil): 0 inactive, 1 all weights 1, 2 other cells.
         """
         head = (
             _ptr(y_a), _ptr(y_b), _ptr(params), _ptr(stencil),
-            ctypes.c_int(stencil_stride),
+            ctypes.c_int(stencil_stride), _ptr(flags),
             ctypes.c_int(B), ctypes.c_int(H), ctypes.c_int(W),
             ctypes.c_double(dt), ctypes.c_double(dx2_inv),
         )

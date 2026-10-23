@@ -21,8 +21,3 @@ template<>
 __device__ __forceinline__ __half ldg<__half>(const __half* ptr) {
     return __ushort_as_half(__ldg(reinterpret_cast<const unsigned short*>(ptr)));
 }
-
-// ============================================================
-// Kernel execution modes
-// ============================================================
-enum KernelMode { EULER_STEP, PDEFUNC };

@@ -1,7 +1,8 @@
 """
 Runtime loader for AOT-compiled CUDA kernels.
 
-Loads the pre-compiled fatbin and provides kernels by name.
+Loads the pre-compiled fatbin (built from csrc/kernels.cu by
+``python -m lpf.kernels.aot.build``) and provides kernels by name.
 Falls back gracefully if the fatbin does not exist.
 """
 
@@ -30,14 +31,7 @@ _DTYPE_SUFFIX = {
     np.dtype(np.float64): "f64",
 }
 
-# Vectorisation width per dtype (elements per thread)
-_VEC_WIDTH = {
-    np.dtype(np.float16): 2,
-    np.dtype(np.float32): 4,
-    np.dtype(np.float64): 2,
-}
-
-# Stencil tile sizes (must match kernels.cu instantiation)
+# Stencil tile sizes (must match GridSpace / DomainSpace in spaces.cuh)
 TILE_X = 32
 TILE_Y = 8
 
@@ -49,7 +43,7 @@ class AOTKernelLoader:
 
         loader = AOTKernelLoader()
         if loader.is_available():
-            kernel = loader.get_euler_kernel("LiawModel", np.float32)
+            kernel = loader.get_function("lpf_euler_grid_Liaw_f32")
     """
 
     def __init__(self, fatbin_path=None):
@@ -72,74 +66,15 @@ class AOTKernelLoader:
     def is_available(self):
         return self._available
 
-    def _get(self, name):
-        """Get a kernel function by name (cached)."""
+    def get_function(self, name):
+        """Kernel function by name (cached)."""
         if name not in self._cache:
             self._cache[name] = self._module.get_function(name)
         return self._cache[name]
 
-    def _resolve(self, prefix, model_name, dtype):
-        short = _MODEL_SHORT.get(model_name)
-        if short is None:
-            raise ValueError(f"Unknown model: {model_name}")
-        suffix = _DTYPE_SUFFIX.get(np.dtype(dtype))
-        if suffix is None:
-            raise ValueError(f"Unsupported dtype: {dtype}")
-        return f"{prefix}_{short}_{suffix}"
-
-    # ---- stencil kernels ----
-
-    def get_euler_kernel(self, model_name, dtype):
-        return self._get(self._resolve("euler", model_name, dtype))
-
-    def get_pdefunc_kernel(self, model_name, dtype):
-        return self._get(self._resolve("pdefunc", model_name, dtype))
-
-    # ---- domain (lpf.domains) and surface (lpf.surfaces) kernels ----
-
-    def get_euler_domain_kernel(self, model_name, dtype):
-        return self._get(self._resolve("euler_domain", model_name, dtype))
-
-    def get_pdefunc_domain_kernel(self, model_name, dtype):
-        return self._get(self._resolve("pdefunc_domain", model_name, dtype))
-
-    def get_euler_surface_kernel(self, model_name, dtype):
-        return self._get(self._resolve("euler_surface", model_name, dtype))
-
-    def get_pdefunc_surface_kernel(self, model_name, dtype):
-        return self._get(self._resolve("pdefunc_surface", model_name, dtype))
-
-    # ---- utility kernels ----
-
-    def get_rk_stage_kernel(self, dtype):
-        suffix = _DTYPE_SUFFIX[np.dtype(dtype)]
-        return self._get(f"rk_stage_{suffix}")
-
-    def get_rk4_combine_kernel(self, dtype):
-        suffix = _DTYPE_SUFFIX[np.dtype(dtype)]
-        return self._get(f"rk4_combine_{suffix}")
-
-    def get_heun_combine_kernel(self, dtype):
-        suffix = _DTYPE_SUFFIX[np.dtype(dtype)]
-        return self._get(f"heun_combine_{suffix}")
-
-    def get_scale_kernel(self, dtype):
-        suffix = _DTYPE_SUFFIX[np.dtype(dtype)]
-        return self._get(f"scale_{suffix}")
-
-    def get_linear_combine2_kernel(self, dtype):
-        suffix = _DTYPE_SUFFIX[np.dtype(dtype)]
-        return self._get(f"linear_combine2_{suffix}")
-
-    def get_linear_combine3_kernel(self, dtype):
-        suffix = _DTYPE_SUFFIX[np.dtype(dtype)]
-        return self._get(f"linear_combine3_{suffix}")
-
-    # ---- launch helpers ----
-
     @staticmethod
     def stencil_grid_block(B, H, W):
-        """Return (grid, block) for stencil kernels (2D tiled)."""
+        """Return (grid, block) for the 2D stencil kernels (tiled)."""
         grid = (
             (W + TILE_X - 1) // TILE_X,
             (H + TILE_Y - 1) // TILE_Y,
@@ -147,17 +82,3 @@ class AOTKernelLoader:
         )
         block = (TILE_X, TILE_Y, 1)
         return grid, block
-
-    @staticmethod
-    def surface_grid_block(B, N, block=256):
-        """Return (grid, block) for surface kernels (one thread per vertex)."""
-        return ((N + block - 1) // block, B), (block,)
-
-    @staticmethod
-    def util_grid_block(N, dtype):
-        """Return (grid, block) for vectorised utility kernels."""
-        vw = _VEC_WIDTH[np.dtype(dtype)]
-        n_threads = (N + vw - 1) // vw
-        block = 256
-        grid = ((n_threads + block - 1) // block,)
-        return grid, (block,)

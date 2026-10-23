@@ -14,6 +14,7 @@ class ReactionDiffusionModel(ABC):
         self._dtype = dtype
         self._params = None
         self._batch_size = None
+        self._geometry = None  # lpf.geometry.Geometry, set by subclasses
 
     @property
     def am(self):  # ArrayModule object
@@ -44,20 +45,20 @@ class ReactionDiffusionModel(ABC):
         return self._shape_grid
 
     @property
-    def domain(self):  # lpf.domains.Domain, or None for the full grid
-        return getattr(self, "_domain", None)
+    def geometry(self):  # lpf.geometry.Geometry: the space the model is solved on
+        return self._geometry
 
     @property
-    def stencil(self):  # Domain stencil(s) (B or 1, 5, H, W) on the model's device
-        return getattr(self, "_stencil", None)
+    def spatial_shape(self):  # (H, W) on the grid, (n_vertices,) on a mesh
+        return self._geometry.spatial_shape
 
     @property
-    def stencil_stride(self):  # 0: one domain for the batch, 5*H*W: one each
-        return getattr(self, "_stencil_stride", 0)
+    def domain(self):  # lpf.domains.Domain (or one per model), or None
+        return self._geometry.domain
 
     @property
-    def mesh(self):  # lpf.surfaces.SurfaceMesh, or None for the grid
-        return getattr(self, "_mesh", None)
+    def mesh(self):  # lpf.surfaces.SurfaceMesh, or None
+        return self._geometry.mesh
 
     @property
     def initializer(self):
@@ -108,6 +109,10 @@ class ReactionDiffusionModel(ABC):
 
     def laplacian2d(self, a, dx):
         raise NotImplementedError()
+
+    def max_diffusivity(self):
+        """Largest diffusion coefficient (sets the explicit dt limit), or None."""
+        return None
 
     def reactions(self, t, u_c, v_c):
         raise NotImplementedError()

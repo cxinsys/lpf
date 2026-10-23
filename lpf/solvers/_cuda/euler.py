@@ -1,6 +1,5 @@
 """CUDA Euler solver — fused ping-pong kernel, one launch per step."""
 
-import numpy as np
 from lpf.solvers._cuda.base import CuSolverBase
 
 
@@ -18,16 +17,4 @@ class CuEulerSolver(CuSolverBase):
         return []
 
     def _fast_step(self, model, t, dt, y_cur, y_next):
-        self._km.launch_model_euler(model, y_cur, y_next, dt)
-
-    def step(self, model, t, dt, y_mesh):
-        """Fallback step() for parent solve() (file-I/O path)."""
-        import cupy as cp
-        self._ensure_cuda(model)
-        if not self._bufs_ready:
-            self._alloc_buffers(model)
-        if not hasattr(self, '_dydt') or self._dydt is None \
-                or self._dydt.shape != y_mesh.shape:
-            self._dydt = cp.empty_like(y_mesh)
-        self._km.launch_model_pdefunc(model, y_mesh, self._dydt)
-        return self._dydt * dt
+        self._op.euler(y_cur, y_next, model.params, dt)

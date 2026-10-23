@@ -283,7 +283,7 @@ class _ParamsView:
 
 def _laplacian_domain(a, st, dx_inv2):
     """Domain-weighted Laplacian; same accumulation order as the CUDA kernel
-    and TwoComponentModel.laplacian2d_domain. st: (B or 1, 5, H, W)."""
+    and DomainGeometry.laplacian. st: (B or 1, 5, H, W)."""
     lap = jnp.zeros_like(a)
     lap = lap.at[:, 1:, :].set(st[:, 0, 1:, :] * (a[:, :-1, :] - a[:, 1:, :]))
     lap = lap.at[:, :-1, :].set(lap[:, :-1, :] + st[:, 1, :-1, :] * (a[:, 1:, :] - a[:, :-1, :]))
@@ -294,34 +294,26 @@ def _laplacian_domain(a, st, dx_inv2):
 
 def _laplacian_mesh(a, nbr, wts):
     """Laplace-Beltrami operator in ELL format (K, N); same order as the
-    CUDA kernel and TwoComponentModel.laplacian_mesh."""
+    CUDA kernel and MeshGeometry.laplacian."""
     lap = wts[0] * (a[:, nbr[0]] - a)
     for k in range(1, nbr.shape[0]):
         lap = lap + wts[k] * (a[:, nbr[k]] - a)
     return lap
 
 
-def build_geometry_rhs(model):
-    """RHS for a model with a domain or a mesh, for any two-component model.
-
-    The kinetics are the model class's own reactions(), traced with JAX
-    arrays. The geometry travels in the params pytree (see geometry_params).
-    """
+def _kinetics(model):
+    """The model class's own reactions(), callable with traced params."""
     reactions = type(model).reactions
 
     def kinetics(params, u, v):
         return reactions(_ParamsView(params), None, u, v)
+    return kinetics
 
-    if model.mesh is not None:
-        def rhs(y, params, dx_inv2):
-            p, nbr, wts = params
-            B, N = y.shape[1], y.shape[2]
-            u, v = y[0], y[1]
-            f, g = kinetics(p, u.reshape(B, 1, N), v.reshape(B, 1, N))
-            du = p[:, 0].reshape(B, 1) * _laplacian_mesh(u, nbr, wts) + f.reshape(B, N)
-            dv = p[:, 1].reshape(B, 1) * _laplacian_mesh(v, nbr, wts) + g.reshape(B, N)
-            return jnp.stack([du, dv])
-        return rhs
+
+def build_domain_rhs(model):
+    """RHS of any two-component model on a domain (lpf.domains). Its params
+    pytree is (params, stencils), see DomainGeometry.jax_rhs()."""
+    kinetics = _kinetics(model)
 
     def rhs(y, params, dx_inv2):
         p, st = params
@@ -335,12 +327,24 @@ def build_geometry_rhs(model):
     return rhs
 
 
-def geometry_params(model):
-    """params pytree for build_geometry_rhs()."""
-    if model.mesh is not None:
-        return (model.params, *model._ell)
-    return (model.params, model.stencil)
+def build_mesh_rhs(model):
+    """RHS of any two-component model on a mesh (lpf.surfaces). Its params
+    pytree is (params, nbr, wts), see MeshGeometry.jax_rhs()."""
+    kinetics = _kinetics(model)
+
+    def rhs(y, params, dx_inv2):
+        p, nbr, wts = params
+        B, N = y.shape[1], y.shape[2]
+        u, v = y[0], y[1]
+        f, g = kinetics(p, u.reshape(B, 1, N), v.reshape(B, 1, N))
+        du = p[:, 0].reshape(B, 1) * _laplacian_mesh(u, nbr, wts) + f.reshape(B, N)
+        dv = p[:, 1].reshape(B, 1) * _laplacian_mesh(v, nbr, wts) + g.reshape(B, N)
+        return jnp.stack([du, dv])
+    return rhs
 
 
-def has_geometry(model):
-    return model.domain is not None or model.mesh is not None
+def select_rhs(model):
+    """(rhs, cache_key, params) of a model on its geometry (lpf.geometry)."""
+    if is_diploid_model(model):
+        return model.geometry.jax_diploid_rhs(model)
+    return model.geometry.jax_rhs(model)

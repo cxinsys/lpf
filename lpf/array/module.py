@@ -120,6 +120,9 @@ def get_array_module(device):
 
 
 class ArrayModule:
+    # Integer dtype of index arrays used in advanced indexing.
+    index_dtype = np.int32
+
     def __init__(self, device, device_id):
         self._device = device
         self._device_id = device_id
@@ -281,6 +284,7 @@ class CupyModule(NumpyModule):
 
 
 class TorchModule(ArrayModule):
+    index_dtype = np.int64  # torch indexes with int64 tensors
 
     def __init__(self, device=None, device_id=None):
         super().__init__(device, device_id)
